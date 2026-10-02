@@ -20,6 +20,7 @@
     <DataTemplate DataType="vm:MensagemViewModel"><v:MensagemView /></DataTemplate>
     <DataTemplate DataType="vm:DevolucaoViewModel"><v:DevolucaoView /></DataTemplate>
     <DataTemplate DataType="vm:NovaSenhaViewModel"><v:NovaSenhaView /></DataTemplate>
+    <DataTemplate DataType="vm:NumeroViewModel"><v:NumeroView /></DataTemplate>
   </Application.DataTemplates>
 
   <Application.Resources>

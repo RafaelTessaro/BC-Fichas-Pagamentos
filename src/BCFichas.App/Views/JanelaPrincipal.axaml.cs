@@ -37,6 +37,8 @@ public partial class JanelaPrincipal : Window
 
         _vm.PropertyChanged += AoMudarVm;
         _vm.EscolherImagem = EscolherImagemAsync;
+        _vm.EscolherProgramacao = EscolherProgramacaoAsync;
+        _vm.EscolherOndeSalvar = EscolherOndeSalvarAsync;
         _vm.FecharPrograma = Close;
         AplicarTelaCheia();
     }
@@ -80,6 +82,49 @@ public partial class JanelaPrincipal : Window
         {
             _vm.TecladoVisivel = false;
         }
+    }
+
+    private static readonly FilePickerFileType TipoProgramacao = new("Programação do BC Fichas")
+    {
+        Patterns = ["*" + Core.Servicos.ProgramacaoServico.Extensao],
+    };
+
+    private async Task<IStorageFolder?> Pasta(string? caminho)
+    {
+        if (string.IsNullOrWhiteSpace(caminho) || !Directory.Exists(caminho)) return null;
+        try
+        {
+            return await StorageProvider.TryGetFolderFromPathAsync(caminho);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private async Task<string?> EscolherProgramacaoAsync(string? pastaInicial)
+    {
+        var arquivos = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Escolha a programação do BC Fichas",
+            AllowMultiple = false,
+            FileTypeFilter = [TipoProgramacao],
+            SuggestedStartLocation = await Pasta(pastaInicial),
+        });
+        return arquivos.FirstOrDefault()?.TryGetLocalPath();
+    }
+
+    private async Task<string?> EscolherOndeSalvarAsync(string nome, string? pastaInicial)
+    {
+        var arquivo = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Onde salvar a programação",
+            SuggestedFileName = nome,
+            DefaultExtension = Core.Servicos.ProgramacaoServico.Extensao.TrimStart('.'),
+            FileTypeChoices = [TipoProgramacao],
+            SuggestedStartLocation = await Pasta(pastaInicial),
+        });
+        return arquivo?.TryGetLocalPath();
     }
 
     /// <param name="pastaInicial">Pasta em que o seletor abre (ex.: C:\Sistema_New\produtos).</param>

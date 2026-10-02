@@ -6,7 +6,7 @@ namespace BCFichas.Core.Servicos;
 
 public sealed class ConfigServico
 {
-    private static readonly JsonSerializerOptions Json = new()
+    internal static readonly JsonSerializerOptions Json = new()
     {
         WriteIndented = false,
         Converters = { new JsonStringEnumConverter() },

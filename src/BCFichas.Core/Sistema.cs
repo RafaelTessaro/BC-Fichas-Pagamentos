@@ -18,6 +18,7 @@ public sealed class Sistema
         Vendas = new VendaServico(banco);
         Devolucoes = new DevolucaoServico(banco, Caixa, Vendas);
         Impressao = new ServicoImpressao(() => Config.Atual, pastaDados);
+        Programacao = new ProgramacaoServico(banco, Config, Catalogo, pastaDados);
         Maquininha = CriarMaquininha(Config.Atual);
         Config.Alterada += c =>
         {
@@ -36,6 +37,7 @@ public sealed class Sistema
     public VendaServico Vendas { get; }
     public DevolucaoServico Devolucoes { get; }
     public ServicoImpressao Impressao { get; }
+    public ProgramacaoServico Programacao { get; }
     public IMaquininha Maquininha { get; private set; }
 
     public string PastaImagens => Path.Combine(PastaDados, "imagens");

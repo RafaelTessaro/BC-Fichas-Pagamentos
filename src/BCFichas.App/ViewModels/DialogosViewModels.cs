@@ -219,3 +219,55 @@ public sealed partial class NovaSenhaViewModel(PrincipalViewModel principal, Act
     [RelayCommand]
     private void Cancelar() => principal.FecharDialogo(this);
 }
+
+/// <summary>Pede um número no teclado numérico (ex.: número do caixa ao carregar uma programação).</summary>
+public sealed partial class NumeroViewModel : ViewModelBase
+{
+    private readonly PrincipalViewModel _p;
+    private readonly int _maximo;
+    private readonly TaskCompletionSource<int?> _resposta = new();
+
+    public NumeroViewModel(PrincipalViewModel principal, string titulo, string texto, int inicial, int maximo = 99)
+    {
+        _p = principal;
+        _maximo = maximo;
+        Titulo = titulo;
+        Texto = texto;
+        _digitado = inicial.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    public string Titulo { get; }
+    public string Texto { get; }
+    public Task<int?> Resposta => _resposta.Task;
+
+    [ObservableProperty] private string _digitado;
+    [ObservableProperty] private string _erro = "";
+
+    [RelayCommand]
+    private void Tecla(string tecla)
+    {
+        Erro = "";
+        if (tecla == "<") Digitado = Digitado.Length > 0 ? Digitado[..^1] : "";
+        else if (tecla == "C") Digitado = "";
+        else if (Digitado.Length < 2 && tecla.All(char.IsAsciiDigit)) Digitado = Digitado == "0" ? tecla : Digitado + tecla;
+    }
+
+    [RelayCommand]
+    private void Confirmar()
+    {
+        if (!int.TryParse(Digitado, out var numero) || numero < 1 || numero > _maximo)
+        {
+            Erro = $"Digite um número de 1 a {_maximo}";
+            return;
+        }
+        _p.FecharDialogo(this);
+        _resposta.TrySetResult(numero);
+    }
+
+    [RelayCommand]
+    private void Cancelar()
+    {
+        _p.FecharDialogo(this);
+        _resposta.TrySetResult(null);
+    }
+}

@@ -90,6 +90,30 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
     /// </summary>
     public Action<Configuracao>? AplicarNoWindows { get; set; }
 
+    /// <summary>Pastas dos pendrives ligados no tablet (os testes trocam por uma pasta qualquer).</summary>
+    public Func<IReadOnlyList<string>> Pendrives { get; set; } = PendrivesLigados;
+
+    /// <summary>Escolher um arquivo de programação para abrir (preenchido pela janela). Recebe a pasta inicial.</summary>
+    public Func<string?, Task<string?>>? EscolherProgramacao { get; set; }
+
+    /// <summary>Escolher onde salvar a programação (preenchido pela janela). Recebe o nome sugerido e a pasta.</summary>
+    public Func<string, string?, Task<string?>>? EscolherOndeSalvar { get; set; }
+
+    private static IReadOnlyList<string> PendrivesLigados()
+    {
+        try
+        {
+            return DriveInfo.GetDrives()
+                .Where(d => d.DriveType == DriveType.Removable && d.IsReady)
+                .Select(d => d.RootDirectory.FullName)
+                .ToList();
+        }
+        catch (Exception)
+        {
+            return [];
+        }
+    }
+
     /// <summary>Fecha o programa (preenchido pela janela; nos testes não faz nada).</summary>
     public Action? FecharPrograma { get; set; }
 

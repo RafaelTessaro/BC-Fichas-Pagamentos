@@ -22,6 +22,7 @@ na **Elgin i9** em papel de 80 mm.
 | **Relatórios** | Caixa atual, caixas anteriores e sangrias: totais por forma de pagamento, fichas devolvidas, venda líquida e produtos vendidos. |
 | **Abrir / Fechar caixa** | Só o troco inicial (cada caixa é identificado pelo número: Caixa 01, 02…) e imprime o comprovante de **abertura de caixa** (troco, data e hora); no fechamento confere o dinheiro da gaveta (falta/sobra), imprime o relatório e, se configurado, desliga o tablet na hora. |
 | **Configurações** | Nome do evento, rodapé (opcional; embaixo dele toda ficha traz o telefone da BC Fichas), modelo da ficha (7 modelos com prévia), borda, fonte, logotipo, código de barras, grade de botões, pasta das fotos, impressora (com ajuste da posição no papel), corte da guilhotina, maquininha, senha master e telas travadas. |
+| **Máquina** | Copia a programação para outra máquina pelo pendrive, começa outra festa ou deixa a máquina como nova. Veja "Programar várias máquinas". |
 
 Também tem teclado na tela (para tablet sem teclado físico), ajuste de tamanho da tela e modo tela cheia.
 
@@ -128,6 +129,37 @@ tablet, e digite a senha master.
 - Para sair: **Menu → Sair do modo teste** (ou o botão na faixa laranja). Tudo o que foi feito no teste é apagado
   e o programa volta ao caixa normal.
 
+## Programar várias máquinas
+
+No sistema antigo era copiar o banco de dados de uma máquina para a outra e mudar o número do caixa. Aqui é o
+mesmo, só que pelo pendrive e sem mexer em arquivo: **Menu → Configurações → Máquina**.
+
+**Programe uma máquina** (produtos, combos, abas, evento, modelo da ficha) e:
+
+1. Coloque o pendrive e toque em **Salvar no pendrive**. Sai um arquivo `BCFichas - NOME DO EVENTO.bcf` com toda
+   a programação (fotos e logotipo juntos).
+2. Nas outras máquinas: pendrive no tablet → **Carregar do pendrive**. O programa acha o arquivo sozinho, mostra
+   o evento e quantos produtos tem, e pergunta só o **número do caixa** (02, 03…). Pronto.
+
+Ao carregar, a máquina fica igual à que foi programada, mas **a impressora, o tamanho da tela, o teclado e a
+pasta das fotos continuam os dela**. As vendas que estavam guardadas nela são apagadas (o programa avisa quantas
+são antes). O caixa precisa estar fechado.
+
+| Aba Máquina | Número do caixa |
+| --- | --- |
+| ![](docs/telas/42-config-maquina.png) | ![](docs/telas/44-numero-do-caixa.png) |
+
+Para recomeçar, também na aba **Máquina**:
+
+- **Começar outra festa → Apagar as vendas:** mesmo cardápio, evento novo. Apaga vendas, caixas, sangrias e
+  devoluções; os produtos e as configurações ficam, e o número do pedido volta para 1.
+- **Deixar a máquina como nova → Apagar tudo:** é o "banco vazio" de antes. Apaga vendas, produtos, combos,
+  abas, evento e o jeito da ficha. Ficam só o número do caixa, a impressora, as opções de tela e a senha master.
+
+Antes de apagar ou carregar, o programa sempre guarda uma **cópia de segurança** em `dados\backups` (as 15
+últimas). Para voltar uma cópia: feche o BC Fichas, copie o arquivo `.db` da cópia para `dados\bcfichas.db`
+(substituindo) e abra de novo.
+
 ## Instalar no tablet
 
 1. Baixe o pacote `BCFichas-win-x86` (tablets de 1–2 GB normalmente usam Windows 32 bits; se o seu for 64 bits,
@@ -173,7 +205,8 @@ barras saem iguais à prévia da tela.
 ### Backup
 
 Tudo fica na pasta `dados` ao lado do programa (`bcfichas.db` e as imagens). Para fazer backup, copie essa pasta.
-Erros ficam registrados em `dados\erros.log`.
+Antes de carregar uma programação ou apagar as vendas, o programa guarda sozinho uma cópia em `dados\backups`
+(veja "Programar várias máquinas"). Erros ficam registrados em `dados\erros.log`.
 
 ### Memória com muitas vendas
 

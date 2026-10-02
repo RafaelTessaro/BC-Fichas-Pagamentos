@@ -154,6 +154,34 @@ public sealed class Configuracao
 
     public Configuracao Clonar() => (Configuracao)MemberwiseClone();
 
+    /// <summary>
+    /// Cópia desta configuração com o que é de cada máquina vindo de <paramref name="maquina"/>: número do caixa,
+    /// impressora (tipo, nome, porta, papel, corte, posição), tela e Windows. Usado ao carregar a programação
+    /// de outra máquina e ao deixar a máquina como nova.
+    /// </summary>
+    public Configuracao ComDadosDaMaquina(Configuracao maquina)
+    {
+        var c = Clonar();
+        c.NumeroCaixa = maquina.NumeroCaixa;
+        c.TelaCheia = maquina.TelaCheia;
+        c.TecladoNaTela = maquina.TecladoNaTela;
+        c.Zoom = maquina.Zoom;
+        c.ManterTelaLigada = maquina.ManterTelaLigada;
+        c.IniciarComWindows = maquina.IniciarComWindows;
+        c.DesligarAoFechar = maquina.DesligarAoFechar;
+        c.PastaFotos = maquina.PastaFotos;
+        c.Impressora = maquina.Impressora;
+        c.NomeImpressora = maquina.NomeImpressora;
+        c.PortaSerial = maquina.PortaSerial;
+        c.BaudRate = maquina.BaudRate;
+        c.LarguraPapelMm = maquina.LarguraPapelMm;
+        c.Corte = maquina.Corte;
+        c.PastaArquivo = maquina.PastaArquivo;
+        c.AjusteHorizontal = maquina.AjusteHorizontal;
+        c.VersaoConfig = maquina.VersaoConfig;
+        return c;
+    }
+
     /// <summary>Acerta configurações gravadas por versões antigas. Diz se mudou alguma coisa.</summary>
     public bool Atualizar()
     {

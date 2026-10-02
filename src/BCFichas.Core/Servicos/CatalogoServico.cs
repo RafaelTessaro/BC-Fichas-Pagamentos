@@ -15,6 +15,8 @@ public sealed class CatalogoServico
 
     public event Action? Alterado;
 
+    internal void AvisarAlteracao() => Alterado?.Invoke();
+
     public List<Aba> Abas() =>
         _banco.Consultar("SELECT id, nome, ordem FROM abas ORDER BY ordem, id", l => new Aba
         {
