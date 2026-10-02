@@ -1,0 +1,40 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.App"
+             RequestedThemeVariant="Light">
+
+  <Application.DataTemplates>
+    <DataTemplate DataType="vm:VendaViewModel"><v:VendaView /></DataTemplate>
+    <DataTemplate DataType="vm:AberturaViewModel"><v:AberturaView /></DataTemplate>
+    <DataTemplate DataType="vm:FechamentoViewModel"><v:FechamentoView /></DataTemplate>
+    <DataTemplate DataType="vm:ConfiguracaoViewModel"><v:ConfiguracaoView /></DataTemplate>
+    <DataTemplate DataType="vm:ProdutosViewModel"><v:ProdutosView /></DataTemplate>
+    <DataTemplate DataType="vm:ReimpressaoViewModel"><v:ReimpressaoView /></DataTemplate>
+    <DataTemplate DataType="vm:SangriaViewModel"><v:SangriaView /></DataTemplate>
+    <DataTemplate DataType="vm:RelatoriosViewModel"><v:RelatoriosView /></DataTemplate>
+    <DataTemplate DataType="vm:PagamentoViewModel"><v:PagamentoView /></DataTemplate>
+    <DataTemplate DataType="vm:MenuViewModel"><v:MenuView /></DataTemplate>
+    <DataTemplate DataType="vm:SenhaViewModel"><v:SenhaView /></DataTemplate>
+    <DataTemplate DataType="vm:MensagemViewModel"><v:MensagemView /></DataTemplate>
+  </Application.DataTemplates>
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://BCFichas/Estilos/Cores.axaml" />
+        <ResourceInclude Source="avares://BCFichas/Estilos/Icones.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.Styles>
+    <FluentTheme>
+      <FluentTheme.Palettes>
+        <ColorPaletteResources x:Key="Light" Accent="#0E9F6E" RegionColor="#FFFFFF" ErrorText="#DC2626" />
+      </FluentTheme.Palettes>
+    </FluentTheme>
+    <StyleInclude Source="avares://BCFichas/Estilos/Estilos.axaml" />
+  </Application.Styles>
+</Application>

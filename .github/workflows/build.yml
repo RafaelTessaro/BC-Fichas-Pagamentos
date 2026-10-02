@@ -1,0 +1,40 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Testes
+        run: dotnet test tests/BCFichas.Tests -c Release
+
+      - name: Gerar pacotes do tablet
+        run: |
+          dotnet publish src/BCFichas.App -c Release -r win-x86 -o publish/BCFichas-win-x86
+          dotnet publish src/BCFichas.App -c Release -r win-x64 -o publish/BCFichas-win-x64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BCFichas-win-x86
+          path: publish/BCFichas-win-x86
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BCFichas-win-x64
+          path: publish/BCFichas-win-x64
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fotos-das-telas
+          path: tests/BCFichas.Tests/saida

@@ -1,0 +1,189 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:core="using:BCFichas.Core"
+             x:Class="BCFichas.App.Views.ProdutosView"
+             x:DataType="vm:ProdutosViewModel">
+  <Grid RowDefinitions="Auto,*">
+    <Border Classes="cabecalho">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Classes="fantasma" Command="{Binding VoltarCommand}" Height="48" Padding="12,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeVoltar}" />
+            <TextBlock Text="Voltar" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <TextBlock Grid.Column="1" Text="Produtos" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
+        <Button Grid.Column="2" Classes="primario" Command="{Binding NovoCommand}" Height="46">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeMais}" Foreground="White" />
+            <TextBlock Text="Novo produto" Foreground="White" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="360,*" Margin="10">
+      <!-- Lista -->
+      <Border Classes="cartao" Margin="5" Padding="10">
+        <Grid RowDefinitions="Auto,*">
+          <TextBox Text="{Binding Busca}" Watermark="Procurar produto" Margin="0,0,0,10">
+            <TextBox.InnerLeftContent>
+              <PathIcon Data="{StaticResource IconeBusca}" Margin="10,0,0,0" Foreground="{StaticResource TextoSuave}" />
+            </TextBox.InnerLeftContent>
+          </TextBox>
+          <ListBox Grid.Row="1" ItemsSource="{Binding Lista}" SelectedItem="{Binding Selecionado}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:ProdutoItem">
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,8" Opacity="{Binding Opacidade}">
+                  <Border Width="14" Height="40" CornerRadius="5" Background="{Binding Cor}" BorderBrush="#CBD5E1"
+                          BorderThickness="1" />
+                  <StackPanel Grid.Column="1" Margin="10,0">
+                    <TextBlock Text="{Binding Nome}" FontWeight="Bold" FontSize="16" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Info}" Classes="suave" FontSize="12" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Preco}" FontWeight="Bold" FontSize="15" HorizontalAlignment="Right" />
+                    <TextBlock Text="{Binding Estoque}" Classes="suave" FontSize="12" HorizontalAlignment="Right" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+
+      <!-- Edição -->
+      <Border Grid.Column="1" Classes="cartao" Margin="5" Padding="0">
+        <Grid RowDefinitions="*,Auto">
+          <ScrollViewer Padding="20,16">
+            <Grid ColumnDefinitions="*,24,*,24,190" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.ColumnSpan="3" Text="{Binding Titulo}" Classes="titulo" Margin="0,0,0,4" />
+
+              <StackPanel Grid.Row="1" Grid.ColumnSpan="3">
+                <TextBlock Text="Nome no botão e na ficha" Classes="rotulo" />
+                <TextBox Text="{Binding Nome}" MaxLength="40" Watermark="Ex.: PASTEL" />
+              </StackPanel>
+              <StackPanel Grid.Row="2" Grid.ColumnSpan="3">
+                <TextBlock Text="Detalhe (opcional, sai menor na ficha)" Classes="rotulo" />
+                <TextBox Text="{Binding Detalhe}" MaxLength="40" Watermark="Ex.: CARNE OU QUEIJO" />
+              </StackPanel>
+
+              <StackPanel Grid.Row="3">
+                <TextBlock Text="Preço de venda" Classes="rotulo" />
+                <TextBox Classes="numero" Text="{Binding Preco}" Watermark="0,00">
+                  <TextBox.InnerLeftContent>
+                    <TextBlock Text="R$" Margin="12,0,0,0" VerticalAlignment="Center" Classes="suave" />
+                  </TextBox.InnerLeftContent>
+                </TextBox>
+              </StackPanel>
+              <StackPanel Grid.Row="3" Grid.Column="2">
+                <TextBlock Text="Custo (opcional)" Classes="rotulo" />
+                <TextBox Classes="numero" Text="{Binding Custo}" Watermark="0,00">
+                  <TextBox.InnerLeftContent>
+                    <TextBlock Text="R$" Margin="12,0,0,0" VerticalAlignment="Center" Classes="suave" />
+                  </TextBox.InnerLeftContent>
+                </TextBox>
+              </StackPanel>
+
+              <StackPanel Grid.Row="4">
+                <TextBlock Text="Aba" Classes="rotulo" />
+                <ComboBox ItemsSource="{Binding Abas}" SelectedItem="{Binding Aba}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="core:Aba">
+                      <TextBlock Text="{Binding Nome}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </StackPanel>
+              <StackPanel Grid.Row="4" Grid.Column="2">
+                <TextBlock Text="Posição na tela (livres)" Classes="rotulo" />
+                <ComboBox ItemsSource="{Binding Posicoes}" SelectedItem="{Binding Posicao}" />
+              </StackPanel>
+
+              <StackPanel Grid.Row="5">
+                <TextBlock Text="Fichas por unidade" Classes="rotulo" />
+                <ComboBox ItemsSource="{Binding OpcoesFichas}" SelectedItem="{Binding FichasPorUnidade}" />
+                <TextBlock Text="Ex.: combo que vale 2 fichas." Classes="dica" />
+              </StackPanel>
+              <StackPanel Grid.Row="5" Grid.Column="2">
+                <TextBlock Text="Ativo (aparece na venda)" Classes="rotulo" />
+                <ToggleSwitch IsChecked="{Binding Ativo}" />
+              </StackPanel>
+
+              <StackPanel Grid.Row="6">
+                <TextBlock Text="Controlar estoque" Classes="rotulo" />
+                <ToggleSwitch IsChecked="{Binding ControlaEstoque}" />
+              </StackPanel>
+              <StackPanel Grid.Row="6" Grid.Column="2" IsVisible="{Binding ControlaEstoque}">
+                <TextBlock Text="Quantidade em estoque" Classes="rotulo" />
+                <TextBox Classes="numero" Text="{Binding Estoque}" />
+              </StackPanel>
+
+              <StackPanel Grid.Row="7" Grid.ColumnSpan="3">
+                <TextBlock Text="Cor do botão" Classes="rotulo" />
+                <ItemsControl ItemsSource="{Binding Cores}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:OpcaoCor">
+                      <Button Classes="cor" Classes.marcada="{Binding Marcada}" Background="{Binding Pincel}"
+                              Command="{Binding $parent[UserControl].((vm:ProdutosViewModel)DataContext).EscolherCorCommand}"
+                              CommandParameter="{Binding}">
+                        <PathIcon Data="{StaticResource IconeOk}" Width="18" Height="18" IsVisible="{Binding Marcada}"
+                                  Foreground="#64748B" />
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+
+              <!-- Prévia do botão e imagem -->
+              <StackPanel Grid.Row="1" Grid.RowSpan="6" Grid.Column="4" Spacing="8" Margin="0,0,12,0">
+                <TextBlock Text="Como fica o botão" Classes="rotulo" />
+                <Border Height="140" CornerRadius="14" Background="{Binding PreviaFundo}" ClipToBounds="True"
+                        BoxShadow="0 2 4 0 #260F172A">
+                  <Panel>
+                    <Image Source="{Binding ImagemPrevia}" Stretch="UniformToFill" Opacity="0.35" />
+                    <StackPanel VerticalAlignment="Center" Margin="10">
+                      <TextBlock Text="{Binding Nome}" Foreground="{Binding PreviaTexto}" FontSize="20" FontWeight="Bold"
+                                 TextAlignment="Center" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding Detalhe}" Foreground="{Binding PreviaTexto}" FontSize="12"
+                                 TextAlignment="Center" Opacity="0.85" />
+                    </StackPanel>
+                  </Panel>
+                </Border>
+                <Button Classes="suave" Command="{Binding EscolherImagemCommand}" HorizontalAlignment="Stretch">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="{StaticResource IconeImagem}" />
+                    <TextBlock Text="Imagem" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+                <Button Classes="fantasma" Content="Tirar imagem" Command="{Binding RemoverImagemCommand}"
+                        HorizontalAlignment="Stretch" IsVisible="{Binding TemImagem}" />
+              </StackPanel>
+            </Grid>
+          </ScrollViewer>
+
+          <Border Grid.Row="1" BorderBrush="{StaticResource Borda}" BorderThickness="0,1,0,0" Padding="16,12">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <Button Classes="fantasma" Command="{Binding ExcluirCommand}" IsVisible="{Binding Editando}" Height="54">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <PathIcon Data="{StaticResource IconeLixo}" Foreground="{StaticResource Perigo}" />
+                  <TextBlock Text="Excluir" Foreground="{StaticResource Perigo}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Grid.Column="2" Classes="primario" Command="{Binding SalvarCommand}" Height="56" Padding="40,0">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <PathIcon Data="{StaticResource IconeOk}" Foreground="White" />
+                  <TextBlock Text="Salvar produto" Foreground="White" FontSize="18" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </Grid>
+          </Border>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

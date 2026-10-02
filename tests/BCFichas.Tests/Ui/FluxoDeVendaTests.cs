@@ -1,0 +1,225 @@
+using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
+using Avalonia.Interactivity;
+using BCFichas.App.ViewModels;
+using BCFichas.App.Views;
+using BCFichas.Core;
+using BCFichas.Core.Pagamento;
+using Xunit;
+
+namespace BCFichas.Tests.Ui;
+
+public class FluxoDeVendaTests
+{
+    [AvaloniaFact]
+    public void Sem_caixa_aberto_mostra_a_abertura()
+    {
+        using var t = new TelaDeTeste();
+        Assert.IsType<AberturaViewModel>(t.Principal.Pagina);
+        t.Foto("01-abertura-de-caixa");
+
+        t.AbrirCaixa();
+
+        Assert.IsType<VendaViewModel>(t.Principal.Pagina);
+        Assert.Equal("MARIA", t.Principal.Operador);
+        Assert.Equal(12, t.Venda.Botoes.Count);
+        Assert.Equal(["COMIDAS", "BEBIDAS", "DOCES"], t.Venda.Abas.Select(a => a.Nome));
+    }
+
+    [AvaloniaFact]
+    public async Task Venda_em_dinheiro_mostra_troco_e_imprime_as_fichas()
+    {
+        using var t = new TelaDeTeste();
+        t.AbrirCaixa();
+        t.Foto("02-venda-vazia");
+
+        t.Tocar("PASTEL");
+        t.Tocar("PASTEL");
+        t.Tocar("ESPETINHO");
+        t.Venda.SelecionarAbaCommand.Execute(t.Venda.Abas[1]);
+        t.Tocar("REFRIGERANTE");
+        Assert.Equal("R$ 38,00", t.Venda.Total);
+        Assert.Equal("4 itens", t.Venda.QuantidadeTexto);
+        t.Foto("03-venda-com-pedido");
+
+        t.Venda.PagarCommand.Execute(null);
+        TelaDeTeste.Atualizar();
+        var pagamento = Assert.IsType<PagamentoViewModel>(t.Principal.Dialogo);
+        t.Foto("04-pagamento-formas");
+
+        pagamento.EscolherDinheiroCommand.Execute(null);
+        pagamento.Recebido.SomarCommand.Execute("5000");
+        Assert.Equal("R$ 12,00", pagamento.Troco);
+        t.Foto("05-pagamento-dinheiro");
+
+        await pagamento.ConfirmarDinheiroCommand.ExecuteAsync(null);
+        Assert.True(pagamento.EmConcluido);
+        Assert.True(pagamento.TemTroco);
+        t.Foto("06-pagamento-concluido");
+
+        Assert.Equal(4, Directory.GetFiles(t.PastaImpressoes, "*.png").Length);
+        Assert.True(t.Venda.Vazio);
+        var resumo = t.Sistema.Caixa.Resumo(t.Principal.Sessao!.Id);
+        Assert.Equal(3800, resumo.Total(FormaPagamento.Dinheiro));
+
+        pagamento.FecharCommand.Execute(null);
+        Assert.Null(t.Principal.Dialogo);
+    }
+
+    [AvaloniaFact]
+    public async Task Pix_espera_a_maquininha_e_imprime_quando_aprovado()
+    {
+        using var t = new TelaDeTeste();
+        t.AbrirCaixa();
+        t.Tocar("PASTEL");
+        t.Venda.PagarCommand.Execute(null);
+        var pagamento = Assert.IsType<PagamentoViewModel>(t.Principal.Dialogo);
+        var simulador = Assert.IsType<MaquininhaSimulada>(t.Sistema.Maquininha);
+
+        var cobranca = pagamento.PixCommand.ExecuteAsync(null);
+        await TelaDeTeste.Esperar(() => simulador.AguardandoDecisao);
+        Assert.True(pagamento.EmMaquininha);
+        Assert.False(pagamento.PodeFechar);
+        t.Foto("07-pagamento-pix-aguardando");
+
+        pagamento.SimularAprovarCommand.Execute(null);
+        await cobranca;
+
+        Assert.True(pagamento.EmConcluido);
+        Assert.Single(Directory.GetFiles(t.PastaImpressoes, "*.png"));
+        var pedido = t.Sistema.Vendas.Pedidos(t.Principal.Sessao!.Id).Single();
+        Assert.Equal(StatusPedido.Pago, pedido.Status);
+        Assert.Equal(FormaPagamento.Pix, pedido.Forma);
+        Assert.Equal(1, pedido.Impressoes);
+    }
+
+    [AvaloniaFact]
+    public async Task Cartao_recusado_cancela_o_pedido_e_deixa_tentar_de_novo()
+    {
+        using var t = new TelaDeTeste();
+        t.AbrirCaixa();
+        t.Tocar("ESPETINHO");
+        t.Venda.PagarCommand.Execute(null);
+        var pagamento = Assert.IsType<PagamentoViewModel>(t.Principal.Dialogo);
+        var simulador = (MaquininhaSimulada)t.Sistema.Maquininha;
+
+        var cobranca = pagamento.CreditoCommand.ExecuteAsync(null);
+        await TelaDeTeste.Esperar(() => simulador.AguardandoDecisao);
+        pagamento.SimularRecusarCommand.Execute(null);
+        await cobranca;
+
+        Assert.True(pagamento.EmRecusado);
+        t.Foto("08-pagamento-recusado");
+        Assert.Equal(StatusPedido.Cancelado, t.Sistema.Vendas.Pedidos(t.Principal.Sessao!.Id).Single().Status);
+        Assert.False(t.Venda.Vazio);
+
+        pagamento.OutraFormaCommand.Execute(null);
+        Assert.True(pagamento.EmEscolher);
+    }
+
+    [AvaloniaFact]
+    public async Task Impressora_com_erro_avisa_e_permite_tentar_de_novo()
+    {
+        using var t = new TelaDeTeste();
+        var config = t.Sistema.Config.Atual.Clonar();
+        config.Impressora = TipoImpressora.Serial;
+        config.PortaSerial = "COM99";
+        t.Sistema.Config.Salvar(config);
+        t.AbrirCaixa();
+        t.Tocar("PASTEL");
+        t.Venda.PagarCommand.Execute(null);
+        var pagamento = Assert.IsType<PagamentoViewModel>(t.Principal.Dialogo);
+
+        pagamento.EscolherDinheiroCommand.Execute(null);
+        pagamento.ValorExatoCommand.Execute(null);
+        await pagamento.ConfirmarDinheiroCommand.ExecuteAsync(null);
+
+        Assert.True(pagamento.EmErroImpressao);
+        Assert.Contains("COM99", pagamento.Mensagem);
+        t.Foto("09-pagamento-erro-impressora");
+        Assert.True(t.Principal.ImpressoraComErro);
+    }
+
+    [AvaloniaFact]
+    public void Menu_lista_as_ferramentas_e_pede_senha_nas_protegidas()
+    {
+        using var t = new TelaDeTeste(configurar: c => c.SenhaMaster = "1234");
+        t.AbrirCaixa();
+        t.Venda.AbrirMenuCommand.Execute(null);
+        var menu = Assert.IsType<MenuViewModel>(t.Principal.Dialogo);
+        Assert.Equal(7, menu.Itens.Count);
+        t.Foto("10-menu");
+
+        menu.EscolherCommand.Execute(menu.Itens.Single(i => i.Titulo == "Configurações"));
+        var senha = Assert.IsType<SenhaViewModel>(t.Principal.Dialogo);
+        senha.TeclaCommand.Execute("9");
+        senha.ConfirmarCommand.Execute(null);
+        Assert.Equal("Senha errada", senha.Erro);
+        foreach (var d in "1234") senha.TeclaCommand.Execute(d.ToString());
+        t.Foto("11-senha");
+        senha.ConfirmarCommand.Execute(null);
+
+        Assert.Null(t.Principal.Dialogo);
+        Assert.IsType<ConfiguracaoViewModel>(t.Principal.Pagina);
+    }
+
+    [AvaloniaFact]
+    public void Teclado_na_tela_digita_no_campo_selecionado()
+    {
+        using var t = new TelaDeTeste();
+        var campo = t.Achar<TextBox>();
+        campo.Focus();
+        TelaDeTeste.Atualizar();
+        Assert.True(t.Principal.TecladoVisivel);
+        Assert.False(t.Principal.TecladoNumerico);
+
+        var teclado = t.Achar<TecladoVirtual>();
+        foreach (var letra in new[] { "J", "O", "Ã", "O" })
+        {
+            if (letra == "Ã") Clicar(teclado, "acentos");
+            Clicar(teclado, letra);
+            if (letra == "Ã") Clicar(teclado, "acentos");
+        }
+        Clicar(teclado, "⌫");
+        Clicar(teclado, "O");
+        t.Foto("12-abertura-com-teclado");
+
+        Assert.Equal("JOÃO", campo.Text);
+        var abertura = Assert.IsType<AberturaViewModel>(t.Principal.Pagina);
+        Assert.Equal("JOÃO", abertura.Operador);
+
+        Clicar(teclado, "esconder");
+        Assert.False(t.Principal.TecladoVisivel);
+    }
+
+    [AvaloniaFact]
+    public void Tela_pequena_1024x600_tambem_cabe()
+    {
+        using var t = new TelaDeTeste(1024, 600);
+        t.AbrirCaixa();
+        t.Tocar("PASTEL");
+        t.Tocar("CALDO");
+        t.Foto("13-venda-1024x600");
+        t.Venda.PagarCommand.Execute(null);
+        t.Foto("14-pagamento-1024x600");
+    }
+
+    private static void Clicar(TecladoVirtual teclado, string tecla)
+    {
+        var botao = teclado.GetLogicalDescendantsOfType<Button>().First(b => Equals(b.Tag, tecla));
+        botao.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        TelaDeTeste.Atualizar();
+    }
+}
+
+internal static class LogicalExtensions
+{
+    public static IEnumerable<T> GetLogicalDescendantsOfType<T>(this Avalonia.LogicalTree.ILogical raiz)
+    {
+        foreach (var filho in raiz.LogicalChildren)
+        {
+            if (filho is T t) yield return t;
+            foreach (var neto in GetLogicalDescendantsOfType<T>(filho)) yield return neto;
+        }
+    }
+}

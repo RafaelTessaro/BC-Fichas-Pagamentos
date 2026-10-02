@@ -1,0 +1,15 @@
+bin/
+obj/
+publish/
+artifacts/
+*.user
+*.suo
+.vs/
+.vscode/
+.idea/
+TestResults/
+*.db
+*.db-shm
+*.db-wal
+/dados/
+/tests/BCFichas.Tests/saida/

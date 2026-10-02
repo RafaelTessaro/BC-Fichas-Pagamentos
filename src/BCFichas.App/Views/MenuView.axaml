@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             x:Class="BCFichas.App.Views.MenuView"
+             x:DataType="vm:MenuViewModel">
+  <Border Classes="cartao" Width="760" Padding="18">
+    <Grid RowDefinitions="Auto,*">
+      <Grid ColumnDefinitions="*,Auto" Margin="6,0,0,10">
+        <TextBlock Text="Menu" Classes="titulo" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Classes="fantasma" Command="{Binding FecharCommand}" Width="52" Height="52" Padding="0">
+          <PathIcon Data="{StaticResource IconeFechar}" Width="24" Height="24" />
+        </Button>
+      </Grid>
+      <ItemsControl Grid.Row="1" ItemsSource="{Binding Itens}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ItemMenu">
+            <Button Classes="menu" Command="{Binding $parent[UserControl].((vm:MenuViewModel)DataContext).EscolherCommand}"
+                    CommandParameter="{Binding}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                    Padding="14,12">
+              <Grid RowDefinitions="Auto,*">
+                <Grid ColumnDefinitions="Auto,*">
+                  <Border Width="46" Height="46" CornerRadius="12" Background="{Binding Cor}">
+                    <PathIcon Data="{Binding Icone}" Width="26" Height="26" Foreground="White" />
+                  </Border>
+                  <PathIcon Grid.Column="1" Data="{StaticResource IconeCadeado}" IsVisible="{Binding Protegido}"
+                            Width="16" Height="16" Foreground="{StaticResource TextoSuave}"
+                            HorizontalAlignment="Right" VerticalAlignment="Top" />
+                </Grid>
+                <StackPanel Grid.Row="1" Margin="0,10,0,0">
+                  <TextBlock Text="{Binding Titulo}" FontSize="17" FontWeight="Bold" />
+                  <TextBlock Text="{Binding Descricao}" FontSize="13" Classes="suave" TextWrapping="Wrap" />
+                </StackPanel>
+              </Grid>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Grid>
+  </Border>
+</UserControl>

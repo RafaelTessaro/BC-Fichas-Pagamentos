@@ -1,0 +1,203 @@
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using BCFichas.Core;
+using BCFichas.Core.Impressao;
+using BCFichas.Core.Vendas;
+
+namespace BCFichas.App.ViewModels;
+
+public sealed class PedidoItem(Pedido p)
+{
+    public Pedido Pedido { get; } = p;
+    public string Numero { get; } = $"#{p.Numero:000000}";
+    public string Hora { get; } = Formato.Hora(p.CriadoEm);
+    public string Forma { get; } = Nomes.De(p.Forma);
+    public string Total { get; } = Dinheiro.Formatar(p.TotalCentavos);
+    public string Status { get; } = p.Status == StatusPedido.Pago
+        ? p.Impressoes == 0 ? "Pago • não impresso" : $"Pago • impresso {p.Impressoes}x"
+        : Nomes.De(p.Status);
+    public bool Pago { get; } = p.Status == StatusPedido.Pago;
+    public bool NaoImpresso { get; } = p.Status == StatusPedido.Pago && p.Impressoes == 0;
+}
+
+public sealed class ItemReimpressao(ItemPedido item)
+{
+    public ItemPedido Item { get; } = item;
+    public string Nome { get; } = item.Nome;
+    public string Detalhe { get; } = item.Detalhe;
+    public string Quantidade { get; } = $"{item.Quantidade} x {Dinheiro.Formatar(item.PrecoCentavos)}";
+    public string Fichas { get; } = $"{item.Quantidade * item.FichasPorUnidade} ficha(s)";
+}
+
+/// <summary>Segunda via das fichas de um pedido (inteiro ou de um item).</summary>
+public sealed partial class ReimpressaoViewModel(PrincipalViewModel principal) : PaginaViewModel(principal)
+{
+    public ObservableCollection<PedidoItem> Pedidos { get; } = new();
+    public ObservableCollection<ItemReimpressao> Itens { get; } = new();
+
+    [ObservableProperty] private string _busca = "";
+    [ObservableProperty] private PedidoItem? _selecionado;
+    [ObservableProperty] private bool _ocupado;
+
+    public bool TemSelecionado => Selecionado is not null;
+    public bool PodeReimprimir => Selecionado?.Pago == true && !Ocupado;
+    public bool Vazio => Pedidos.Count == 0;
+
+    public override void AoAbrir() => Atualizar();
+
+    partial void OnBuscaChanged(string value) => Atualizar();
+
+    partial void OnOcupadoChanged(bool value) => OnPropertyChanged(nameof(PodeReimprimir));
+
+    partial void OnSelecionadoChanged(PedidoItem? value)
+    {
+        Itens.Clear();
+        if (value is not null)
+        {
+            var pedido = Sistema.Vendas.Pedido(value.Pedido.Id);
+            if (pedido is not null)
+                foreach (var item in pedido.Itens) Itens.Add(new ItemReimpressao(item));
+        }
+        OnPropertyChanged(nameof(TemSelecionado));
+        OnPropertyChanged(nameof(PodeReimprimir));
+    }
+
+    [RelayCommand]
+    private void Atualizar()
+    {
+        var sessao = Principal.Sessao;
+        var id = Selecionado?.Pedido.Id;
+        Pedidos.Clear();
+        if (sessao is null) return;
+        long? numero = long.TryParse(Busca.Trim().TrimStart('#'), out var n) ? n : null;
+        foreach (var p in Sistema.Vendas.Pedidos(sessao.Id, numero)) Pedidos.Add(new PedidoItem(p));
+        Selecionado = Pedidos.FirstOrDefault(p => p.Pedido.Id == id) ?? Pedidos.FirstOrDefault();
+        OnPropertyChanged(nameof(Vazio));
+    }
+
+    [RelayCommand]
+    private Task ReimprimirTudo() => Reimprimir(null);
+
+    [RelayCommand]
+    private Task ReimprimirItem(ItemReimpressao item) => Reimprimir(item.Item.Id);
+
+    private async Task Reimprimir(long? itemId)
+    {
+        if (Selecionado is not { Pago: true } || Ocupado) return;
+        var pedido = Sistema.Vendas.Pedido(Selecionado.Pedido.Id);
+        if (pedido is null) return;
+
+        Ocupado = true;
+        try
+        {
+            // Pedido que nunca saiu na impressora é impressão normal, não reimpressão.
+            var reimpressao = pedido.Impressoes > 0;
+            var fichas = GeradorFichas.Gerar(pedido, Principal.Config, reimpressao, itemId);
+            var resultado = await Principal.ImprimirAsync(() => Sistema.Impressao.Fichas(fichas));
+            if (resultado.Ok)
+            {
+                Sistema.Vendas.RegistrarImpressao(pedido.Id);
+                Principal.MostrarAviso(resultado.Mensagem);
+                Atualizar();
+            }
+        }
+        finally
+        {
+            Ocupado = false;
+        }
+    }
+}
+
+public sealed class SessaoItem(SessaoCaixa s, long total)
+{
+    public SessaoCaixa Sessao { get; } = s;
+    public string Titulo { get; } = $"Caixa {s.Caixa:00} • {s.Operador}";
+    public string Periodo { get; } = Formato.DataHora(s.AbertaEm) +
+                                      (s.FechadaEm is { } f ? " → " + Formato.Hora(f) : " • aberto");
+    public string Total { get; } = Dinheiro.Formatar(total);
+    public bool Aberta { get; } = s.Aberta;
+}
+
+/// <summary>Gerencial: caixa atual, caixas anteriores e sangrias.</summary>
+public sealed partial class RelatoriosViewModel(PrincipalViewModel principal) : PaginaViewModel(principal)
+{
+    [ObservableProperty] private int _abaSelecionada;
+    [ObservableProperty] private ResumoVM? _atual;
+    [ObservableProperty] private SessaoItem? _sessaoSelecionada;
+    [ObservableProperty] private ResumoVM? _resumoSelecionado;
+    [ObservableProperty] private int _dias = 1;
+
+    public ObservableCollection<SessaoItem> Sessoes { get; } = new();
+    public ObservableCollection<MovimentoItem> Movimentos { get; } = new();
+    public string TotalMovimentos { get; private set; } = "";
+
+    public bool FiltroHoje => Dias == 1;
+    public bool Filtro7 => Dias == 7;
+    public bool Filtro30 => Dias == 30;
+    public bool FiltroTudo => Dias == 0;
+
+    public override void AoAbrir() => Atualizar();
+
+    partial void OnDiasChanged(int value)
+    {
+        OnPropertyChanged(nameof(FiltroHoje));
+        OnPropertyChanged(nameof(Filtro7));
+        OnPropertyChanged(nameof(Filtro30));
+        OnPropertyChanged(nameof(FiltroTudo));
+        Atualizar();
+    }
+
+    partial void OnSessaoSelecionadaChanged(SessaoItem? value) =>
+        ResumoSelecionado = value is null ? null : new ResumoVM(Sistema.Caixa.Resumo(value.Sessao.Id));
+
+    [RelayCommand]
+    private void Filtrar(string dias) => Dias = int.Parse(dias, System.Globalization.CultureInfo.InvariantCulture);
+
+    [RelayCommand]
+    private void Atualizar()
+    {
+        Atual = Principal.Sessao is { } s ? new ResumoVM(Sistema.Caixa.Resumo(s.Id)) : null;
+
+        var ate = DateTime.Today;
+        var de = Dias == 0 ? new DateTime(2000, 1, 1) : ate.AddDays(-(Dias - 1));
+        var id = SessaoSelecionada?.Sessao.Id;
+        Sessoes.Clear();
+        foreach (var sessao in Sistema.Caixa.Sessoes(de, ate))
+            Sessoes.Add(new SessaoItem(sessao, Sistema.Caixa.Resumo(sessao.Id).TotalVendas));
+        SessaoSelecionada = Sessoes.FirstOrDefault(x => x.Sessao.Id == id) ?? Sessoes.FirstOrDefault();
+
+        Movimentos.Clear();
+        long sangrias = 0, suprimentos = 0;
+        foreach (var m in Sistema.Caixa.Movimentos(de, ate))
+        {
+            if (m.Tipo == TipoMovimento.Sangria) sangrias += m.ValorCentavos;
+            else suprimentos += m.ValorCentavos;
+            Movimentos.Add(new MovimentoItem($"{Formato.DataHora(m.CriadoEm)} • Caixa {m.Caixa:00} • {m.Usuario}",
+                m.Tipo == TipoMovimento.Sangria ? "Sangria" : "Suprimento",
+                (m.Tipo == TipoMovimento.Sangria ? "− " : "+ ") + Dinheiro.Formatar(m.ValorCentavos),
+                m.Motivo, m.Tipo == TipoMovimento.Sangria));
+        }
+        TotalMovimentos = $"Sangrias: {Dinheiro.Formatar(sangrias)}   •   Suprimentos: {Dinheiro.Formatar(suprimentos)}";
+        OnPropertyChanged(nameof(TotalMovimentos));
+    }
+
+    [RelayCommand]
+    private Task ImprimirAtual()
+    {
+        if (Principal.Sessao is not { } s) return Task.CompletedTask;
+        var resumo = Sistema.Caixa.Resumo(s.Id);
+        return Principal.ImprimirAsync(() =>
+            Sistema.Impressao.Documento(Relatorios.Fechamento(resumo, Principal.Config, parcial: true), "Parcial impressa"));
+    }
+
+    [RelayCommand]
+    private Task ImprimirSelecionado()
+    {
+        if (ResumoSelecionado is null) return Task.CompletedTask;
+        var resumo = ResumoSelecionado.Resumo;
+        return Principal.ImprimirAsync(() =>
+            Sistema.Impressao.Documento(Relatorios.Fechamento(resumo, Principal.Config, parcial: resumo.Sessao.Aberta),
+                "Relatório impresso"));
+    }
+}

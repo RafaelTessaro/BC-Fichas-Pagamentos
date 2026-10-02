@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>BCFichas.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="System.IO.Ports" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="BCFichas.Tests" />
+  </ItemGroup>
+
+</Project>

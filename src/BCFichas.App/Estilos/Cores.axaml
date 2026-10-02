@@ -1,0 +1,39 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Color x:Key="CorPrimaria">#0E9F6E</Color>
+  <Color x:Key="CorPrimariaEscura">#057A55</Color>
+  <Color x:Key="CorPrimariaClara">#DEF7EC</Color>
+  <Color x:Key="CorFundo">#F1F5F9</Color>
+  <Color x:Key="CorSuperficie">#FFFFFF</Color>
+  <Color x:Key="CorBorda">#E2E8F0</Color>
+  <Color x:Key="CorTexto">#0F172A</Color>
+  <Color x:Key="CorTextoSuave">#64748B</Color>
+  <Color x:Key="CorEscuro">#0F172A</Color>
+  <Color x:Key="CorEscuroSuave">#1E293B</Color>
+  <Color x:Key="CorPerigo">#DC2626</Color>
+  <Color x:Key="CorPerigoClara">#FEE2E2</Color>
+  <Color x:Key="CorAviso">#D97706</Color>
+  <Color x:Key="CorAvisoClara">#FEF3C7</Color>
+  <Color x:Key="CorAzul">#2563EB</Color>
+  <Color x:Key="CorIndigo">#4F46E5</Color>
+  <Color x:Key="CorPix">#32BCAD</Color>
+
+  <SolidColorBrush x:Key="Primaria" Color="{StaticResource CorPrimaria}" />
+  <SolidColorBrush x:Key="PrimariaEscura" Color="{StaticResource CorPrimariaEscura}" />
+  <SolidColorBrush x:Key="PrimariaClara" Color="{StaticResource CorPrimariaClara}" />
+  <SolidColorBrush x:Key="Fundo" Color="{StaticResource CorFundo}" />
+  <SolidColorBrush x:Key="Superficie" Color="{StaticResource CorSuperficie}" />
+  <SolidColorBrush x:Key="Borda" Color="{StaticResource CorBorda}" />
+  <SolidColorBrush x:Key="Texto" Color="{StaticResource CorTexto}" />
+  <SolidColorBrush x:Key="TextoSuave" Color="{StaticResource CorTextoSuave}" />
+  <SolidColorBrush x:Key="Escuro" Color="{StaticResource CorEscuro}" />
+  <SolidColorBrush x:Key="EscuroSuave" Color="{StaticResource CorEscuroSuave}" />
+  <SolidColorBrush x:Key="Perigo" Color="{StaticResource CorPerigo}" />
+  <SolidColorBrush x:Key="PerigoClara" Color="{StaticResource CorPerigoClara}" />
+  <SolidColorBrush x:Key="Aviso" Color="{StaticResource CorAviso}" />
+  <SolidColorBrush x:Key="AvisoClara" Color="{StaticResource CorAvisoClara}" />
+  <SolidColorBrush x:Key="Azul" Color="{StaticResource CorAzul}" />
+  <SolidColorBrush x:Key="Indigo" Color="{StaticResource CorIndigo}" />
+  <SolidColorBrush x:Key="Pix" Color="{StaticResource CorPix}" />
+  <SolidColorBrush x:Key="Sombra" Color="#660F172A" />
+</ResourceDictionary>

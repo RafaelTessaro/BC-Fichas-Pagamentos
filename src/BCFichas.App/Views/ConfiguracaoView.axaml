@@ -1,0 +1,322 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.Views.ConfiguracaoView"
+             x:DataType="vm:ConfiguracaoViewModel">
+  <UserControl.Styles>
+    <Style Selector="StackPanel.form">
+      <Setter Property="MaxWidth" Value="640" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="Margin" Value="6,6,6,24" />
+    </Style>
+    <Style Selector="Grid.linha">
+      <Setter Property="Margin" Value="0,10,0,0" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*">
+    <Border Classes="cabecalho">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Classes="fantasma" Command="{Binding VoltarCommand}" Height="48" Padding="12,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeVoltar}" />
+            <TextBlock Text="Voltar" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <TextBlock Grid.Column="1" Text="Configurações" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
+        <Button Grid.Column="2" Classes="primario" Command="{Binding SalvarCommand}" Height="48" Padding="30,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeOk}" Foreground="White" />
+            <TextBlock Text="Salvar" Foreground="White" FontSize="17" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" Classes="cartao" Margin="14" Padding="12,4,12,12">
+      <TabControl SelectedIndex="{Binding AbaSelecionada}">
+
+        <!-- GERAL -->
+        <TabItem Header="Geral">
+          <ScrollViewer>
+            <StackPanel Classes="form">
+              <TextBlock Text="Nome do evento / festa" Classes="rotulo" />
+              <TextBox Text="{Binding NomeEvento}" MaxLength="40" Watermark="Ex.: FESTA JUNINA SÃO JOÃO" />
+              <TextBlock Text="Sai no topo da tela e de cada ficha." Classes="dica" />
+
+              <TextBlock Text="Rodapé da ficha" Classes="rotulo" />
+              <TextBox Text="{Binding Rodape}" MaxLength="80" Watermark="Ex.: Obrigado e volte sempre!" />
+
+              <Grid Classes="linha" ColumnDefinitions="*,16,*">
+                <StackPanel>
+                  <TextBlock Text="Número deste caixa" Classes="rotulo" />
+                  <ComboBox ItemsSource="{Binding Caixas}" SelectedItem="{Binding NumeroCaixa}" />
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                  <TextBlock Text="Tamanho da tela" Classes="rotulo" />
+                  <ComboBox ItemsSource="{Binding Zooms}" SelectedItem="{Binding Zoom}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="x:Int32">
+                        <TextBlock Text="{Binding StringFormat={}{0}%}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                </StackPanel>
+              </Grid>
+
+              <Grid Classes="linha" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="Tela cheia" FontWeight="SemiBold" FontSize="16" />
+                  <TextBlock Text="Esconde a barra do Windows (modo quiosque)." Classes="dica" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding TelaCheia}" />
+              </Grid>
+              <Grid Classes="linha" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="Teclado na tela" FontWeight="SemiBold" FontSize="16" />
+                  <TextBlock Text="Mostra um teclado ao tocar num campo de texto." Classes="dica" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding TecladoNaTela}" />
+              </Grid>
+              <Grid Classes="linha" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="Desligar o computador ao fechar o caixa" FontWeight="SemiBold" FontSize="16" />
+                  <TextBlock Text="Depois de imprimir o fechamento." Classes="dica" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding DesligarAoFechar}" />
+              </Grid>
+
+              <TextBlock Text="Pasta dos dados (para backup, copie esta pasta)" Classes="rotulo" Margin="2,20,0,4" />
+              <SelectableTextBlock Text="{Binding PastaDados}" Classes="suave" TextWrapping="Wrap" />
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- FICHA -->
+        <TabItem Header="Ficha">
+          <Grid ColumnDefinitions="*,Auto">
+            <ScrollViewer>
+              <StackPanel Classes="form">
+                <TextBlock Text="Modelo da ficha" Classes="rotulo" />
+                <ComboBox ItemsSource="{Binding Modelos}" SelectedItem="{Binding Modelo}">
+                </ComboBox>
+
+                <TextBlock Text="Fonte do nome do produto" Classes="rotulo" />
+                <ComboBox ItemsSource="{Binding Fontes}" SelectedItem="{Binding Fonte}" MaxDropDownHeight="360" />
+
+                <Grid Classes="linha" ColumnDefinitions="*,Auto">
+                  <TextBlock Text="Mostrar o valor na ficha" FontWeight="SemiBold" FontSize="16" VerticalAlignment="Center" />
+                  <ToggleSwitch Grid.Column="1" IsChecked="{Binding MostrarValor}" />
+                </Grid>
+                <Grid Classes="linha" ColumnDefinitions="*,Auto">
+                  <StackPanel>
+                    <TextBlock Text="Código de barras" FontWeight="SemiBold" FontSize="16" />
+                    <TextBlock Text="Número único de cada ficha, para conferência." Classes="dica" />
+                  </StackPanel>
+                  <ToggleSwitch Grid.Column="1" IsChecked="{Binding CodigoDeBarras}" />
+                </Grid>
+
+                <TextBlock Text="Logotipo (sai no modelo Completa)" Classes="rotulo" Margin="2,16,0,4" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Classes="suave" Command="{Binding EscolherLogoCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <PathIcon Data="{StaticResource IconeImagem}" />
+                      <TextBlock Text="Escolher imagem" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                  <Button Classes="fantasma" Content="Tirar logo" Command="{Binding RemoverLogoCommand}"
+                          IsVisible="{Binding TemLogo}" />
+                </StackPanel>
+                <TextBlock Text="Imagens simples (preto e branco) ficam melhores na impressora térmica." Classes="dica" />
+              </StackPanel>
+            </ScrollViewer>
+
+            <Border Grid.Column="1" Background="{StaticResource Fundo}" CornerRadius="12" Padding="14" Margin="8,6,4,6"
+                    Width="330">
+              <Grid RowDefinitions="Auto,*">
+                <TextBlock Text="Prévia (como sai no papel)" Classes="rotulo" Margin="2,0,0,8" />
+                <ScrollViewer Grid.Row="1">
+                  <Border Background="White" BoxShadow="0 2 8 0 #330F172A" HorizontalAlignment="Center" VerticalAlignment="Top">
+                    <Image Source="{Binding Previa}" Width="288" Stretch="Uniform" />
+                  </Border>
+                </ScrollViewer>
+              </Grid>
+            </Border>
+          </Grid>
+        </TabItem>
+
+        <!-- BOTÕES E ABAS -->
+        <TabItem Header="Botões e abas">
+          <ScrollViewer>
+            <StackPanel Classes="form">
+              <TextBlock Text="Tamanho da grade de botões" Classes="secao" />
+              <Grid ColumnDefinitions="*,16,*">
+                <StackPanel>
+                  <TextBlock Text="Colunas" Classes="rotulo" />
+                  <ComboBox ItemsSource="{Binding OpcoesGrade}" SelectedItem="{Binding Colunas}" />
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                  <TextBlock Text="Linhas" Classes="rotulo" />
+                  <ComboBox ItemsSource="{Binding OpcoesGrade}" SelectedItem="{Binding Linhas}" />
+                </StackPanel>
+              </Grid>
+              <TextBlock Classes="dica" Text="Cada aba mostra colunas × linhas botões (ex.: 4 × 3 = 12)." />
+
+              <Grid ColumnDefinitions="*,Auto" Margin="0,22,0,6">
+                <TextBlock Text="Abas da tela de venda" Classes="secao" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Classes="suave" Command="{Binding NovaAbaCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Data="{StaticResource IconeMais}" />
+                    <TextBlock Text="Nova aba" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </Grid>
+              <ItemsControl ItemsSource="{Binding Abas}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:AbaEdicao">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,8">
+                      <TextBox Text="{Binding Nome}" MaxLength="20" />
+                      <Button Grid.Column="1" Classes="fantasma" Width="48" Padding="0" Margin="6,0,0,0"
+                              Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).SubirAbaCommand}"
+                              CommandParameter="{Binding}">
+                        <PathIcon Data="{StaticResource IconeSetaCima}" />
+                      </Button>
+                      <Button Grid.Column="2" Classes="fantasma" Width="48" Padding="0"
+                              Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).DescerAbaCommand}"
+                              CommandParameter="{Binding}">
+                        <PathIcon Data="{StaticResource IconeSetaBaixo}" />
+                      </Button>
+                      <Button Grid.Column="3" Classes="fantasma" Width="48" Padding="0"
+                              Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).ExcluirAbaCommand}"
+                              CommandParameter="{Binding}">
+                        <PathIcon Data="{StaticResource IconeLixo}" Foreground="{StaticResource Perigo}" />
+                      </Button>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Classes="dica" Text="Os nomes das abas são gravados ao tocar em Salvar. Com uma aba só, a barra de abas fica escondida." />
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- IMPRESSORA -->
+        <TabItem Header="Impressora">
+          <ScrollViewer>
+            <StackPanel Classes="form">
+              <TextBlock Text="Como a impressora está ligada" Classes="rotulo" />
+              <ComboBox ItemsSource="{Binding TiposImpressora}" SelectedItem="{Binding TipoImpressora}">
+              </ComboBox>
+
+              <StackPanel IsVisible="{Binding ImpressoraWindows}">
+                <TextBlock Text="Impressora" Classes="rotulo" />
+                <Grid ColumnDefinitions="*,Auto">
+                  <ComboBox ItemsSource="{Binding Impressoras}" SelectedItem="{Binding NomeImpressora}" />
+                  <Button Grid.Column="1" Classes="suave" Content="Procurar" Margin="8,0,0,0"
+                          Command="{Binding AtualizarImpressorasCommand}" />
+                </Grid>
+                <TextBlock Classes="dica" IsVisible="{Binding SemImpressoras}"
+                           Text="Nenhuma impressora encontrada. Instale o driver da Elgin i9 no Windows e toque em Procurar." />
+                <TextBlock Classes="dica"
+                           Text="Instale o driver da Elgin i9 e escolha a impressora aqui. As fichas vão direto em ESC/POS, com corte automático." />
+              </StackPanel>
+
+              <StackPanel IsVisible="{Binding ImpressoraSerial}">
+                <Grid ColumnDefinitions="*,16,*">
+                  <StackPanel>
+                    <TextBlock Text="Porta" Classes="rotulo" />
+                    <ComboBox ItemsSource="{Binding Portas}" SelectedItem="{Binding PortaSerial}" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2">
+                    <TextBlock Text="Velocidade" Classes="rotulo" />
+                    <ComboBox ItemsSource="{Binding Velocidades}" SelectedItem="{Binding BaudRate}" />
+                  </StackPanel>
+                </Grid>
+                <TextBlock Classes="dica" Text="Veja a porta no Gerenciador de Dispositivos do Windows (Portas COM e LPT)." />
+              </StackPanel>
+
+              <StackPanel IsVisible="{Binding ImpressoraArquivo}">
+                <TextBlock Text="As fichas serão salvas como imagens em:" Classes="rotulo" />
+                <SelectableTextBlock Text="{Binding PastaArquivo}" Classes="suave" TextWrapping="Wrap" />
+              </StackPanel>
+
+              <Grid Classes="linha" ColumnDefinitions="*,16,*">
+                <StackPanel>
+                  <TextBlock Text="Largura do papel" Classes="rotulo" />
+                  <ComboBox ItemsSource="{Binding Papeis}" SelectedItem="{Binding LarguraPapel}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="x:Int32">
+                        <TextBlock Text="{Binding StringFormat={}{0} mm}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                  <TextBlock Text="Cortar o papel (guilhotina)" Classes="rotulo" />
+                  <ToggleSwitch IsChecked="{Binding CortarPapel}" />
+                </StackPanel>
+              </Grid>
+
+              <Button Classes="primario" Command="{Binding ImprimirTesteCommand}" Height="56" Margin="0,22,0,0"
+                      HorizontalAlignment="Left" Padding="28,0" IsEnabled="{Binding !ImprimindoTeste}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <PathIcon Data="{StaticResource IconeImpressora}" Foreground="White" />
+                  <TextBlock Text="Imprimir teste" Foreground="White" FontSize="17" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <TextBlock Classes="dica" Text="O teste usa o que está nesta tela, mesmo antes de salvar." />
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- MAQUININHA -->
+        <TabItem Header="Maquininha">
+          <ScrollViewer>
+            <StackPanel Classes="form">
+              <Border Background="{StaticResource AvisoClara}" CornerRadius="12" Padding="16">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="Modo simulador" FontWeight="Bold" FontSize="17" />
+                  <TextBlock TextWrapping="Wrap" FontSize="15"
+                             Text="Por enquanto a maquininha é simulada: no pagamento com cartão ou PIX aparecem os botões 'Simular aprovado' e 'Simular recusado'. A ligação por Bluetooth com a maquininha de verdade é a próxima etapa do projeto." />
+                </StackPanel>
+              </Border>
+              <TextBlock Text="Aprovar sozinho depois de" Classes="rotulo" Margin="2,16,0,4" />
+              <ComboBox ItemsSource="{Binding SegundosSimulador}" SelectedItem="{Binding SimuladorSegundos}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="x:Int32">
+                    <TextBlock Text="{Binding Converter={x:Static v:Conversores.Segundos}}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- SEGURANÇA -->
+        <TabItem Header="Segurança">
+          <ScrollViewer>
+            <StackPanel Classes="form">
+              <TextBlock Text="Senha master (só números)" Classes="rotulo" />
+              <TextBox Classes="numero" Text="{Binding SenhaMaster}" MaxLength="12" PasswordChar="●"
+                       Watermark="Deixe vazio para não pedir senha" />
+              <TextBlock Classes="dica" Text="Sem senha, nenhuma tela fica travada." />
+
+              <TextBlock Text="Pedir a senha para abrir:" Classes="secao" Margin="0,20,0,4" />
+              <ItemsControl ItemsSource="{Binding Protecoes}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ProtecaoTela">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                      <TextBlock Text="{Binding Nome}" FontSize="16" VerticalAlignment="Center" />
+                      <ToggleSwitch Grid.Column="1" IsChecked="{Binding Marcada}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+      </TabControl>
+    </Border>
+  </Grid>
+</UserControl>

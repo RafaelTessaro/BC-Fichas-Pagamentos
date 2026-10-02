@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.Views.TecladoNumerico"
+             x:DataType="v:TecladoNumerico">
+  <!-- Teclado de valores: manda "0"-"9", "00", "<" (apagar) e "C" (limpar) para o Comando. -->
+  <Grid x:Name="Grade" RowDefinitions="*,*,*,*" ColumnDefinitions="*,*,*" MinHeight="230">
+    <Grid.Styles>
+      <Style Selector="Button.tecla">
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="Command" Value="{Binding $parent[v:TecladoNumerico].Comando}" />
+      </Style>
+      <Style Selector="Button.tecla.especial">
+        <Setter Property="FontSize" Value="17" />
+      </Style>
+    </Grid.Styles>
+    <Button Classes="tecla" Grid.Row="0" Grid.Column="0" Content="1" CommandParameter="1" />
+    <Button Classes="tecla" Grid.Row="0" Grid.Column="1" Content="2" CommandParameter="2" />
+    <Button Classes="tecla" Grid.Row="0" Grid.Column="2" Content="3" CommandParameter="3" />
+    <Button Classes="tecla" Grid.Row="1" Grid.Column="0" Content="4" CommandParameter="4" />
+    <Button Classes="tecla" Grid.Row="1" Grid.Column="1" Content="5" CommandParameter="5" />
+    <Button Classes="tecla" Grid.Row="1" Grid.Column="2" Content="6" CommandParameter="6" />
+    <Button Classes="tecla" Grid.Row="2" Grid.Column="0" Content="7" CommandParameter="7" />
+    <Button Classes="tecla" Grid.Row="2" Grid.Column="1" Content="8" CommandParameter="8" />
+    <Button Classes="tecla" Grid.Row="2" Grid.Column="2" Content="9" CommandParameter="9" />
+    <Button Classes="tecla especial" Grid.Row="3" Grid.Column="0" Content="{Binding $parent[v:TecladoNumerico].TextoEsquerda}"
+            CommandParameter="{Binding $parent[v:TecladoNumerico].TeclaEsquerda}" />
+    <Button Classes="tecla" Grid.Row="3" Grid.Column="1" Content="0" CommandParameter="0" />
+    <Button Classes="tecla especial" Grid.Row="3" Grid.Column="2" CommandParameter="&lt;">
+      <PathIcon Data="{StaticResource IconeApagar}" Width="28" Height="22" />
+    </Button>
+  </Grid>
+</UserControl>
