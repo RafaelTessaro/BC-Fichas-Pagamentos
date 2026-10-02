@@ -42,32 +42,33 @@ public class TelaMaquinaTests
         Directory.CreateDirectory(pendrive);
         t.Principal.Pendrives = () => [pendrive];
 
-        // O programador testou a máquina: caixa aberto com uma venda
-        t.AbrirCaixa();
-        Vender(t.Sistema, t.Principal.Sessao!, "PASTEL");
+        // O programador testou a máquina: vendeu e fechou o caixa
+        var sessao = t.Sistema.Caixa.Abrir(1, null, 0);
+        Vender(t.Sistema, sessao, "PASTEL");
+        t.Sistema.Caixa.Fechar(sessao, null);
 
         var tela = AbrirAbaMaquina(t);
         Assert.StartsWith("Caixa 01 • 15 produto(s) em 3 aba(s)", tela.SituacaoMaquina);
-        Assert.Equal("Guardado: 1 pedido(s) em 1 caixa(s) • caixa aberto", tela.SituacaoVendas);
+        Assert.Equal("Guardado: 1 pedido(s) em 1 caixa(s)", tela.SituacaoVendas);
         Assert.False(tela.MaquinaPura);
         tela.PastaBackup = pasta; // digitada no campo (vale na hora, sem tocar em Salvar)
         t.Foto("42-config-maquina");
 
         var backup = tela.FazerBackupCommand.ExecuteAsync(null);
         var feito = await EsperarMensagem(t);
-        Assert.Equal("Backup feito", feito.Titulo);
+        Assert.Equal("Apagar as vendas desta máquina?", feito.Titulo);
         Assert.True(File.Exists(Path.Combine(pasta, "BCFichas - FESTA DE SÃO JOÃO.bcf")));
         Assert.True(File.Exists(Path.Combine(pendrive, "BCFichas - FESTA DE SÃO JOÃO.bcf")));
         Assert.Equal(pasta, t.Sistema.Config.Atual.PastaBackup);
+        Assert.StartsWith("Backup feito. Salvo em:", feito.Texto);
+        Assert.Contains("e no pendrive " + pendrive, feito.Texto);
         Assert.Contains("nunca as vendas", feito.Texto);
         Assert.Contains("Esta máquina ainda tem 1 pedido(s) em 1 caixa(s). Apagar agora", feito.Texto);
-        Assert.Contains("Atenção: o caixa está aberto com 1 venda(s)", feito.Texto);
         t.Foto("46-backup-feito-deixar-pura");
         feito.SimCommand.Execute(null);
         await backup;
 
         Assert.True(t.Sistema.Programacao.Situacao().Pura);
-        Assert.Null(t.Principal.Sessao);
         Assert.IsType<AberturaViewModel>(t.Principal.Pagina);
         Assert.Equal("Vendas apagadas: a máquina está pura, só com a programação.", t.Principal.Aviso);
 
@@ -75,6 +76,61 @@ public class TelaMaquinaTests
         Assert.True(tela.MaquinaPura);
         Assert.Equal(pasta, tela.PastaBackup);
         t.Foto("48-config-maquina-pura");
+    }
+
+    [AvaloniaFact]
+    public async Task Com_o_caixa_aberto_com_vendas_o_backup_nao_oferece_apagar()
+    {
+        using var t = new TelaDeTeste();
+        t.Principal.Pendrives = () => [];
+        t.AbrirCaixa();
+        Vender(t.Sistema, t.Principal.Sessao!, "PASTEL");
+
+        var tela = AbrirAbaMaquina(t);
+        Assert.Equal("Guardado: 1 pedido(s) em 1 caixa(s) • caixa aberto", tela.SituacaoVendas);
+        tela.PastaBackup = Path.Combine(t.Sistema.PastaDados, "backup");
+        var backup = tela.FazerBackupCommand.ExecuteAsync(null);
+        var feito = await EsperarMensagem(t);
+        Assert.Equal("Backup feito", feito.Titulo);
+        Assert.False(feito.TemNao); // só OK: nada de apagar com um toque no meio do evento
+        Assert.Contains("caixa aberto com 1 venda(s)", feito.Texto);
+        feito.SimCommand.Execute(null);
+        await backup;
+        Assert.NotNull(t.Principal.Sessao);
+        Assert.Equal(1, t.Sistema.Programacao.Situacao().Pedidos);
+
+        // Pelo botão da tela dá para apagar, com o aviso do caixa aberto
+        var apagar = tela.LimparVendasCommand.ExecuteAsync(null);
+        var confirmar = await EsperarMensagem(t);
+        Assert.Contains("Atenção: o caixa está aberto com 1 venda(s) e será apagado sem imprimir o fechamento.", confirmar.Texto);
+        confirmar.SimCommand.Execute(null);
+        await apagar;
+        Assert.Null(t.Principal.Sessao);
+        Assert.True(t.Sistema.Programacao.Situacao().Pura);
+    }
+
+    [AvaloniaFact]
+    public async Task Pergunta_se_salva_o_que_mudou_na_tela_antes_do_backup()
+    {
+        using var t = new TelaDeTeste();
+        t.Principal.Pendrives = () => [];
+        var pasta = Path.Combine(t.Sistema.PastaDados, "backup");
+        var tela = AbrirAbaMaquina(t);
+        tela.PastaBackup = pasta;
+        tela.NomeEvento = "Quermesse nova"; // mudou o evento e não tocou em Salvar
+
+        var backup = tela.FazerBackupCommand.ExecuteAsync(null);
+        var salvar = await EsperarMensagem(t);
+        Assert.Equal("Alterações não salvas", salvar.Titulo);
+        salvar.SimCommand.Execute(null);
+        var feito = await EsperarMensagem(t);
+        Assert.Equal("Backup feito", feito.Titulo);
+        feito.SimCommand.Execute(null);
+        await backup;
+
+        Assert.Equal("QUERMESSE NOVA", t.Sistema.Config.Atual.NomeEvento);
+        var arquivo = Path.Combine(pasta, "BCFichas - QUERMESSE NOVA.bcf");
+        Assert.Equal("QUERMESSE NOVA", t.Sistema.Programacao.Resumo(arquivo).Evento);
     }
 
     [AvaloniaFact]
@@ -86,8 +142,9 @@ public class TelaMaquinaTests
         Directory.CreateDirectory(pasta);
         Directory.CreateDirectory(pendrive);
         t.Principal.Pendrives = () => [pendrive];
+        // A pasta que vai dentro dos backups é outra: a da máquina tem que continuar a dela
         var config = t.Sistema.Config.Atual.Clonar();
-        config.PastaBackup = pasta;
+        config.PastaBackup = @"Z:\pasta de outra maquina";
         t.Sistema.Config.Salvar(config);
 
         void Backup(string evento, string onde)
@@ -99,15 +156,18 @@ public class TelaMaquinaTests
             Thread.Sleep(20);
         }
 
-        // Um backup só (copiado pelo acesso remoto para a pasta): vai direto para o resumo
+        // Um backup só (copiado pelo acesso remoto para a pasta): aparece sozinho na lista
         Backup("QUERMESSE DO BAIRRO", pasta);
         var tela = AbrirAbaMaquina(t);
+        tela.PastaBackup = pasta;
         var restaurar = tela.RestaurarCommand.ExecuteAsync(null);
-        var resumo = await EsperarMensagem(t);
-        Assert.Equal("Restaurar este backup?", resumo.Titulo);
-        Assert.Contains("Evento: QUERMESSE DO BAIRRO", resumo.Texto);
-        resumo.NaoCommand.Execute(null);
+        await TelaDeTeste.Esperar(() => t.Principal.Dialogo is EscolherBackupViewModel);
+        var sozinho = (EscolherBackupViewModel)t.Principal.Dialogo!;
+        Assert.Equal("QUERMESSE DO BAIRRO", Assert.Single(sozinho.Itens).Evento);
+        Assert.True(sozinho.PodeProcurar);
+        sozinho.CancelarCommand.Execute(null);
         await restaurar;
+        Assert.Null(t.Principal.Dialogo);
 
         // Dois backups (pasta e pendrive): escolhe na lista
         Backup("FESTA DO PENDRIVE", pendrive);
@@ -115,12 +175,13 @@ public class TelaMaquinaTests
         await TelaDeTeste.Esperar(() => t.Principal.Dialogo is EscolherBackupViewModel);
         var lista = (EscolherBackupViewModel)t.Principal.Dialogo!;
         Assert.Equal(["FESTA DO PENDRIVE", "QUERMESSE DO BAIRRO"], lista.Itens.Select(i => i.Evento));
+        Assert.False(lista.TemRecusados);
         Assert.Equal(["Pendrive " + pendrive, "Pasta do backup"], lista.Itens.Select(i => i.Lugar));
         Assert.Contains("15 produto(s)", lista.Itens[0].Detalhes);
         t.Foto("47-restaurar-lista");
         lista.EscolherCommand.Execute(lista.Itens[1]);
 
-        resumo = await EsperarMensagem(t);
+        var resumo = await EsperarMensagem(t);
         Assert.Contains("Evento: QUERMESSE DO BAIRRO", resumo.Texto);
         Assert.Contains("15 produto(s) em 3 aba(s)", resumo.Texto);
         t.Foto("43-restaurar-resumo");
@@ -137,7 +198,7 @@ public class TelaMaquinaTests
 
         Assert.Equal(3, t.Sistema.Config.Atual.NumeroCaixa);
         Assert.Equal("QUERMESSE DO BAIRRO", t.Sistema.Config.Atual.NomeEvento);
-        Assert.Equal(pasta, t.Sistema.Config.Atual.PastaBackup);
+        Assert.Equal(pasta, t.Sistema.Config.Atual.PastaBackup); // a pasta continua a desta máquina
         Assert.Equal("Backup restaurado: QUERMESSE DO BAIRRO, Caixa 03.", t.Principal.Aviso);
         Assert.IsType<AberturaViewModel>(t.Principal.Pagina);
         // A configuração nova chega no cabeçalho pela fila da tela.
@@ -175,6 +236,43 @@ public class TelaMaquinaTests
         Assert.Contains(outro, resumo.Texto);
         resumo.NaoCommand.Execute(null);
         await restaurar;
+
+        // Um arquivo pela metade (cópia do acesso remoto que não terminou): diz o motivo em vez de "não achei"
+        File.WriteAllText(Path.Combine(pasta, "BCFichas - FESTA.bcf"), "PK pela metade");
+        restaurar = tela.RestaurarCommand.ExecuteAsync(null);
+        var recusado = await EsperarMensagem(t);
+        Assert.Equal("Não dá para usar o backup", recusado.Titulo);
+        Assert.Contains("BCFichas - FESTA.bcf (Pasta do backup):", recusado.Texto);
+        Assert.Contains("ainda está sendo copiado", recusado.Texto);
+        recusado.NaoCommand.Execute(null);
+        await restaurar;
+    }
+
+    [AvaloniaFact]
+    public async Task Apagar_as_vendas_pergunta_o_que_fazer_com_o_estoque()
+    {
+        using var t = new TelaDeTeste();
+        var cerveja = t.Sistema.Catalogo.Produtos().First(p => p.Nome == "CERVEJA");
+        cerveja.ControlaEstoque = true;
+        cerveja.Estoque = 100;
+        t.Sistema.Catalogo.SalvarProduto(cerveja, 30);
+        var sessao = t.Sistema.Caixa.Abrir(1, null, 0);
+        Vender(t.Sistema, sessao, "CERVEJA");
+        Vender(t.Sistema, sessao, "CERVEJA");
+        t.Sistema.Caixa.Fechar(sessao, null);
+
+        var tela = AbrirAbaMaquina(t);
+        var apagar = tela.LimparVendasCommand.ExecuteAsync(null);
+        (await EsperarMensagem(t)).SimCommand.Execute(null);
+        await TelaDeTeste.Esperar(() => t.Principal.Dialogo is MensagemViewModel { Titulo: "E o estoque?" });
+        var estoque = (MensagemViewModel)t.Principal.Dialogo!;
+        Assert.Contains("As vendas tiraram 2 unidade(s) do estoque.", estoque.Texto);
+        t.Foto("49-apagar-vendas-estoque");
+        estoque.NaoCommand.Execute(null); // outra festa com o que sobrou
+        await apagar;
+
+        Assert.True(t.Sistema.Programacao.Situacao().Pura);
+        Assert.Equal(98, t.Sistema.Catalogo.Produto(cerveja.Id)!.Estoque);
     }
 
     [AvaloniaFact]

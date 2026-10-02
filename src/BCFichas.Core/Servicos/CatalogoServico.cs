@@ -195,6 +195,15 @@ public sealed class CatalogoServico
             }
             else
             {
+                // Estoque digitado de novo (ou controle ligado/desligado): é a contagem que vale agora, então as
+                // vendas de antes não voltam para ele ao "Apagar as vendas".
+                var antes = Banco.Consultar(c, t, "SELECT controla_estoque, estoque FROM produtos WHERE id = $id",
+                    l => (Controla: l.GetInt64(0) == 1, Estoque: l.GetInt64(1)), ("$id", produto.Id)).FirstOrDefault();
+                if (antes.Controla != produto.ControlaEstoque || antes.Estoque != produto.Estoque)
+                    Banco.Executar(c, t, """
+                        UPDATE itens_pedido SET baixado = 0 WHERE produto_id = $id;
+                        UPDATE componentes_item SET baixado = 0 WHERE produto_id = $id;
+                        """, ("$id", produto.Id));
                 Banco.Executar(c, t, """
                     UPDATE produtos SET nome = $nome, detalhe = $detalhe, aba_id = $aba, posicao = $pos,
                         fichas_por_unidade = $fichas, custo = $custo, preco = $preco, controla_estoque = $ce,

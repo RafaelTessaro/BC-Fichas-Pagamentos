@@ -137,19 +137,24 @@ do caixa. Aqui é um arquivo só, em **Menu → Configurações → Máquina**:
 1. **Programe uma máquina** (produtos, combos, abas, evento, logotipo, modelo da ficha) e toque em **Fazer
    backup**. Sai o arquivo `BCFichas - NOME DO EVENTO.bcf` na **pasta do backup** (padrão `C:\Sistema_New\backup`,
    dá para mudar na mesma tela) e, se tiver pendrive no tablet, nele também. O arquivo leva produtos, combos,
-   imagens, logotipo, evento, ficha e senha, e **nunca leva vendas**.
+   imagens, logotipo, evento, ficha e senha, e **nunca leva vendas** (o estoque vai como era antes das vendas
+   desta máquina). Se você mudou algo na tela e não salvou, o programa pergunta se salva antes.
 2. **Na outra máquina** copie o arquivo para a pasta do backup dela (pelo acesso remoto) ou ponha o pendrive e
-   toque em **Restaurar**. O programa acha o arquivo sozinho (se tiver mais de um, mostra a lista com o mais novo
-   em cima), mostra o evento e quantos produtos tem e pergunta só o **número do caixa (PDV)**. Pronto.
+   toque em **Restaurar**. O programa acha o arquivo sozinho e mostra a lista (o mais novo em cima, ou
+   **Procurar em outro lugar** se o arquivo estiver em outra pasta), mostra o evento e quantos produtos tem e
+   pergunta só o **número do caixa (PDV)**. Pronto. Se o arquivo ainda está sendo copiado ou veio de uma versão
+   mais nova do programa, ele aparece com o motivo.
 
 Ao restaurar, a máquina fica igual à que foi programada, mas **a impressora, o tamanho da tela, o teclado e as
 pastas continuam os dela**. Tudo o que estava guardado nela (vendas, testes, caixas, até um caixa aberto) é
 apagado, e o programa avisa antes o que vai sair.
 
 **Deixar pura para o cliente:** depois de testar a máquina, toque em **Apagar as vendas**. Saem vendas, testes,
-caixas (até o aberto), sangrias e devoluções; o pedido volta para o 1 e o que foi vendido volta para o estoque.
-Os produtos e as configurações ficam. Ao fazer o backup numa máquina que ainda tem vendas, o programa já
-pergunta se quer apagar. O mesmo botão serve para começar outra festa com o mesmo cardápio.
+caixas (até o aberto), sangrias e devoluções, e o pedido volta para o 1. Os produtos e as configurações ficam.
+Se algum produto controla estoque, o programa pergunta: **Devolver ao estoque** (volta ao que era antes das
+vendas, para entregar ao cliente) ou **Deixar como está** (outra festa com o que sobrou). Ao fazer o backup numa
+máquina que ainda tem vendas, o programa já pergunta se quer apagar — menos com o caixa aberto com vendas, para
+ninguém apagar um evento em andamento com um toque.
 
 **Deixar a máquina como nova → Apagar tudo:** é o "banco vazio" de antes. Apaga vendas, produtos, combos, abas,
 evento e o jeito da ficha. Ficam só o número do caixa, a impressora, as opções de tela, as pastas e a senha

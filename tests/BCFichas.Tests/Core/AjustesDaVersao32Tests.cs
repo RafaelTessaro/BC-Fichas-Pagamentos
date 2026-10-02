@@ -258,7 +258,7 @@ public class AjustesDaVersao32Tests : IDisposable
         var sessao = sistema.Caixa.SessaoAberta(1)!;
         Assert.Equal("ANA", sessao.Operador);
         Assert.False(sessao.Teste);
-        Assert.Equal(4, sistema.Banco.Escalar<long>("SELECT MAX(v) FROM versao"));
+        Assert.Equal(5, sistema.Banco.Escalar<long>("SELECT MAX(v) FROM versao"));
         Assert.NotNull(sistema.Caixa.Abrir(1, null, 0, teste: true));
     }
 

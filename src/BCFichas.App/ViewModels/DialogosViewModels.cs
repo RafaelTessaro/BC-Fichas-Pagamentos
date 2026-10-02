@@ -289,7 +289,7 @@ public sealed class BackupItem(Core.Servicos.ProgramacaoEncontrada achado)
 
 /// <summary>
 /// Lista dos backups achados na pasta do backup e nos pendrives (o mais novo primeiro), para escolher qual
-/// restaurar. Aparece só quando há mais de um.
+/// restaurar ou procurar outro arquivo.
 /// </summary>
 public sealed partial class EscolherBackupViewModel : ViewModelBase
 {
@@ -297,14 +297,22 @@ public sealed partial class EscolherBackupViewModel : ViewModelBase
     private readonly TaskCompletionSource<EscolhaBackup> _resposta = new();
 
     public EscolherBackupViewModel(PrincipalViewModel principal, IEnumerable<Core.Servicos.ProgramacaoEncontrada> achados,
-        bool podeProcurar)
+        IEnumerable<Core.Servicos.ArquivoRecusado> recusados, bool podeProcurar)
     {
         _p = principal;
         Itens = achados.Select(a => new BackupItem(a)).ToList();
+        Recusados = string.Join("\n", recusados.Select(r => $"{Path.GetFileName(r.Arquivo)} ({r.Lugar}): {r.Motivo}"));
         PodeProcurar = podeProcurar;
+        Explicacao = Itens.Count == 1
+            ? "Achei este. Toque nele para ver o que tem e restaurar, ou procure outro arquivo."
+            : "Achei estes na pasta do backup e nos pendrives. O mais novo está em cima.";
     }
 
     public List<BackupItem> Itens { get; }
+    public string Explicacao { get; }
+    /// <summary>Arquivos .bcf achados que não dá para usar, com o motivo (vazio se não tem).</summary>
+    public string Recusados { get; }
+    public bool TemRecusados => Recusados.Length > 0;
     public bool PodeProcurar { get; }
     public Task<EscolhaBackup> Resposta => _resposta.Task;
 

@@ -235,7 +235,13 @@ public class ProgramacaoTests : IDisposable
         Assert.True(situacao.CaixaAberto);
         Assert.Equal(3, situacao.PedidosNoCaixaAberto);
         Assert.True(situacao.ModoTeste);
-        Assert.True(situacao.ControlaEstoque);
+        Assert.Equal(2 + 2 + 8, situacao.EstoqueAVoltar); // 2 pastéis, 2 combos e 8 cervejas ainda fora do estoque
+
+        // O backup feito agora já sai puro: com o estoque de antes das vendas
+        var arquivo = Path.Combine(_a.Pasta, "pura.bcf");
+        a.Programacao.Salvar(arquivo);
+        _b.Sistema.Programacao.Carregar(arquivo, 2);
+        Assert.Equal([50, 10, 100], new[] { pastel, combo, cerveja }.Select(p => _b.Sistema.Catalogo.Produto(p.Id)!.Estoque));
 
         a.Programacao.ApagarVendas();
 
@@ -250,7 +256,91 @@ public class ProgramacaoTests : IDisposable
         Assert.Equal(10, Estoque(combo));
         Assert.Equal(100, Estoque(cerveja));
         // A numeração recomeça, também a do teste
+        Assert.Equal(1, Vender(a.Caixa.Abrir(1, null, 0, teste: true), pastel, 1).Numero);
+        a.Caixa.ApagarTestes();
         Assert.Equal(1, Vender(a.Caixa.Abrir(1, null, 0), pastel, 1).Numero);
+    }
+
+    [Fact]
+    public void So_volta_para_o_estoque_o_que_saiu_dele_e_da_para_deixar_como_esta()
+    {
+        var a = _a.Sistema;
+        var pastel = a.Catalogo.Produtos().First(x => x.Nome == "PASTEL");
+        var cerveja = a.Catalogo.Produtos().First(x => x.Nome == "CERVEJA");
+        var refri = a.Catalogo.Produtos().First(x => x.Nome == "REFRIGERANTE");
+        void Estoque(Produto p, bool controla, int estoque)
+        {
+            var atual = a.Catalogo.Produto(p.Id)!;
+            atual.ControlaEstoque = controla;
+            atual.Estoque = estoque;
+            a.Catalogo.SalvarProduto(atual, 30);
+        }
+        int Atual(Produto p) => a.Catalogo.Produto(p.Id)!.Estoque;
+        var sessao = a.Caixa.Abrir(1, null, 0);
+        void Vender(Produto p, int quantidade)
+        {
+            var carrinho = new Carrinho();
+            carrinho.Adicionar(a.Catalogo.Produto(p.Id)!, quantidade);
+            a.Vendas.CriarPedido(sessao, carrinho.Linhas, FormaPagamento.Dinheiro, 100_000);
+        }
+
+        // Vendido sem controle de estoque e só depois o estoque foi ligado: não tirou nada, não devolve nada
+        Vender(pastel, 3);
+        Estoque(pastel, true, 40);
+        // Vendido e depois o estoque foi contado e digitado de novo: vale a contagem
+        Estoque(cerveja, true, 100);
+        Vender(cerveja, 5);
+        Estoque(cerveja, true, 200);
+        // Vendido e ninguém mexeu no estoque: volta o que saiu
+        Estoque(refri, true, 30);
+        Vender(refri, 4);
+        Assert.Equal(4, a.Programacao.Situacao().EstoqueAVoltar);
+
+        // Outra festa com o que sobrou: o estoque fica como está
+        a.Programacao.ApagarVendas(devolverEstoque: false);
+        Assert.Equal([40, 200, 26], new[] { pastel, cerveja, refri }.Select(Atual));
+
+        sessao = a.Caixa.Abrir(1, null, 0);
+        Vender(refri, 6);
+        a.Programacao.ApagarVendas();
+        Assert.Equal([40, 200, 26], new[] { pastel, cerveja, refri }.Select(Atual));
+    }
+
+    [Fact]
+    public void Restaura_combo_que_vem_antes_do_produto_das_fichas()
+    {
+        var a = _a.Sistema;
+        var aba = a.Catalogo.Abas().First();
+        // O produto das fichas fica escondido (só sai pelo combo): vem depois do combo na lista
+        var heineken = a.Catalogo.SalvarProduto(new Produto
+        {
+            Nome = "Heineken", AbaId = aba.Id, PrecoCentavos = 650, Ativo = false,
+        }, 30);
+        var livre = a.Catalogo.PosicoesLivres(aba.Id, 30).First();
+        a.Catalogo.SalvarProduto(new Produto
+        {
+            Nome = "Combo Heineken", AbaId = aba.Id, Posicao = livre, PrecoCentavos = 3000,
+            Componentes = [new ComponenteCombo { ProdutoId = heineken.Id, Nome = "HEINEKEN", Quantidade = 5, ValorCentavos = 650 }],
+        }, 30);
+        var produtos = a.Catalogo.Produtos();
+        Assert.True(produtos.FindIndex(p => p.Nome == "COMBO HEINEKEN") < produtos.FindIndex(p => p.Nome == "HEINEKEN"));
+        var arquivo = Path.Combine(_a.Pasta, "combo.bcf");
+        a.Programacao.Salvar(arquivo);
+
+        _b.Sistema.Programacao.Carregar(arquivo, 2);
+
+        var combo = _b.Sistema.Catalogo.Produtos().Single(p => p.Nome == "COMBO HEINEKEN");
+        Assert.Equal(heineken.Id, Assert.Single(combo.Componentes).ProdutoId);
+    }
+
+    [Fact]
+    public void Backup_que_deu_errado_antes_nao_atrapalha_o_proximo()
+    {
+        var arquivo = Path.Combine(_a.Pasta, "festa.bcf");
+        File.WriteAllText(arquivo + ".tmp", "sobrou de uma vez que a bateria acabou");
+        _a.Sistema.Programacao.Salvar(arquivo);
+        Assert.False(File.Exists(arquivo + ".tmp"));
+        Assert.Equal(_a.Sistema.Config.Atual.NomeEvento, _a.Sistema.Programacao.Resumo(arquivo).Evento);
     }
 
     [Fact]
@@ -265,7 +355,8 @@ public class ProgramacaoTests : IDisposable
 
         b.Programacao.Carregar(arquivo, 5);
         Assert.True(b.Programacao.Situacao().Pura);
-        Assert.Null(b.Caixa.SessaoAberta(5));
+        Assert.Null(b.Caixa.SessaoAberta(1));
+        Assert.Null(b.Caixa.SessaoTesteAberta(1));
 
         b.Caixa.Abrir(5, null, 0);
         b.Programacao.DeixarComoNova();
@@ -293,15 +384,25 @@ public class ProgramacaoTests : IDisposable
         Salvar("FESTA NOVA", pendrive);
         File.WriteAllText(Path.Combine(pasta, "defeito.bcf"), "não sou um backup");
         File.Copy(Path.Combine(pasta, "BCFichas - FESTA VELHA.bcf"), Path.Combine(pasta, "outro.bcfx"));
+        // Backup de uma versão mais nova do programa
+        using (var zip = System.IO.Compression.ZipFile.Open(Path.Combine(pendrive, "nova.bcf"),
+                   System.IO.Compression.ZipArchiveMode.Create))
+        using (var escrita = new StreamWriter(zip.CreateEntry("programacao.json").Open()))
+            escrita.Write("""{"Formato":99,"Evento":"DO FUTURO"}""");
 
-        var achados = a.Programacao.Procurar([
+        var procura = a.Programacao.Procurar([
             (pasta, "Pasta do backup"), (pendrive, "Pendrive E:"), (pasta, "Pasta repetida"),
             (Path.Combine(_a.Pasta, "nao existe"), "Pendrive F:"),
         ]);
 
+        var achados = procura.Achados;
         Assert.Equal(["FESTA NOVA", "FESTA VELHA"], achados.Select(x => x.Resumo.Evento));
         Assert.Equal(["Pendrive E:", "Pasta do backup"], achados.Select(x => x.Lugar));
         Assert.EndsWith("BCFichas - FESTA VELHA.bcf", achados[1].Arquivo);
+        // Os que não dá para usar aparecem com o motivo (não somem)
+        Assert.Equal(["defeito.bcf", "nova.bcf"], procura.Recusados.Select(r => Path.GetFileName(r.Arquivo)).Order());
+        Assert.Contains("ainda está sendo copiado", procura.Recusados.Single(r => r.Arquivo.EndsWith("defeito.bcf")).Motivo);
+        Assert.Contains("versão mais nova", procura.Recusados.Single(r => r.Arquivo.EndsWith("nova.bcf")).Motivo);
     }
 
     [Fact]

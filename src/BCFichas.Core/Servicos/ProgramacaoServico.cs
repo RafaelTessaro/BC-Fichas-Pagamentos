@@ -11,8 +11,9 @@ public sealed record ResumoProgramacao(string Evento, int Produtos, int Abas, in
     string Versao);
 
 /// <summary>O que esta máquina tem guardado (mostrado na aba Máquina e antes de apagar ou restaurar).</summary>
+/// <param name="EstoqueAVoltar">Unidades que as vendas tiraram do estoque e voltam para ele ao apagar as vendas.</param>
 public sealed record SituacaoMaquina(int Produtos, int Abas, int Combos, int Pedidos, int PedidosTeste, int Caixas,
-    bool CaixaAberto, int PedidosNoCaixaAberto, bool ModoTeste, bool ControlaEstoque)
+    bool CaixaAberto, int PedidosNoCaixaAberto, bool ModoTeste, int EstoqueAVoltar)
 {
     /// <summary>Sem vendas, testes nem caixas guardados: a máquina vai "pura" para o cliente.</summary>
     public bool Pura => Pedidos == 0 && PedidosTeste == 0 && Caixas == 0;
@@ -20,6 +21,12 @@ public sealed record SituacaoMaquina(int Produtos, int Abas, int Combos, int Ped
 
 /// <summary>Um backup achado na pasta do backup ou num pendrive.</summary>
 public sealed record ProgramacaoEncontrada(string Arquivo, string Lugar, ResumoProgramacao Resumo);
+
+/// <summary>Um arquivo .bcf achado que não dá para usar, e por quê (mostrado em vez de sumir da lista).</summary>
+public sealed record ArquivoRecusado(string Arquivo, string Lugar, string Motivo);
+
+/// <summary>Backups achados (o mais novo primeiro) e os arquivos .bcf que não deu para ler.</summary>
+public sealed record ResultadoProcura(List<ProgramacaoEncontrada> Achados, List<ArquivoRecusado> Recusados);
 
 /// <summary>
 /// Programar várias máquinas e começar de novo, do jeito simples do sistema antigo (copiar o banco e trocar o
@@ -87,16 +94,17 @@ public sealed class ProgramacaoServico
                 WHERE s.fechada_em IS NULL AND s.teste = 0
                 """),
             ModoTeste: Contar("SELECT COUNT(*) FROM sessoes WHERE fechada_em IS NULL AND teste = 1") > 0,
-            ControlaEstoque: Contar("SELECT COUNT(*) FROM produtos WHERE controla_estoque = 1") > 0);
+            EstoqueAVoltar: _banco.Transacao((c, t) => EstoqueVendido(c, t).Values.Sum()));
     }
 
     /// <summary>
-    /// Backups (.bcf) achados direto nas pastas (pasta do backup, pendrives), do mais novo para o mais velho.
-    /// Arquivos que não dá para ler ficam de fora.
+    /// Backups (.bcf) achados direto nas pastas (pasta do backup, pendrives), do mais novo para o mais velho. Os
+    /// que não dá para ler (cópia pela metade, versão mais nova) voltam separados, com o motivo.
     /// </summary>
-    public List<ProgramacaoEncontrada> Procurar(IEnumerable<(string Pasta, string Lugar)> lugares)
+    public ResultadoProcura Procurar(IEnumerable<(string Pasta, string Lugar)> lugares)
     {
         var achados = new List<ProgramacaoEncontrada>();
+        var recusados = new List<ArquivoRecusado>();
         var vistos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (pasta, lugar) in lugares)
         {
@@ -117,14 +125,21 @@ public sealed class ProgramacaoServico
                 {
                     achados.Add(new ProgramacaoEncontrada(arquivo, lugar, Resumo(arquivo)));
                 }
-                catch (Exception e) when (e is ErroDeNegocio or IOException or UnauthorizedAccessException)
+                catch (ErroDeNegocio e)
                 {
-                    // arquivo com defeito ou sendo copiado: não aparece na lista
+                    recusados.Add(new ArquivoRecusado(arquivo, lugar, e.Message));
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    recusados.Add(new ArquivoRecusado(arquivo, lugar, ArquivoIlegivel));
                 }
             }
         }
-        return achados.OrderByDescending(a => a.Resumo.SalvoEm).ToList();
+        return new ResultadoProcura(achados.OrderByDescending(a => a.Resumo.SalvoEm).ToList(), recusados);
     }
+
+    private const string ArquivoIlegivel =
+        "Não deu para ler este arquivo: ele não é um backup do BC Fichas, está com defeito ou ainda está sendo copiado.";
 
     // ---------- Salvar e carregar a programação ----------
 
@@ -133,6 +148,8 @@ public sealed class ProgramacaoServico
     {
         var config = _config.Atual;
         var produtos = _catalogo.Produtos();
+        // O backup sai "puro": com o estoque de antes das vendas desta máquina, como se elas fossem apagadas.
+        var vendido = _banco.Transacao(EstoqueVendido);
         var arquivos = new Dictionary<string, string>(); // caminho no arquivo → caminho no disco
 
         string? Guardar(string? imagem)
@@ -161,22 +178,41 @@ public sealed class ProgramacaoServico
             {
                 Id = p.Id, Nome = p.Nome, Detalhe = p.Detalhe, AbaId = p.AbaId, Posicao = p.Posicao,
                 FichasPorUnidade = p.FichasPorUnidade, Custo = p.CustoCentavos, Preco = p.PrecoCentavos,
-                ControlaEstoque = p.ControlaEstoque, Estoque = p.Estoque, Cor = p.Cor, Imagem = Guardar(p.Imagem),
+                ControlaEstoque = p.ControlaEstoque,
+                Estoque = p.ControlaEstoque ? p.Estoque + vendido.GetValueOrDefault(p.Id) : p.Estoque,
+                Cor = p.Cor, Imagem = Guardar(p.Imagem),
                 Ativo = p.Ativo,
                 Componentes = p.Componentes.Select(c =>
                     new ComponenteArquivo(c.ProdutoId, c.Nome, c.Detalhe, c.Quantidade, c.ValorCentavos)).ToList(),
             }).ToList(),
         };
 
+        // Grava num arquivo temporário e só no fim troca pelo de verdade (um backup pela metade nunca fica com o
+        // nome certo). Um temporário que sobrou de uma vez que deu errado é substituído.
         var temporario = arquivo + ".tmp";
-        using (var zip = ZipFile.Open(temporario, ZipArchiveMode.Create))
+        try
         {
-            using (var escrita = new StreamWriter(zip.CreateEntry("programacao.json").Open()))
-                escrita.Write(JsonSerializer.Serialize(dados, ConfigServico.Json));
-            foreach (var (nome, caminho) in arquivos)
-                zip.CreateEntryFromFile(caminho, nome, CompressionLevel.Fastest);
+            using (var zip = new ZipArchive(new FileStream(temporario, FileMode.Create), ZipArchiveMode.Create))
+            {
+                using (var escrita = new StreamWriter(zip.CreateEntry("programacao.json").Open()))
+                    escrita.Write(JsonSerializer.Serialize(dados, ConfigServico.Json));
+                foreach (var (nome, caminho) in arquivos)
+                    zip.CreateEntryFromFile(caminho, nome, CompressionLevel.Fastest);
+            }
+            File.Move(temporario, arquivo, overwrite: true);
         }
-        File.Move(temporario, arquivo, overwrite: true);
+        catch
+        {
+            try
+            {
+                File.Delete(temporario);
+            }
+            catch (Exception)
+            {
+                // fica para a próxima vez (FileMode.Create grava por cima)
+            }
+            throw;
+        }
     }
 
     public ResumoProgramacao Resumo(string arquivo)
@@ -227,9 +263,9 @@ public sealed class ProgramacaoServico
                 Banco.Executar(c, t, "INSERT INTO abas (id, nome, ordem) VALUES ($id, $n, $o)",
                     ("$id", aba.Id), ("$n", aba.Nome), ("$o", aba.Ordem));
             if (dados.Abas.Count == 0) Banco.Executar(c, t, "INSERT INTO abas (nome, ordem) VALUES ('ITENS', 1)");
+            // Primeiro todos os produtos, depois as fichas dos combos: o combo pode vir antes do produto das fichas.
             var ids = dados.Produtos.Select(p => p.Id).ToHashSet();
             foreach (var p in dados.Produtos)
-            {
                 Banco.Executar(c, t, """
                     INSERT INTO produtos (id, nome, detalhe, aba_id, posicao, fichas_por_unidade, custo, preco,
                                           controla_estoque, estoque, cor, imagem, ativo)
@@ -239,6 +275,8 @@ public sealed class ProgramacaoServico
                     ("$fichas", p.FichasPorUnidade), ("$custo", p.Custo), ("$preco", p.Preco),
                     ("$ce", p.ControlaEstoque ? 1 : 0), ("$est", p.Estoque), ("$cor", p.Cor), ("$img", Extrair(p.Imagem)),
                     ("$ativo", p.Ativo ? 1 : 0));
+            foreach (var p in dados.Produtos)
+            {
                 for (var i = 0; i < p.Componentes.Count; i++)
                 {
                     var x = p.Componentes[i];
@@ -260,15 +298,19 @@ public sealed class ProgramacaoServico
 
     /// <summary>
     /// Deixa a máquina pura para o cliente (ou pronta para outra festa com o mesmo cardápio): apaga vendas, testes,
-    /// caixas (até o que estiver aberto), sangrias e devoluções; a numeração dos pedidos volta para 1 e o que as
-    /// vendas tiraram do estoque volta para ele. Produtos e configurações ficam.
+    /// caixas (até o que estiver aberto), sangrias e devoluções; a numeração dos pedidos volta para 1. Produtos e
+    /// configurações ficam.
     /// </summary>
-    public void ApagarVendas()
+    /// <param name="devolverEstoque">
+    /// O que as vendas tiraram do estoque volta para ele (máquina pura para o cliente). Numa festa nova com o que
+    /// sobrou da anterior, o estoque fica como está.
+    /// </param>
+    public void ApagarVendas(bool devolverEstoque = true)
     {
         CopiaDeSeguranca("antes-de-apagar-vendas");
         _banco.Transacao((c, t) =>
         {
-            DevolverAoEstoque(c, t);
+            if (devolverEstoque) DevolverAoEstoque(c, t);
             ApagarVendas(c, t);
         });
         _catalogo.AvisarAlteracao();
@@ -313,23 +355,33 @@ public sealed class ProgramacaoServico
     }
 
     /// <summary>
-    /// O que as vendas pagas tiraram do estoque volta para ele (menos o que as devoluções já devolveram), como se
-    /// as vendas não tivessem acontecido. Vendas de teste e não pagas não mexeram no estoque. No combo, o próprio
-    /// combo e os produtos das fichas.
+    /// Quanto as vendas tiraram de verdade do estoque de cada produto (o que ficou guardado na venda, menos o que as
+    /// devoluções já puseram de volta). No combo, o próprio combo e os produtos das fichas. Vendas de teste e não
+    /// pagas não tiraram nada, e um estoque digitado de novo zera o que veio antes.
     /// </summary>
-    private static void DevolverAoEstoque(SqliteConnection c, SqliteTransaction t) =>
-        Banco.Executar(c, t, """
-            UPDATE produtos SET estoque = estoque
-                + (SELECT COALESCE(SUM(i.quantidade - (SELECT COALESCE(SUM(d.quantidade), 0) FROM itens_devolucao d
-                                                       WHERE d.item_id = i.id AND d.componente_id IS NULL)), 0)
-                   FROM itens_pedido i JOIN pedidos p ON p.id = i.pedido_id
-                   WHERE i.produto_id = produtos.id AND p.status = $pago AND p.teste = 0)
-                + (SELECT COALESCE(SUM(i.quantidade * x.quantidade - (SELECT COALESCE(SUM(d.quantidade), 0)
-                                                                      FROM itens_devolucao d WHERE d.componente_id = x.id)), 0)
-                   FROM componentes_item x JOIN itens_pedido i ON i.id = x.item_id JOIN pedidos p ON p.id = i.pedido_id
-                   WHERE x.produto_id = produtos.id AND p.status = $pago AND p.teste = 0)
-            WHERE controla_estoque = 1
-            """, ("$pago", (int)StatusPedido.Pago));
+    private static Dictionary<long, int> EstoqueVendido(SqliteConnection c, SqliteTransaction t) =>
+        Banco.Consultar(c, t, """
+            SELECT v.produto_id, SUM(v.volta) FROM (
+                SELECT i.produto_id, MAX(i.baixado - (SELECT COALESCE(SUM(d.quantidade), 0) FROM itens_devolucao d
+                                                      WHERE d.item_id = i.id AND d.componente_id IS NULL), 0) AS volta
+                FROM itens_pedido i WHERE i.baixado > 0 AND i.produto_id IS NOT NULL
+                UNION ALL
+                SELECT x.produto_id, MAX(x.baixado - (SELECT COALESCE(SUM(d.quantidade), 0) FROM itens_devolucao d
+                                                      WHERE d.componente_id = x.id), 0)
+                FROM componentes_item x WHERE x.baixado > 0 AND x.produto_id IS NOT NULL
+            ) v JOIN produtos p ON p.id = v.produto_id
+            WHERE p.controla_estoque = 1
+            GROUP BY v.produto_id HAVING SUM(v.volta) > 0
+            """, l => (Id: l.GetInt64(0), Quantidade: (int)l.GetInt64(1)))
+            .ToDictionary(x => x.Id, x => x.Quantidade);
+
+    /// <summary>O que as vendas tiraram do estoque volta para ele, como se elas não tivessem acontecido.</summary>
+    private static void DevolverAoEstoque(SqliteConnection c, SqliteTransaction t)
+    {
+        foreach (var (id, quantidade) in EstoqueVendido(c, t))
+            Banco.Executar(c, t, "UPDATE produtos SET estoque = estoque + $q WHERE id = $id",
+                ("$q", quantidade), ("$id", id));
+    }
 
     private static void ApagarVendas(SqliteConnection c, SqliteTransaction t) =>
         Banco.Executar(c, t, """
@@ -365,7 +417,7 @@ public sealed class ProgramacaoServico
         }
         catch (Exception e) when (e is InvalidDataException or JsonException or IOException)
         {
-            throw new ErroDeNegocio("Este arquivo não é uma programação do BC Fichas (ou está com defeito).");
+            throw new ErroDeNegocio(ArquivoIlegivel);
         }
     }
 

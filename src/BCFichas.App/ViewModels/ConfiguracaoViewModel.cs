@@ -220,18 +220,26 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     [RelayCommand]
     private void Salvar()
     {
+        if (!Gravar(out var mudouCaixa)) return;
+        Principal.MostrarAviso("Configurações salvas.");
+        if (mudouCaixa) Principal.Iniciar();
+    }
+
+    /// <summary>Confere e grava o que está na tela. Falso se algum campo está errado (o aviso já apareceu).</summary>
+    private bool Gravar(out bool mudouCaixa)
+    {
+        mudouCaixa = NumeroCaixa != Principal.Config.NumeroCaixa;
         if (string.IsNullOrWhiteSpace(NomeEvento))
         {
             AbaSelecionada = 0;
             Principal.MostrarAviso("Informe o nome do evento.", erro: true);
-            return;
+            return false;
         }
 
-        var mudouCaixa = NumeroCaixa != Principal.Config.NumeroCaixa;
         if (mudouCaixa && Principal.Sessao is not null)
         {
             Principal.MostrarAviso("Feche o caixa atual antes de trocar o número do caixa.", erro: true);
-            return;
+            return false;
         }
 
         foreach (var aba in Abas)
@@ -246,15 +254,35 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
             {
                 AbaSelecionada = 2;
                 Principal.MostrarAviso(e.Message, erro: true);
-                return;
+                return false;
             }
         }
 
         Sistema.Config.Salvar(Montar());
         Rodape = Sistema.Config.Atual.Rodape; // o campo mostra o que foi gravado (sem repetir a mensagem fixa)
-        Principal.MostrarAviso("Configurações salvas.");
         CarregarAbas();
-        if (mudouCaixa) Principal.Iniciar();
+        return true;
+    }
+
+    /// <summary>
+    /// O backup e o "Apagar as vendas" usam o que está salvo. Se o evento, a ficha, o logotipo ou os botões foram
+    /// mudados nesta tela e ainda não salvos, pergunta se salva antes. Falso se o operador voltou ou algo está errado.
+    /// </summary>
+    private async Task<bool> SalvarAlteracoesAntes(string antes)
+    {
+        var a = Montar();
+        var c = Principal.Config;
+        var mudou = a.NomeEvento != c.NomeEvento || a.Rodape != c.Rodape || a.Modelo != c.Modelo || a.Fonte != c.Fonte ||
+                    a.Moldura != c.Moldura || a.CodigoDeBarras != c.CodigoDeBarras ||
+                    a.MostrarValorNaFicha != c.MostrarValorNaFicha || a.Logo != c.Logo || a.Colunas != c.Colunas ||
+                    a.Linhas != c.Linhas || a.TelasProtegidas != c.TelasProtegidas ||
+                    Abas.Any(x => x.Nome.Trim().ToUpperInvariant() != x.Aba.Nome);
+        if (!mudou) return true;
+        if (!await Principal.Confirmar("Alterações não salvas",
+                $"Você mudou o evento, a ficha, o logotipo ou os botões e ainda não tocou em Salvar. Salvar agora, {antes}?",
+                "Salvar e continuar", "Voltar"))
+            return false;
+        return Gravar(out _);
     }
 
     [RelayCommand]
@@ -384,7 +412,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
                 ? $"Atenção: o caixa está aberto com {s.PedidosNoCaixaAberto} venda(s) e será apagado sem imprimir o fechamento."
                 : "O caixa aberto também é apagado.");
         if (s.ModoTeste) linhas.Add("O modo teste é desligado.");
-        if (estoque && s.ControlaEstoque && s.Pedidos > 0) linhas.Add("O que foi vendido volta para o estoque.");
+        if (estoque && s.EstoqueAVoltar > 0)
+            linhas.Add($"O que as vendas tiraram do estoque ({s.EstoqueAVoltar} unidade(s)) volta para ele.");
         return linhas.Count == 0 ? "" : "\n\n" + string.Join("\n", linhas);
     }
 
@@ -424,6 +453,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     [RelayCommand]
     private async Task FazerBackup()
     {
+        if (!await SalvarAlteracoesAntes("antes do backup")) return;
         var pasta = GuardarPastaBackup();
         var nome = Sistema.Programacao.NomeArquivo();
         var arquivo = Path.Combine(pasta, nome);
@@ -481,10 +511,18 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
             await Principal.Mensagem("Backup feito", texto);
             return;
         }
-        texto += $"\n\nEsta máquina ainda tem {DescreverVendas(s)}. Apagar agora, para ela também ir pura para o " +
-                 "cliente?" + Avisos(s, estoque: true);
-        if (await Principal.Confirmar("Backup feito", texto, "Apagar as vendas", "Agora não", perigo: true))
-            await ApagarVendasAgora();
+        if (s.CaixaAberto && s.PedidosNoCaixaAberto > 0)
+        {
+            // Pode ser um evento rolando: não oferece apagar o caixa com um toque.
+            await Principal.Mensagem("Backup feito", texto + $"\n\nEsta máquina tem o caixa aberto com " +
+                $"{s.PedidosNoCaixaAberto} venda(s). Para ela ir pura para o cliente, use Apagar as vendas nesta tela.");
+            AtualizarSituacao();
+            return;
+        }
+        texto = "Backup feito. " + texto + $"\n\nEsta máquina ainda tem {DescreverVendas(s)}. Apagar agora, para ela " +
+                "também ir pura para o cliente?" + Avisos(s, estoque: true);
+        if (await Principal.Confirmar("Apagar as vendas desta máquina?", texto, "Apagar as vendas", "Agora não", perigo: true))
+            await ApagarVendasAgora(devolverEstoque: true);
         else
             AtualizarSituacao();
     }
@@ -500,50 +538,60 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         var lugares = new List<(string, string)> { (pasta, "Pasta do backup") };
         lugares.AddRange(Principal.Pendrives().Select(p => (p, "Pendrive " + p.TrimEnd('\\', '/'))));
 
-        List<Core.Servicos.ProgramacaoEncontrada> achados;
+        ResultadoProcura procura;
         Ocupado = true;
         try
         {
-            achados = await Task.Run(() => Sistema.Programacao.Procurar(lugares));
+            procura = await Task.Run(() => Sistema.Programacao.Procurar(lugares));
         }
         finally
         {
             Ocupado = false;
         }
 
+        var achados = procura.Achados;
+        var podeProcurar = Principal.EscolherProgramacao is not null;
         string? arquivo;
-        if (achados.Count == 1)
+        bool procurar;
+        if (achados.Count == 1 && !podeProcurar)
         {
             arquivo = achados[0].Arquivo;
+            procurar = false;
+        }
+        else if (achados.Count > 0)
+        {
+            // Mesmo com um só, mostra a lista: dá para ver de onde ele veio ou procurar outro arquivo.
+            var lista = new EscolherBackupViewModel(Principal, achados, procura.Recusados, podeProcurar);
+            Principal.AbrirDialogo(lista);
+            var escolha = await lista.Resposta;
+            arquivo = escolha.Arquivo;
+            procurar = escolha.Procurar;
         }
         else
         {
-            var podeProcurar = Principal.EscolherProgramacao is not null;
-            bool procurar;
-            if (achados.Count > 1)
+            arquivo = null;
+            string titulo, texto;
+            if (procura.Recusados.Count > 0)
             {
-                var lista = new EscolherBackupViewModel(Principal, achados, podeProcurar);
-                Principal.AbrirDialogo(lista);
-                var escolha = await lista.Resposta;
-                arquivo = escolha.Arquivo;
-                procurar = escolha.Procurar;
+                titulo = "Não dá para usar o backup";
+                texto = string.Join("\n\n", procura.Recusados.Select(r => $"{Path.GetFileName(r.Arquivo)} ({r.Lugar}):\n{r.Motivo}"));
             }
             else
             {
-                arquivo = null;
-                var texto = $"Não achei backup (arquivo .bcf) na pasta do backup nem em pendrive.\n\nPasta do backup: {pasta}\n\n" +
-                            "Copie o arquivo para essa pasta (pelo acesso remoto) ou ponha o pendrive e toque em Restaurar de novo.";
-                if (!podeProcurar)
-                {
-                    await Principal.Mensagem("Nenhum backup encontrado", texto);
-                    return;
-                }
-                procurar = await Principal.Confirmar("Nenhum backup encontrado", texto, "Procurar em outro lugar", "Voltar");
+                titulo = "Nenhum backup encontrado";
+                texto = $"Não achei backup (arquivo .bcf) na pasta do backup nem em pendrive.\n\nPasta do backup: {pasta}\n\n" +
+                        "Copie o arquivo para essa pasta (pelo acesso remoto) ou ponha o pendrive e toque em Restaurar de novo.";
             }
-            if (procurar && Principal.EscolherProgramacao is not null)
-                arquivo = await Principal.EscolherProgramacao(Directory.Exists(pasta) ? pasta : null);
-            if (arquivo is null) return;
+            if (!podeProcurar)
+            {
+                await Principal.Mensagem(titulo, texto);
+                return;
+            }
+            procurar = await Principal.Confirmar(titulo, texto, "Procurar em outro lugar", "Voltar");
         }
+        if (procurar && Principal.EscolherProgramacao is not null)
+            arquivo = await Principal.EscolherProgramacao(Directory.Exists(pasta) ? pasta : null);
+        if (arquivo is null) return;
 
         await RestaurarArquivo(arquivo);
     }
@@ -596,6 +644,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     [RelayCommand]
     private async Task LimparVendas()
     {
+        if (!await SalvarAlteracoesAntes("antes de apagar as vendas")) return;
         var s = Sistema.Programacao.Situacao();
         if (s.Pura)
         {
@@ -605,15 +654,21 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         }
         if (!await Principal.Confirmar("Apagar as vendas?",
                 $"Apaga desta máquina {DescreverVendas(s)}, com as sangrias e devoluções. Ficam os produtos, combos e " +
-                "configurações, e o pedido volta para o 1." + Avisos(s, estoque: true) +
+                "configurações, e o pedido volta para o 1." + Avisos(s, estoque: false) +
                 "\n\nAntes, imprima ou anote os relatórios que precisar. Fica uma cópia de segurança.",
                 "Apagar as vendas", "Voltar", perigo: true))
             return;
-        await ApagarVendasAgora();
+        // Para o cliente o estoque volta ao programado; numa festa nova com o que sobrou, fica como está.
+        var devolver = s.EstoqueAVoltar > 0 && await Principal.Confirmar("E o estoque?",
+            $"As vendas tiraram {s.EstoqueAVoltar} unidade(s) do estoque.\n\nPara entregar a máquina pura, o estoque " +
+            "volta ao que era antes das vendas. Para outra festa com o que sobrou, deixe como está.",
+            "Devolver ao estoque", "Deixar como está");
+        await ApagarVendasAgora(devolver);
     }
 
-    private Task ApagarVendasAgora() =>
-        Executar(() => Sistema.Programacao.ApagarVendas(), "Vendas apagadas: a máquina está pura, só com a programação.");
+    private Task ApagarVendasAgora(bool devolverEstoque) =>
+        Executar(() => Sistema.Programacao.ApagarVendas(devolverEstoque),
+            "Vendas apagadas: a máquina está pura, só com a programação.");
 
     /// <summary>Como um banco vazio: apaga tudo e mantém só o que é da máquina.</summary>
     [RelayCommand]

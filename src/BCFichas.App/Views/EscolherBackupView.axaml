@@ -6,8 +6,7 @@
   <Border Classes="cartao" Width="660" Padding="22">
     <StackPanel Spacing="12">
       <TextBlock Text="Qual backup restaurar?" Classes="titulo" FontSize="22" />
-      <TextBlock Classes="suave" FontSize="15" TextWrapping="Wrap"
-                 Text="Achei estes na pasta do backup e nos pendrives. O mais novo está em cima." />
+      <TextBlock Classes="suave" FontSize="15" TextWrapping="Wrap" Text="{Binding Explicacao}" />
       <ScrollViewer MaxHeight="380">
         <ItemsControl ItemsSource="{Binding Itens}">
           <ItemsControl.ItemsPanel>
@@ -38,6 +37,12 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </ScrollViewer>
+      <Border Background="{StaticResource AvisoClara}" CornerRadius="10" Padding="12,8" IsVisible="{Binding TemRecusados}">
+        <StackPanel Spacing="2">
+          <TextBlock Text="Não dá para usar:" FontWeight="Bold" FontSize="13" />
+          <TextBlock Text="{Binding Recusados}" FontSize="13" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
       <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
         <Button Classes="fantasma" Command="{Binding ProcurarCommand}" IsVisible="{Binding PodeProcurar}" Height="56"
                 Padding="16,0">

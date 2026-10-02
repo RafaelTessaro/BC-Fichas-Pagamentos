@@ -266,21 +266,34 @@ public sealed class VendaServico
         return combos;
     }
 
-    /// <summary>Baixa o estoque do produto vendido e, nos combos, dos produtos das fichas.</summary>
+    /// <summary>
+    /// Baixa o estoque do produto vendido e, nos combos, dos produtos das fichas. Guarda junto quanto saiu de
+    /// verdade (o estoque não fica negativo e produto sem controle de estoque não baixa), para "Apagar as vendas"
+    /// devolver exatamente isso.
+    /// </summary>
     private static void BaixarEstoque(SqliteConnection c, SqliteTransaction t, IEnumerable<ItemPedido> itens)
     {
         foreach (var item in itens)
         {
             if (item.ProdutoId is not null)
-                Baixar(c, t, item.ProdutoId.Value, item.Quantidade);
+                Banco.Executar(c, t, "UPDATE itens_pedido SET baixado = $b WHERE id = $id",
+                    ("$b", Baixar(c, t, item.ProdutoId.Value, item.Quantidade)), ("$id", item.Id));
             foreach (var componente in item.Componentes.Where(x => x.ProdutoId is not null))
-                Baixar(c, t, componente.ProdutoId!.Value, item.Quantidade * componente.Quantidade);
+                Banco.Executar(c, t, "UPDATE componentes_item SET baixado = $b WHERE id = $id",
+                    ("$b", Baixar(c, t, componente.ProdutoId!.Value, item.Quantidade * componente.Quantidade)),
+                    ("$id", componente.Id));
         }
 
-        static void Baixar(SqliteConnection c, SqliteTransaction t, long produtoId, int quantidade) =>
-            Banco.Executar(c, t,
-                "UPDATE produtos SET estoque = MAX(estoque - $q, 0) WHERE id = $id AND controla_estoque = 1",
-                ("$q", quantidade), ("$id", produtoId));
+        static long Baixar(SqliteConnection c, SqliteTransaction t, long produtoId, int quantidade)
+        {
+            var sai = Banco.Escalar<long?>(c, t,
+                "SELECT MIN(MAX(estoque, 0), $q) FROM produtos WHERE id = $id AND controla_estoque = 1",
+                ("$q", quantidade), ("$id", produtoId)) ?? 0;
+            if (sai > 0)
+                Banco.Executar(c, t, "UPDATE produtos SET estoque = estoque - $q WHERE id = $id",
+                    ("$q", sai), ("$id", produtoId));
+            return sai;
+        }
     }
 
     private static Pedido? Ler(SqliteConnection c, SqliteTransaction? t, long id)

@@ -329,5 +329,17 @@ public sealed class Banco
                 """);
             t.Commit();
         }
+
+        // Versão 3.7: guarda quanto cada venda tirou de verdade do estoque, para "Apagar as vendas" e o backup
+        // devolverem exatamente isso (nem mais, se o estoque foi digitado de novo ou ligado depois da venda).
+        if (versao < 5)
+        {
+            using var t = conexao.BeginTransaction();
+            foreach (var tabela in new[] { "itens_pedido", "componentes_item" })
+                if (Escalar<long>(conexao, t, $"SELECT COUNT(*) FROM pragma_table_info('{tabela}') WHERE name = 'baixado'") == 0)
+                    Executar(conexao, t, $"ALTER TABLE {tabela} ADD COLUMN baixado INTEGER NOT NULL DEFAULT 0");
+            Executar(conexao, t, "INSERT INTO versao (v) VALUES (5)");
+            t.Commit();
+        }
     }
 }

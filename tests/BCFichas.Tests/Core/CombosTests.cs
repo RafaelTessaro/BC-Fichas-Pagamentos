@@ -289,7 +289,7 @@ public class CombosTests : IDisposable
             CREATE TABLE componentes_combo (id INTEGER PRIMARY KEY AUTOINCREMENT, combo_id INTEGER NOT NULL,
                 produto_id INTEGER NOT NULL, quantidade INTEGER NOT NULL, valor INTEGER NOT NULL, ordem INTEGER NOT NULL);
             INSERT INTO componentes_combo (combo_id, produto_id, quantidade, valor, ordem) VALUES ($c, $p, 5, 650, 1);
-            DELETE FROM versao WHERE v = 4;
+            DELETE FROM versao WHERE v >= 4;
             """, ("$c", combo.Id), ("$p", heineken.Id));
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
 
@@ -316,7 +316,7 @@ public class CombosTests : IDisposable
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
 
         var banco = new Banco(S.Banco.Caminho);
-        Assert.Equal(4, banco.Escalar<long>("SELECT MAX(v) FROM versao"));
+        Assert.Equal(5, banco.Escalar<long>("SELECT MAX(v) FROM versao"));
         Assert.Equal(1000, banco.Escalar<long>("SELECT valor FROM itens_devolucao"));
         var sistema = Sistema.Iniciar(_t.Pasta, criarExemplos: false);
         Assert.Equal(1000, sistema.Caixa.Resumo(sessao.Id).TotalDevolvido);
