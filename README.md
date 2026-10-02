@@ -15,7 +15,7 @@ na **Elgin i9** em papel de 80 mm.
 | --- | --- |
 | **Venda** | Barra lateral com a marca da BC Fichas, menu, evento, caixa e relógio; botões com foto do produto (ou só cor); abas opcionais (Comidas, Bebidas…); pedido com + e − (o valor de cada linha fica sempre à vista, mesmo com nome comprido); total e botão de pagamento. |
 | **Pagamento** | Dinheiro com troco calculado e notas rápidas; débito, crédito e PIX registrados para o relatório (veja "Maquininha de cartão"). |
-| **Produtos** | Nome, detalhe, preço, custo, aba, posição na tela, cor, imagem (o botão Imagem abre sempre em `C:\Sistema_New\produtos`), estoque, fichas por unidade e **combos** (veja "Combos"). Produto pode ficar fora da tela de venda (ex.: vale usado só em combos). |
+| **Produtos** | Nome, detalhe, preço, custo, aba, posição na tela, cor, imagem (o botão Imagem abre sempre em `C:\Sistema_New\produtos`), estoque, fichas por unidade e **combos** (veja "Combos"). Produto pode ficar fora da tela de venda. |
 | **Reimprimir fichas** | Segunda via do pedido inteiro ou de um item só (sai marcado "REIMPRESSÃO"); fichas devolvidas não são reimpressas. |
 | **Devolver fichas** | O cliente não usou uma ficha: acha o pedido pelo número (PED) ou passando a ficha no leitor de código de barras e marca o que voltou. Veja "Devolução de fichas". |
 | **Sangria / Suprimento** | Tira ou põe dinheiro no caixa, com comprovante impresso; mostra em destaque quanto deve haver na gaveta e quanto fica depois. |
@@ -73,25 +73,31 @@ maquininha por uma interface única (`IMaquininha`), então essa etapa não mexe
 
 ## Combos
 
-Combo é um produto vendido por um preço só que imprime as fichas de outros produtos. No relatório e no
-fechamento aparece o combo; o estoque baixa dos produtos das fichas.
+Combo é um produto vendido por um preço só que imprime várias fichas. No relatório e no fechamento aparece o
+combo; nas fichas sai o que você escreveu em cada linha.
 
-- **COMBO HEINEKEN por R$ 30,00:** em **Menu → Produtos → Novo produto**, nome `COMBO HEINEKEN`, preço `30,00`,
-  ligue **Combo**, escolha `HEINEKEN`, toque em **Adicionar** e ponha **5** fichas de **R$ 6,50**. Na venda saem
-  5 fichas de HEINEKEN de R$ 6,50 (com "COMBO HEINEKEN" escrito embaixo) e o relatório mostra 1 COMBO HEINEKEN
-  de R$ 30,00. A tela mostra a conta: "5 fichas • as fichas somam R$ 32,50 • preço do combo R$ 30,00
-  (R$ 2,50 de desconto)".
-- **COMBO R$ 100,00 em vales:** cadastre os vales (`VALE R$ 2,00`, `VALE R$ 5,00`…) com **Aparece na tela de
-  venda** desligado (eles não ocupam botão), depois crie o `COMBO R$ 100,00` com, por exemplo, 5 × VALE R$ 2,00,
-  2 × VALE R$ 5,00 e 8 × VALE R$ 10,00 — a tela avisa quando as fichas somam o preço do combo.
+Em **Menu → Produtos**, crie o produto (ex.: `COMBO R$ 100,00`), ligue **Combo** e abre a tela **Fichas do
+combo**, igual à do sistema antigo, só que mais fácil:
+
+- Escreva o **produto** (o que sai grande na ficha), o **detalhe** (opcional, ex.: `VAL. 05/10/26`), a **quantidade**
+  e o **valor de cada** ficha e toque em **Adicionar**. Repetindo a mesma ficha, a quantidade soma. Depois de
+  adicionar, o detalhe continua preenchido para a próxima linha.
+- **Atalhos:** `Vale R$ 1,00` … `Vale R$ 50,00` preenchem nome e valor do vale; os produtos cadastrados também
+  aparecem como atalho (aí a ficha baixa o estoque daquele produto).
+- Na lista: **−** tira uma ficha, **+** põe mais uma, a **lixeira** tira todas daquela linha.
+- Embaixo aparecem quantas fichas são, o **total das fichas** e se ele confere com o preço do combo; o botão
+  **Usar o total como preço do combo** acerta o preço. **Salvar combo** grava.
+
+Exemplos: `COMBO HEINEKEN` por R$ 30,00 com 5 fichas `HEINEKEN` de R$ 6,50 (o relatório mostra o combo de
+R$ 30,00); `COMBO R$ 100,00` com 5 × `VALE R$ 10,00`, 6 × `VALE R$ 5,00`, 5 × `VALE R$ 2,00` e 10 × `VALE R$ 1,00`.
 
 Na devolução, cada ficha do combo volta pela sua parte do preço do combo (no COMBO HEINEKEN de R$ 30,00, cada
-uma das 5 fichas vale R$ 6,00); devolvendo todas, o cliente recebe exatamente o preço do combo. A venda guarda o
-combo como ele era na hora: mudar o combo depois não muda as fichas já vendidas (nem a reimpressão).
+uma das 5 fichas vale R$ 6,00; nos vales que somam o preço, cada vale volta o seu valor). A venda guarda o combo
+como ele era na hora: mudar o combo depois não muda as fichas já vendidas (nem a reimpressão).
 
-| Cadastro do combo | Ficha que saiu do combo |
+| Fichas do combo | Ficha que saiu do combo |
 | --- | --- |
-| ![](docs/telas/40-produtos-combo.png) | ![](docs/telas/ficha-combo.png) |
+| ![](docs/telas/40b-produtos-combo-vales.png) | ![](docs/telas/ficha-combo.png) |
 
 ## Devolução de fichas
 

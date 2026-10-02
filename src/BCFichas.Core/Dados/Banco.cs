@@ -301,5 +301,33 @@ public sealed class Banco
                 """);
             t.Commit();
         }
+
+        // Versão 3.4: as fichas do combo podem ser texto livre (produto, detalhe, quantidade e valor).
+        if (versao < 4)
+        {
+            using var t = conexao.BeginTransaction();
+            Executar(conexao, t, """
+                CREATE TABLE componentes_combo_novo (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    combo_id INTEGER NOT NULL REFERENCES produtos(id),
+                    produto_id INTEGER REFERENCES produtos(id),
+                    nome TEXT NOT NULL,
+                    detalhe TEXT NOT NULL DEFAULT '',
+                    quantidade INTEGER NOT NULL,
+                    valor INTEGER NOT NULL,
+                    ordem INTEGER NOT NULL
+                );
+                INSERT INTO componentes_combo_novo (id, combo_id, produto_id, nome, detalhe, quantidade, valor, ordem)
+                    SELECT c.id, c.combo_id, c.produto_id, COALESCE(p.nome, ''), COALESCE(p.detalhe, ''),
+                           c.quantidade, c.valor, c.ordem
+                    FROM componentes_combo c LEFT JOIN produtos p ON p.id = c.produto_id;
+                DROP TABLE componentes_combo;
+                ALTER TABLE componentes_combo_novo RENAME TO componentes_combo;
+                CREATE INDEX ix_componentes_combo ON componentes_combo (combo_id);
+                CREATE INDEX ix_componentes_combo_produto ON componentes_combo (produto_id);
+                INSERT INTO versao (v) VALUES (4);
+                """);
+            t.Commit();
+        }
     }
 }

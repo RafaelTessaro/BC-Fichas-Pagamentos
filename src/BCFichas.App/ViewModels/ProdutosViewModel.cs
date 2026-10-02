@@ -29,42 +29,58 @@ public sealed partial class OpcaoCor(string hex) : ObservableObject
     [ObservableProperty] private bool _marcada;
 }
 
-/// <summary>Uma linha do combo no cadastro: produto que sai na ficha, quantas fichas e o valor de cada uma.</summary>
+/// <summary>Uma linha das fichas do combo: o que sai escrito, quantas fichas e o valor de cada uma.</summary>
 public sealed partial class ComponenteEdicao : ObservableObject
 {
     private readonly Action _aoMudar;
+    private readonly Action<ComponenteEdicao> _remover;
 
-    public ComponenteEdicao(long produtoId, string nome, int quantidade, long valor, Action aoMudar)
+    public ComponenteEdicao(long? produtoId, string nome, string detalhe, int quantidade, long valor, Action aoMudar,
+        Action<ComponenteEdicao> remover)
     {
         ProdutoId = produtoId;
         Nome = nome;
+        Detalhe = detalhe;
         _quantidade = quantidade;
-        _valor = Dinheiro.ParaEdicao(valor);
+        ValorCentavos = valor;
         _aoMudar = aoMudar;
+        _remover = remover;
     }
 
-    public long ProdutoId { get; }
+    /// <summary>Produto cadastrado ligado à ficha (o estoque dele baixa junto); nulo no texto livre.</summary>
+    public long? ProdutoId { get; }
     public string Nome { get; }
+    public string Detalhe { get; }
+    public long ValorCentavos { get; }
+    public string Valor => Dinheiro.Formatar(ValorCentavos);
+    public bool Ligado => ProdutoId is not null;
 
-    [ObservableProperty] private int _quantidade;
-    [ObservableProperty] private string _valor;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Total))]
+    private int _quantidade;
 
-    public long? ValorCentavos => Dinheiro.TentarLer(Valor, out var v) ? v : null;
+    public long TotalCentavos => Quantidade * ValorCentavos;
+    public string Total => Dinheiro.Formatar(TotalCentavos);
 
     partial void OnQuantidadeChanged(int value) => _aoMudar();
-    partial void OnValorChanged(string value) => _aoMudar();
 
     [RelayCommand]
     private void Mais()
     {
-        if (Quantidade < 50) Quantidade++;
+        if (Quantidade < 200) Quantidade++;
     }
 
+    /// <summary>Tira uma ficha; tirando a última, a linha sai do combo.</summary>
     [RelayCommand]
     private void Menos()
     {
         if (Quantidade > 1) Quantidade--;
+        else _remover(this);
     }
+
+    /// <summary>Tira todas as fichas desta linha.</summary>
+    [RelayCommand]
+    private void Remover() => _remover(this);
 }
 
 /// <summary>Cadastro dos produtos (botões da tela de venda).</summary>
@@ -89,8 +105,10 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
     public List<OpcaoCor> Cores { get; }
     public List<int> OpcoesFichas { get; } = Enumerable.Range(1, 10).ToList();
     public ObservableCollection<ComponenteEdicao> Componentes { get; } = new();
-    /// <summary>Produtos que podem sair nas fichas de um combo (não pode combo dentro de combo).</summary>
+    /// <summary>Produtos cadastrados que dá para pôr nas fichas do combo (não pode combo dentro de combo).</summary>
     public ObservableCollection<Produto> ParaOCombo { get; } = new();
+    /// <summary>Atalhos de vales: um toque preenche "VALE R$ 10,00" e o valor.</summary>
+    public List<long> Vales { get; } = [100, 200, 500, 1000, 2000, 5000];
 
     [ObservableProperty] private string _busca = "";
     [ObservableProperty] private ProdutoItem? _selecionado;
@@ -115,11 +133,27 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
     [ObservableProperty] private IBrush _previaFundo = new SolidColorBrush(Color.Parse(Paleta[0]));
     [ObservableProperty] private IBrush _previaTexto = Brushes.White;
     [ObservableProperty] private bool _ehCombo;
-    [ObservableProperty] private Produto? _paraAdicionar;
     [ObservableProperty] private string _resumoCombo = "";
+    [ObservableProperty] private string _totalFichas = Dinheiro.Formatar(0);
+    [ObservableProperty] private string _quantasFichas = "";
+    [ObservableProperty] private string _confereCombo = "";
+    [ObservableProperty] private bool _comboConfere;
+
+    /// <summary>Tela "Fichas do combo" aberta por cima do cadastro.</summary>
+    [ObservableProperty] private bool _editandoCombo;
+
+    // Linha nova das fichas do combo (como no sistema antigo: produto, detalhe, quantidade e valor)
+    [ObservableProperty] private string _fichaNome = "";
+    [ObservableProperty] private string _fichaDetalhe = "";
+    [ObservableProperty] private string _fichaQuantidade = "1";
+    [ObservableProperty] private string _fichaValor = "";
+    private long? _fichaProduto;
 
     public bool Editando => Id != 0;
     public bool NaoEhCombo => !EhCombo;
+    public bool TemFichasNoCombo => Componentes.Count > 0;
+    public bool SemFichasNoCombo => Componentes.Count == 0;
+    public string NomeDoCombo => string.IsNullOrWhiteSpace(Nome) ? "Combo novo" : Nome.Trim().ToUpperInvariant();
     public bool TemImagem => Imagem is not null;
     private int TotalPosicoes => Principal.Config.Colunas * Principal.Config.Linhas;
 
@@ -149,67 +183,157 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
     {
         OnPropertyChanged(nameof(NaoEhCombo));
         AtualizarResumoCombo();
+        // Ligou "Combo" num produto sem fichas: já abre a tela para montar as fichas.
+        if (value && !_carregando && Componentes.Count == 0) AbrirCombo();
     }
 
     partial void OnPrecoChanged(string value) => AtualizarResumoCombo();
+    partial void OnNomeChanged(string value) => OnPropertyChanged(nameof(NomeDoCombo));
+
+    // Mudou o nome digitado: deixa de ser o produto cadastrado que foi escolhido no atalho.
+    partial void OnFichaNomeChanged(string value)
+    {
+        if (_fichaProduto is { } id && ParaOCombo.FirstOrDefault(p => p.Id == id)?.Nome != value.Trim().ToUpperInvariant())
+            _fichaProduto = null;
+    }
 
     partial void OnAtivoChanged(bool value)
     {
         if (!_carregando && value && Posicao is null) AtualizarPosicoes(escolherLivre: true);
     }
 
-    /// <summary>Põe o produto escolhido nas fichas do combo (ou mais uma ficha, se já estiver).</summary>
     [RelayCommand]
-    private void AdicionarAoCombo()
+    private void AbrirCombo()
     {
-        if (ParaAdicionar is not { } produto) return;
-        var existente = Componentes.FirstOrDefault(c => c.ProdutoId == produto.Id);
-        if (existente is not null) existente.Quantidade++;
-        else Componentes.Add(new ComponenteEdicao(produto.Id, produto.Nome, 1, produto.PrecoCentavos, AtualizarResumoCombo));
-        ParaAdicionar = null;
-        AtualizarResumoCombo();
+        EhCombo = true;
+        EditandoCombo = true;
     }
 
     [RelayCommand]
-    private void RemoverDoCombo(ComponenteEdicao componente)
+    private void FecharCombo()
+    {
+        EditandoCombo = false;
+        if (Componentes.Count == 0) EhCombo = false;
+    }
+
+    /// <summary>Fecha a tela das fichas e já grava o produto.</summary>
+    [RelayCommand]
+    private void SalvarCombo()
+    {
+        if (Componentes.Count == 0)
+        {
+            Principal.MostrarAviso("Adicione as fichas do combo: produto, quantidade e valor, e toque em Adicionar.", erro: true);
+            return;
+        }
+        EditandoCombo = false;
+        Salvar();
+    }
+
+    /// <summary>
+    /// Põe a linha digitada nas fichas. Se já existe a mesma ficha (nome, detalhe e valor), soma a quantidade,
+    /// como no sistema antigo. Depois limpa o produto, a quantidade e o valor e mantém o detalhe (ex.: validade).
+    /// </summary>
+    [RelayCommand]
+    private void AdicionarFicha()
+    {
+        var nome = FichaNome.Trim().ToUpperInvariant();
+        var detalhe = FichaDetalhe.Trim().ToUpperInvariant();
+        if (nome.Length == 0)
+        {
+            Principal.MostrarAviso("Escreva o que sai na ficha (ex.: VALE R$ 10,00).", erro: true);
+            return;
+        }
+        var quantidade = 1;
+        if (!string.IsNullOrWhiteSpace(FichaQuantidade) &&
+            (!int.TryParse(FichaQuantidade.Trim(), out quantidade) || quantidade is < 1 or > 200))
+        {
+            Principal.MostrarAviso("A quantidade de fichas vai de 1 a 200.", erro: true);
+            return;
+        }
+        if (!Dinheiro.TentarLer(FichaValor, out var valor) || valor < 0)
+        {
+            Principal.MostrarAviso("Digite o valor de cada ficha, por exemplo 10,00.", erro: true);
+            return;
+        }
+
+        var igual = Componentes.FirstOrDefault(c => c.Nome == nome && c.Detalhe == detalhe && c.ValorCentavos == valor);
+        if (igual is not null)
+            igual.Quantidade = Math.Min(200, igual.Quantidade + quantidade);
+        else
+            Componentes.Add(new ComponenteEdicao(_fichaProduto, nome, detalhe, quantidade, valor, AtualizarResumoCombo, RemoverFicha));
+
+        FichaNome = "";
+        FichaQuantidade = "1";
+        FichaValor = "";
+        _fichaProduto = null;
+        AtualizarResumoCombo();
+    }
+
+    /// <summary>Atalho de vale: "VALE R$ 10,00" com valor de R$ 10,00.</summary>
+    [RelayCommand]
+    private void UsarVale(long centavos)
+    {
+        FichaNome = "VALE " + Dinheiro.Formatar(centavos);
+        FichaValor = Dinheiro.ParaEdicao(centavos);
+        _fichaProduto = null;
+    }
+
+    /// <summary>Atalho de produto cadastrado: preenche nome, detalhe e valor e liga ao estoque dele.</summary>
+    [RelayCommand]
+    private void UsarProduto(Produto produto)
+    {
+        FichaNome = produto.Nome;
+        if (produto.Detalhe.Length > 0) FichaDetalhe = produto.Detalhe;
+        FichaValor = Dinheiro.ParaEdicao(produto.PrecoCentavos);
+        _fichaProduto = produto.Id;
+    }
+
+    [RelayCommand]
+    private void LimparFichas()
+    {
+        Componentes.Clear();
+        AtualizarResumoCombo();
+    }
+
+    /// <summary>Preço do combo = soma das fichas (ex.: vales que somam R$ 100).</summary>
+    [RelayCommand]
+    private void UsarTotalComoPreco() =>
+        Preco = Dinheiro.ParaEdicao(Componentes.Sum(c => c.TotalCentavos));
+
+    private void RemoverFicha(ComponenteEdicao componente)
     {
         Componentes.Remove(componente);
         AtualizarResumoCombo();
     }
 
-    /// <summary>"5 fichas • somam R$ 32,50 • preço do combo R$ 30,00 (R$ 2,50 de desconto)".</summary>
+    /// <summary>"26 fichas • as fichas somam R$ 100,00 • preço do combo R$ 100,00 (igual às fichas)".</summary>
     private void AtualizarResumoCombo()
     {
-        if (!EhCombo || Componentes.Count == 0)
-        {
-            ResumoCombo = EhCombo ? "Escolha os produtos que saem nas fichas e toque em Adicionar." : "";
-            return;
-        }
+        OnPropertyChanged(nameof(TemFichasNoCombo));
+        OnPropertyChanged(nameof(SemFichasNoCombo));
         var fichas = Componentes.Sum(c => c.Quantidade);
-        var soma = Componentes.Sum(c => (c.ValorCentavos ?? 0) * c.Quantidade);
-        var texto = $"{fichas} ficha(s) • as fichas somam {Dinheiro.Formatar(soma)}";
+        var soma = Componentes.Sum(c => c.TotalCentavos);
+        TotalFichas = Dinheiro.Formatar(soma);
+        QuantasFichas = fichas == 1 ? "1 ficha" : $"{fichas} fichas";
+
         if (Dinheiro.TentarLer(Preco, out var preco))
         {
-            texto += $" • preço do combo {Dinheiro.Formatar(preco)}";
-            if (preco < soma) texto += $" ({Dinheiro.Formatar(soma - preco)} de desconto)";
-            else if (preco > soma) texto += $" ({Dinheiro.Formatar(preco - soma)} a mais que as fichas)";
-            else texto += " (igual às fichas)";
+            ComboConfere = preco == soma;
+            ConfereCombo = preco == soma ? $"Preço do combo: {Dinheiro.Formatar(preco)} — igual às fichas"
+                : preco < soma ? $"Preço do combo: {Dinheiro.Formatar(preco)} — {Dinheiro.Formatar(soma - preco)} de desconto"
+                : $"Preço do combo: {Dinheiro.Formatar(preco)} — {Dinheiro.Formatar(preco - soma)} a mais que as fichas";
         }
-        ResumoCombo = texto;
-    }
+        else
+        {
+            ComboConfere = false;
+            ConfereCombo = "Preço do combo ainda não definido";
+        }
 
-    partial void OnCorChanged(string value)
-    {
-        foreach (var c in Cores) c.Marcada = c.Hex == value;
-        var cor = Recursos.CorOuPadrao(value);
-        PreviaFundo = new SolidColorBrush(cor);
-        PreviaTexto = Recursos.TextoSobre(cor);
-    }
-
-    partial void OnImagemChanged(string? value)
-    {
-        ImagemPrevia = CacheImagens.Obter(Sistema.Impressao.CaminhoImagem(value), 200);
-        OnPropertyChanged(nameof(TemImagem));
+        ResumoCombo = !EhCombo ? ""
+            : fichas == 0 ? "Nenhuma ficha ainda: toque em Montar as fichas."
+            : $"{QuantasFichas} • as fichas somam {TotalFichas} • " +
+              string.Join(", ", Componentes.Take(4).Select(c => $"{c.Quantidade} × {c.Nome}")) +
+              (Componentes.Count > 4 ? "…" : "");
     }
 
     [RelayCommand]
@@ -232,9 +356,13 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
         Imagem = null;
         Componentes.Clear();
         EhCombo = false;
+        EditandoCombo = false;
+        FichaNome = FichaDetalhe = FichaValor = "";
+        FichaQuantidade = "1";
         CarregarParaOCombo();
         _carregando = false;
         AtualizarPosicoes(escolherLivre: true);
+        AtualizarResumoCombo();
     }
 
     [RelayCommand]
@@ -266,18 +394,17 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
         {
             if (Componentes.Count == 0)
             {
-                Principal.MostrarAviso("Combo sem fichas: escolha os produtos que saem nas fichas e toque em Adicionar.", erro: true);
+                Principal.MostrarAviso("Combo sem fichas: toque em Montar as fichas e adicione o que sai em cada ficha.", erro: true);
                 return;
             }
-            foreach (var c in Componentes)
+            componentes.AddRange(Componentes.Select(c => new ComponenteCombo
             {
-                if (c.ValorCentavos is not { } valor)
-                {
-                    Principal.MostrarAviso($"{c.Nome}: digite o valor da ficha, por exemplo 6,50.", erro: true);
-                    return;
-                }
-                componentes.Add(new ComponenteCombo { ProdutoId = c.ProdutoId, Nome = c.Nome, Quantidade = c.Quantidade, ValorCentavos = valor });
-            }
+                ProdutoId = c.ProdutoId,
+                Nome = c.Nome,
+                Detalhe = c.Detalhe,
+                Quantidade = c.Quantidade,
+                ValorCentavos = c.ValorCentavos,
+            }));
         }
 
         try
@@ -364,8 +491,10 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
         Imagem = p.Imagem;
         Componentes.Clear();
         foreach (var c in p.Componentes)
-            Componentes.Add(new ComponenteEdicao(c.ProdutoId, c.Nome, c.Quantidade, c.ValorCentavos, AtualizarResumoCombo));
+            Componentes.Add(new ComponenteEdicao(c.ProdutoId, c.Nome, c.Detalhe, c.Quantidade, c.ValorCentavos,
+                AtualizarResumoCombo, RemoverFicha));
         EhCombo = p.EhCombo;
+        EditandoCombo = false;
         CarregarParaOCombo();
         _carregando = false;
         AtualizarPosicoes(escolherLivre: false, atual: p.Ativo && p.Posicao > 0 ? p.Posicao : null);

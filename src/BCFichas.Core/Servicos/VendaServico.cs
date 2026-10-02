@@ -249,7 +249,8 @@ public sealed class VendaServico
             var componentes = CatalogoServico.Componentes(c, t, linha.Produto.Id);
             combos[linha.Produto.Id] = componentes;
             Precisa(linha.Produto.Id, linha.Quantidade);
-            foreach (var componente in componentes) Precisa(componente.ProdutoId, linha.Quantidade * componente.Quantidade);
+            foreach (var componente in componentes.Where(x => x.ProdutoId is not null))
+                Precisa(componente.ProdutoId!.Value, linha.Quantidade * componente.Quantidade);
         }
 
         foreach (var (produtoId, quantidade) in necessario)

@@ -46,7 +46,8 @@ public sealed class Carrinho
         void Linha(Produto p, int q)
         {
             Somar(p.Id, p.ControlaEstoque, p.Estoque, q);
-            foreach (var c in p.Componentes) Somar(c.ProdutoId, c.ControlaEstoque, c.Estoque, q * c.Quantidade);
+            foreach (var c in p.Componentes.Where(c => c.ProdutoId is not null))
+                Somar(c.ProdutoId!.Value, c.ControlaEstoque, c.Estoque, q * c.Quantidade);
         }
         foreach (var l in _linhas) Linha(l.Produto, l.Quantidade);
         Linha(novo, quantidade);

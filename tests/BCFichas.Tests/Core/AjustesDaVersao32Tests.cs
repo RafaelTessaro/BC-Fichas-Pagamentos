@@ -246,7 +246,7 @@ public class AjustesDaVersao32Tests : IDisposable
         var banco = new Banco(caminho);
         // Volta o banco para a versão 1 (como o da versão 3.1)
         banco.Executar("""
-            DROP TABLE componentes_item; DROP TABLE componentes_combo; DELETE FROM versao WHERE v = 3;
+            DROP TABLE componentes_item; DROP TABLE componentes_combo; DELETE FROM versao WHERE v >= 3;
             DROP TABLE itens_devolucao; DROP TABLE devolucoes; DROP INDEX ix_pedidos_numero;
             ALTER TABLE pedidos DROP COLUMN teste; ALTER TABLE sessoes DROP COLUMN teste;
             DELETE FROM contadores WHERE nome = 'pedido_teste'; DELETE FROM versao WHERE v = 2;
@@ -258,7 +258,7 @@ public class AjustesDaVersao32Tests : IDisposable
         var sessao = sistema.Caixa.SessaoAberta(1)!;
         Assert.Equal("ANA", sessao.Operador);
         Assert.False(sessao.Teste);
-        Assert.Equal(3, sistema.Banco.Escalar<long>("SELECT MAX(v) FROM versao"));
+        Assert.Equal(4, sistema.Banco.Escalar<long>("SELECT MAX(v) FROM versao"));
         Assert.NotNull(sistema.Caixa.Abrir(1, null, 0, teste: true));
     }
 

@@ -34,7 +34,7 @@ public class CombosTests : IDisposable
         {
             Nome = nome, AbaId = Aba.Id, Posicao = S.Catalogo.PosicoesLivres(Aba.Id, 36).First(), PrecoCentavos = preco,
             Componentes = fichas.Select(f => new ComponenteCombo
-                { ProdutoId = f.Produto.Id, Quantidade = f.Quantidade, ValorCentavos = f.Valor }).ToList(),
+                { ProdutoId = f.Produto.Id, Nome = f.Produto.Nome, Quantidade = f.Quantidade, ValorCentavos = f.Valor }).ToList(),
         }, 36);
 
     private Pedido Vender(SessaoCaixa sessao, params (Produto Produto, int Quantidade)[] itens)
@@ -210,21 +210,57 @@ public class CombosTests : IDisposable
         var dentro = Assert.Throws<ErroDeNegocio>(() => NovoCombo("Combo duplo", 5000, (combo, 2, 3000)));
         Assert.Contains("um combo não pode ter outro combo dentro", dentro.Message);
         var vira = S.Catalogo.Produto(heineken.Id)!;
-        vira.Componentes = [new ComponenteCombo { ProdutoId = combo.Id, Quantidade = 1, ValorCentavos = 0 }];
+        vira.Componentes = [new ComponenteCombo { ProdutoId = combo.Id, Nome = "X", Quantidade = 1, ValorCentavos = 0 }];
         Assert.Throws<ErroDeNegocio>(() => S.Catalogo.SalvarProduto(vira, 36));
         var proprio = S.Catalogo.Produto(combo.Id)!;
-        proprio.Componentes.Add(new ComponenteCombo { ProdutoId = combo.Id, Quantidade = 1 });
+        proprio.Componentes.Add(new ComponenteCombo { ProdutoId = combo.Id, Nome = "X", Quantidade = 1 });
         Assert.Throws<ErroDeNegocio>(() => S.Catalogo.SalvarProduto(proprio, 36));
-        Assert.Throws<ErroDeNegocio>(() => NovoCombo("Muitas", 100, (heineken, 51, 1)));
-
-        var excluir = Assert.Throws<ErroDeNegocio>(() => S.Catalogo.ExcluirProduto(heineken.Id));
-        Assert.Contains("COMBO HEINEKEN", excluir.Message);
+        Assert.Throws<ErroDeNegocio>(() => NovoCombo("Muitas", 100, (heineken, 201, 1)));
+        var semNome = S.Catalogo.Produto(combo.Id)!;
+        semNome.Componentes[0].Nome = " ";
+        Assert.Equal("Escreva o nome que sai na ficha do combo.",
+            Assert.Throws<ErroDeNegocio>(() => S.Catalogo.SalvarProduto(semNome, 36)).Message);
         Assert.Equal(["COMBO HEINEKEN"], S.Catalogo.CombosQueUsam(heineken.Id));
 
-        // Excluindo o combo, a Heineken fica livre
-        S.Catalogo.ExcluirProduto(combo.Id);
+        // Excluindo a Heineken, o combo continua com a ficha "HEINEKEN" (só deixa de baixar o estoque dela)
         S.Catalogo.ExcluirProduto(heineken.Id);
-        Assert.Null(S.Catalogo.Produto(heineken.Id));
+        var ficou = Assert.Single(S.Catalogo.Produto(combo.Id)!.Componentes);
+        Assert.Equal("HEINEKEN", ficou.Nome);
+        Assert.Null(ficou.ProdutoId);
+        Assert.Equal(5, GeradorFichas.Gerar(Vender(S.Caixa.Abrir(1, null, 0), (combo, 1)), S.Config.Atual).Count);
+    }
+
+    [Fact]
+    public void Combo_de_texto_livre_como_no_sistema_antigo()
+    {
+        // COMBO R$ 100,00: 5 × VALE R$ 10,00, 6 × VALE R$ 5,00, 5 × VALE R$ 2,00 e 10 × VALE R$ 1,00, com validade
+        (string Nome, int Qtd, long Valor)[] vales = [("Vale R$ 10,00", 5, 1000), ("Vale R$ 5,00", 6, 500),
+            ("Vale R$ 2,00", 5, 200), ("Vale R$ 1,00", 10, 100)];
+        var combo = S.Catalogo.SalvarProduto(new Produto
+        {
+            Nome = "Combo R$ 100,00", AbaId = Aba.Id, Posicao = S.Catalogo.PosicoesLivres(Aba.Id, 36).First(),
+            PrecoCentavos = 10000,
+            Componentes = vales.Select(v => new ComponenteCombo
+                { Nome = v.Nome, Detalhe = "val. 05/10/26", Quantidade = v.Qtd, ValorCentavos = v.Valor }).ToList(),
+        }, 36);
+        var lido = S.Catalogo.Produto(combo.Id)!;
+        Assert.Equal(26, lido.FichasPorVenda);
+        Assert.Equal(10000, lido.ValorDasFichas);
+        Assert.All(lido.Componentes, c => Assert.Null(c.ProdutoId));
+        Assert.Equal("VALE R$ 10,00", lido.Componentes[0].Nome);
+
+        var sessao = S.Caixa.Abrir(1, null, 0);
+        var pedido = Vender(sessao, (combo, 1));
+        var fichas = GeradorFichas.Gerar(pedido, S.Config.Atual);
+        Assert.Equal(26, fichas.Count);
+        Assert.Equal(10000, fichas.Sum(f => f.PrecoCentavos));
+        // O detalhe da ficha (validade) sai embaixo do nome
+        Assert.All(fichas, f => Assert.Equal("VAL. 05/10/26", f.Detalhe));
+        Assert.Equal("COMBO R$ 100,00", Assert.Single(S.Caixa.Resumo(sessao.Id).Produtos).Nome);
+
+        // Devolve 3 vales de R$ 1,00: cada um volta R$ 1,00 (as fichas somam o preço do combo)
+        var linha = FichasDoPedido.Linhas(S.Vendas.Pedido(pedido.Id)!).Single(l => l.Nome == "VALE R$ 1,00");
+        Assert.Equal(300, S.Devolucoes.Devolver(sessao, pedido.Id, [(linha.Item.Id, linha.Componente!.Id, 3)], null).ValorCentavos);
     }
 
     [Fact]
@@ -243,6 +279,28 @@ public class CombosTests : IDisposable
     }
 
     [Fact]
+    public void Combo_feito_na_versao_33_continua_igual_na_versao_34()
+    {
+        var heineken = NovoProduto("Heineken", 650);
+        var combo = NovoCombo("Combo Heineken", 3000, (heineken, 5, 650));
+        // Volta a tabela das fichas do combo para o jeito da versão 3.3 (só o produto, sem nome)
+        S.Banco.Executar("""
+            DROP TABLE componentes_combo;
+            CREATE TABLE componentes_combo (id INTEGER PRIMARY KEY AUTOINCREMENT, combo_id INTEGER NOT NULL,
+                produto_id INTEGER NOT NULL, quantidade INTEGER NOT NULL, valor INTEGER NOT NULL, ordem INTEGER NOT NULL);
+            INSERT INTO componentes_combo (combo_id, produto_id, quantidade, valor, ordem) VALUES ($c, $p, 5, 650, 1);
+            DELETE FROM versao WHERE v = 4;
+            """, ("$c", combo.Id), ("$p", heineken.Id));
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+
+        var sistema = Sistema.Iniciar(_t.Pasta, criarExemplos: false);
+        var lido = Assert.Single(sistema.Catalogo.Produto(combo.Id)!.Componentes);
+        Assert.Equal("HEINEKEN", lido.Nome);
+        Assert.Equal(heineken.Id, lido.ProdutoId);
+        Assert.Equal(5, lido.Quantidade);
+    }
+
+    [Fact]
     public void Banco_da_versao_32_ganha_os_combos_e_mantem_as_devolucoes()
     {
         var sessao = S.Caixa.Abrir(1, null, 5000);
@@ -253,12 +311,12 @@ public class CombosTests : IDisposable
         S.Banco.Executar("""
             DROP TABLE componentes_combo; DROP TABLE componentes_item; DROP INDEX ix_itens_devolucao_componente;
             ALTER TABLE itens_devolucao DROP COLUMN componente_id; ALTER TABLE itens_devolucao DROP COLUMN valor;
-            DELETE FROM versao WHERE v = 3;
+            DELETE FROM versao WHERE v >= 3;
             """);
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
 
         var banco = new Banco(S.Banco.Caminho);
-        Assert.Equal(3, banco.Escalar<long>("SELECT MAX(v) FROM versao"));
+        Assert.Equal(4, banco.Escalar<long>("SELECT MAX(v) FROM versao"));
         Assert.Equal(1000, banco.Escalar<long>("SELECT valor FROM itens_devolucao"));
         var sistema = Sistema.Iniciar(_t.Pasta, criarExemplos: false);
         Assert.Equal(1000, sistema.Caixa.Resumo(sessao.Id).TotalDevolvido);

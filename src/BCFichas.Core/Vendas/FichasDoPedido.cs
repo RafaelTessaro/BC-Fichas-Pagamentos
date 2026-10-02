@@ -14,8 +14,9 @@ public sealed class LinhaDeFichas
 
     public bool DeCombo => Componente is not null;
     public string Nome => Componente?.Nome ?? Item.Nome;
-    /// <summary>Linha de baixo da ficha: no combo, o nome do combo.</summary>
-    public string Detalhe => Componente is null ? Item.Detalhe : Item.Nome;
+    /// <summary>Linha de baixo da ficha: no combo, o detalhe da ficha (ex.: VAL. 05/10/26) ou o nome do combo.</summary>
+    public string Detalhe => Componente is null ? Item.Detalhe
+        : Componente.Detalhe.Length > 0 ? Componente.Detalhe : Item.Nome;
     /// <summary>Valor impresso na ficha.</summary>
     public long ValorNaFicha => Componente?.ValorCentavos ?? Item.PrecoCentavos;
 

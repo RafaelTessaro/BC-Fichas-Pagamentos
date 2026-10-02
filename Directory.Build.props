@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <Version>3.3.0</Version>
+    <Version>3.4.0</Version>
     <Company>BC Fichas</Company>
     <Product>BC Fichas</Product>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>

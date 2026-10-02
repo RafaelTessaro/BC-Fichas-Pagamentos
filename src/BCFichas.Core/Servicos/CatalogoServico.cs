@@ -98,14 +98,15 @@ public sealed class CatalogoServico
             """, l => l.GetString(0), ("$p", produtoId));
 
     private const string SqlComponentes = """
-        SELECT c.combo_id, c.id, c.produto_id, p.nome, p.detalhe, c.quantidade, c.valor, p.controla_estoque, p.estoque
-        FROM componentes_combo c JOIN produtos p ON p.id = c.produto_id
+        SELECT c.combo_id, c.id, c.produto_id, c.nome, c.detalhe, c.quantidade, c.valor,
+               COALESCE(p.controla_estoque, 0), COALESCE(p.estoque, 0)
+        FROM componentes_combo c LEFT JOIN produtos p ON p.id = c.produto_id
         """;
 
     internal static ComponenteCombo LerComponente(SqliteDataReader l) => new()
     {
         Id = l.GetInt64(1),
-        ProdutoId = l.GetInt64(2),
+        ProdutoId = l.IsDBNull(2) ? null : l.GetInt64(2),
         Nome = l.GetString(3),
         Detalhe = l.GetString(4),
         Quantidade = l.GetInt32(5),
@@ -205,10 +206,11 @@ public sealed class CatalogoServico
             {
                 var componente = produto.Componentes[i];
                 componente.Id = Banco.Escalar<long>(c, t, """
-                    INSERT INTO componentes_combo (combo_id, produto_id, quantidade, valor, ordem)
-                    VALUES ($c, $p, $q, $v, $o) RETURNING id
-                    """, ("$c", produto.Id), ("$p", componente.ProdutoId), ("$q", componente.Quantidade),
-                    ("$v", componente.ValorCentavos), ("$o", i + 1));
+                    INSERT INTO componentes_combo (combo_id, produto_id, nome, detalhe, quantidade, valor, ordem)
+                    VALUES ($c, $p, $n, $d, $q, $v, $o) RETURNING id
+                    """, ("$c", produto.Id), ("$p", componente.ProdutoId), ("$n", componente.Nome),
+                    ("$d", componente.Detalhe), ("$q", componente.Quantidade), ("$v", componente.ValorCentavos),
+                    ("$o", i + 1));
             }
         });
 
@@ -223,7 +225,7 @@ public sealed class CatalogoServico
     private void ConferirCombo(Produto produto)
     {
         if (!produto.EhCombo) return;
-        if (produto.Componentes.Count > 30) throw new ErroDeNegocio("O combo pode ter no máximo 30 produtos.");
+        if (produto.Componentes.Count > 40) throw new ErroDeNegocio("O combo pode ter no máximo 40 linhas.");
         if (produto.Id != 0)
         {
             var usado = CombosQueUsam(produto.Id);
@@ -232,26 +234,38 @@ public sealed class CatalogoServico
         }
         foreach (var componente in produto.Componentes)
         {
-            if (componente.ProdutoId == produto.Id && produto.Id != 0)
-                throw new ErroDeNegocio("O combo não pode ter ele mesmo nas fichas.");
-            var item = Produto(componente.ProdutoId)
-                       ?? throw new ErroDeNegocio("Um dos produtos do combo foi excluído. Tire ele do combo.");
-            if (item.EhCombo) throw new ErroDeNegocio($"{item.Nome} já é um combo; um combo não pode ter outro combo dentro.");
-            if (componente.Quantidade is < 1 or > 50)
-                throw new ErroDeNegocio($"{item.Nome}: a quantidade de fichas no combo vai de 1 a 50.");
-            if (componente.ValorCentavos < 0) throw new ErroDeNegocio($"{item.Nome}: o valor da ficha não pode ser negativo.");
+            componente.Nome = (componente.Nome ?? "").Trim().ToUpperInvariant();
+            componente.Detalhe = (componente.Detalhe ?? "").Trim().ToUpperInvariant();
+            if (componente.Nome.Length == 0) throw new ErroDeNegocio("Escreva o nome que sai na ficha do combo.");
+            if (componente.Nome.Length > 40 || componente.Detalhe.Length > 40)
+                throw new ErroDeNegocio($"{componente.Nome}: nome e detalhe da ficha podem ter no máximo 40 letras.");
+            if (componente.ProdutoId is { } produtoId)
+            {
+                if (produtoId == produto.Id && produto.Id != 0)
+                    throw new ErroDeNegocio("O combo não pode ter ele mesmo nas fichas.");
+                var item = Produto(produtoId)
+                           ?? throw new ErroDeNegocio($"{componente.Nome}: o produto ligado a esta ficha foi excluído.");
+                if (item.EhCombo)
+                    throw new ErroDeNegocio($"{item.Nome} já é um combo; um combo não pode ter outro combo dentro.");
+            }
+            if (componente.Quantidade is < 1 or > 200)
+                throw new ErroDeNegocio($"{componente.Nome}: a quantidade de fichas vai de 1 a 200.");
+            if (componente.ValorCentavos < 0)
+                throw new ErroDeNegocio($"{componente.Nome}: o valor da ficha não pode ser negativo.");
         }
-        if (produto.Componentes.Sum(c => c.Quantidade) > 100)
-            throw new ErroDeNegocio("O combo pode imprimir no máximo 100 fichas.");
+        if (produto.Componentes.Sum(c => c.Quantidade) > 300)
+            throw new ErroDeNegocio("O combo pode imprimir no máximo 300 fichas.");
     }
 
+    /// <summary>
+    /// Exclui o produto. Se ele sai nas fichas de algum combo, o combo continua igual (com o nome e o valor da
+    /// ficha), só deixa de baixar o estoque dele.
+    /// </summary>
     public void ExcluirProduto(long id)
     {
-        var combos = CombosQueUsam(id);
-        if (combos.Count > 0)
-            throw new ErroDeNegocio($"Este produto sai nas fichas do combo {string.Join(", ", combos)}. Tire ele do combo antes de excluir.");
         _banco.Transacao((c, t) =>
         {
+            Banco.Executar(c, t, "UPDATE componentes_combo SET produto_id = NULL WHERE produto_id = $id", ("$id", id));
             Banco.Executar(c, t, "DELETE FROM componentes_combo WHERE combo_id = $id", ("$id", id));
             Banco.Executar(c, t, "DELETE FROM produtos WHERE id = $id", ("$id", id));
         });

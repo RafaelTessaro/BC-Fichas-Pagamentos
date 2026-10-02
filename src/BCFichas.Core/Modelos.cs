@@ -94,11 +94,16 @@ public sealed class Produto
                             Componentes.Any(c => c.ControlaEstoque && c.Estoque < c.Quantidade);
 }
 
-/// <summary>Uma linha do combo: qual produto sai na ficha, quantas fichas e o valor impresso em cada uma.</summary>
+/// <summary>
+/// Uma linha do combo: o que sai escrito na ficha (produto e detalhe), quantas fichas e o valor de cada uma.
+/// Pode ser um texto livre (ex.: VALE R$ 10,00 / VAL. 05/10/26) ou ligado a um produto cadastrado (aí o
+/// estoque desse produto baixa junto).
+/// </summary>
 public sealed class ComponenteCombo
 {
     public long Id { get; set; }
-    public long ProdutoId { get; set; }
+    /// <summary>Produto cadastrado ligado a esta linha (nulo quando é texto livre).</summary>
+    public long? ProdutoId { get; set; }
     public string Nome { get; set; } = "";
     public string Detalhe { get; set; } = "";
     public int Quantidade { get; set; } = 1;
