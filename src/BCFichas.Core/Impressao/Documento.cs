@@ -32,6 +32,10 @@ public sealed class Documento
         return this;
     }
 
+    /// <summary>Como <see cref="Par"/>, mas só quando há o que mostrar à direita (ex.: operador de caixas antigos).</summary>
+    public Documento ParSeHouver(string esquerda, string direita) =>
+        string.IsNullOrWhiteSpace(direita) ? this : Par(esquerda, direita);
+
     public Documento Separador(bool tracejado = true)
     {
         _partes.Add((l, _) => l.Separador(tracejado));

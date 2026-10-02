@@ -56,8 +56,9 @@
       <!-- Edição -->
       <Border Grid.Column="1" Classes="cartao" Margin="5" Padding="0">
         <Grid RowDefinitions="*,Auto">
-          <ScrollViewer Padding="20,16">
-            <Grid ColumnDefinitions="*,24,*,24,190" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+          <!-- Margem no conteúdo, não Padding no ScrollViewer: com Padding a rolagem parava antes do fim -->
+          <ScrollViewer AllowAutoHide="False">
+            <Grid Margin="20,16,24,16" ColumnDefinitions="*,24,*,24,184" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
               <TextBlock Grid.ColumnSpan="3" Text="{Binding Titulo}" Classes="titulo" Margin="0,0,0,4" />
 
               <StackPanel Grid.Row="1" Grid.ColumnSpan="3">
@@ -98,7 +99,11 @@
               </StackPanel>
               <StackPanel Grid.Row="4" Grid.Column="2">
                 <TextBlock Text="Posição na tela (livres)" Classes="rotulo" />
-                <ComboBox ItemsSource="{Binding Posicoes}" SelectedItem="{Binding Posicao}" />
+                <ComboBox x:Name="Posicao" ItemsSource="{Binding Posicoes}" SelectedItem="{Binding Posicao}" />
+                <!-- Largura presa à do campo: o texto quebra em vez de alargar a coluna -->
+                <TextBlock Text="{Binding AvisoPosicao}" Classes="dica" Foreground="{StaticResource Perigo}"
+                           TextWrapping="Wrap" MaxWidth="{Binding #Posicao.Bounds.Width}" HorizontalAlignment="Left"
+                           IsVisible="{Binding AvisoPosicao, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               </StackPanel>
 
               <StackPanel Grid.Row="5">
@@ -120,36 +125,17 @@
                 <TextBox Classes="numero" Text="{Binding Estoque}" />
               </StackPanel>
 
-              <StackPanel Grid.Row="7" Grid.ColumnSpan="3">
-                <TextBlock Text="Cor do botão" Classes="rotulo" />
-                <ItemsControl ItemsSource="{Binding Cores}">
-                  <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-                  </ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:OpcaoCor">
-                      <Button Classes="cor" Classes.marcada="{Binding Marcada}" Background="{Binding Pincel}"
-                              Command="{Binding $parent[UserControl].((vm:ProdutosViewModel)DataContext).EscolherCorCommand}"
-                              CommandParameter="{Binding}">
-                        <PathIcon Data="{StaticResource IconeOk}" Width="18" Height="18" IsVisible="{Binding Marcada}"
-                                  Foreground="#64748B" />
-                      </Button>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </StackPanel>
-
-              <!-- Prévia do botão e imagem -->
-              <StackPanel Grid.Row="1" Grid.RowSpan="6" Grid.Column="4" Spacing="8" Margin="0,0,12,0">
+              <!-- Prévia do botão, imagem e cor (na coluna da direita, para o cadastro caber na tela do tablet) -->
+              <StackPanel Grid.Row="1" Grid.RowSpan="7" Grid.Column="4" Spacing="8">
                 <TextBlock Text="Como fica o botão" Classes="rotulo" />
                 <Panel Height="150">
                   <Border IsVisible="{Binding !TemImagem}" CornerRadius="14" Background="{Binding PreviaFundo}"
                           BoxShadow="0 2 4 0 #260F172A">
                     <StackPanel VerticalAlignment="Center" Margin="10">
                       <TextBlock Text="{Binding Nome}" Foreground="{Binding PreviaTexto}" FontSize="20" FontWeight="Bold"
-                                 TextAlignment="Center" TextWrapping="Wrap" />
+                                 TextAlignment="Center" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
                       <TextBlock Text="{Binding Detalhe}" Foreground="{Binding PreviaTexto}" FontSize="12"
-                                 TextAlignment="Center" Opacity="0.85" />
+                                 TextAlignment="Center" Opacity="0.85" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                   </Border>
                   <Border IsVisible="{Binding TemImagem}" CornerRadius="14" Background="White" ClipToBounds="True"
@@ -169,6 +155,38 @@
                 </Button>
                 <Button Classes="fantasma" Content="Tirar imagem" Command="{Binding RemoverImagemCommand}"
                         HorizontalAlignment="Stretch" IsVisible="{Binding TemImagem}" />
+
+                <TextBlock Text="Cor do botão" Classes="rotulo" Margin="2,6,0,0" />
+                <ItemsControl ItemsSource="{Binding Cores}">
+                  <ItemsControl.Styles>
+                    <Style Selector="Button.cor">
+                      <Setter Property="Width" Value="38" />
+                      <Setter Property="Height" Value="38" />
+                      <Setter Property="MinHeight" Value="38" />
+                      <Setter Property="Margin" Value="0,0,8,8" />
+                    </Style>
+                    <Style Selector="Button.cor.clara">
+                      <Setter Property="BorderBrush" Value="{StaticResource Borda}" />
+                    </Style>
+                    <Style Selector="Button.cor.clara.marcada">
+                      <Setter Property="BorderBrush" Value="{StaticResource Escuro}" />
+                    </Style>
+                  </ItemsControl.Styles>
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:OpcaoCor">
+                      <Button Classes="cor" Classes.marcada="{Binding Marcada}" Classes.clara="{Binding Clara}"
+                              Background="{Binding Pincel}"
+                              Command="{Binding $parent[UserControl].((vm:ProdutosViewModel)DataContext).EscolherCorCommand}"
+                              CommandParameter="{Binding}">
+                        <PathIcon Data="{StaticResource IconeOk}" Width="16" Height="16" IsVisible="{Binding Marcada}"
+                                  Foreground="#64748B" />
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
               </StackPanel>
             </Grid>
           </ScrollViewer>

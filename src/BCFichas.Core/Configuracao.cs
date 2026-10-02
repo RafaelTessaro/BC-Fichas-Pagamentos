@@ -61,9 +61,13 @@ public enum TelaProtegida
 
 public sealed class Configuracao
 {
+    /// <summary>Linha da BC Fichas que sai no fim de toda ficha, sempre (não é o rodapé, que é do cliente).</summary>
+    public const string MensagemFixa = "BC-FICHAS FONE: (19) 3023-9050";
+
     // Geral
     public string NomeEvento { get; set; } = "MINHA FESTA";
-    public string Rodape { get; set; } = "BC-FICHAS FONE: (19) 3023-9050";
+    /// <summary>Texto livre do cliente, acima da <see cref="MensagemFixa"/>. Vazio não imprime nada.</summary>
+    public string Rodape { get; set; } = "";
     public int NumeroCaixa { get; set; } = 1;
     public bool DesligarAoFechar { get; set; }
     public bool TelaCheia { get; set; } = true;
@@ -109,4 +113,14 @@ public sealed class Configuracao
         !string.IsNullOrEmpty(SenhaMaster) && TelasProtegidas.HasFlag(tela);
 
     public Configuracao Clonar() => (Configuracao)MemberwiseClone();
+
+    /// <summary>
+    /// Rodapé sem espaços nas pontas e sem repetir a <see cref="MensagemFixa"/>. Até a versão 3.0 o telefone da
+    /// BC Fichas era o rodapé padrão; agora ele sai sozinho em toda ficha e, no rodapé, sairia duas vezes.
+    /// </summary>
+    public static string RodapeSemMensagemFixa(string? rodape)
+    {
+        var texto = (rodape ?? "").Trim();
+        return string.Equals(texto, MensagemFixa, StringComparison.OrdinalIgnoreCase) ? "" : texto;
+    }
 }

@@ -15,7 +15,7 @@ public sealed class ResumoVM
     public ResumoVM(ResumoCaixa r)
     {
         Resumo = r;
-        Titulo = $"Caixa {r.Sessao.Caixa:00} • {r.Sessao.Operador}";
+        Titulo = Formato.Caixa(r.Sessao.Caixa, r.Sessao.Operador);
         Periodo = $"Aberto em {Formato.DataHora(r.Sessao.AbertaEm)}" +
                   (r.Sessao.FechadaEm is { } f ? $" • fechado em {Formato.DataHora(f)}" : " • aberto agora");
         TotalVendido = Dinheiro.Formatar(r.TotalVendas);
@@ -62,7 +62,7 @@ public sealed class ResumoVM
 /// <summary>Abrir o caixa: operador e troco inicial.</summary>
 public sealed partial class AberturaViewModel(PrincipalViewModel principal) : PaginaViewModel(principal)
 {
-    [ObservableProperty] private string _operador = "";
+    // Os caixas são identificados só pelo número (Configurações → Número deste caixa), sem nome de operador.
     public EntradaValor Troco { get; } = new();
     public string Caixa => $"Caixa {Principal.Config.NumeroCaixa:00}";
     public string NomeEvento => Principal.Config.NomeEvento;
@@ -72,9 +72,9 @@ public sealed partial class AberturaViewModel(PrincipalViewModel principal) : Pa
     {
         try
         {
-            var sessao = Sistema.Caixa.Abrir(Principal.Config.NumeroCaixa, Operador, Troco.Centavos);
+            var sessao = Sistema.Caixa.Abrir(Principal.Config.NumeroCaixa, null, Troco.Centavos);
             Principal.CaixaAberto(sessao);
-            Principal.MostrarAviso($"Caixa aberto. Boas vendas, {sessao.Operador}!");
+            Principal.MostrarAviso($"{Caixa} aberto. Boas vendas!");
         }
         catch (ErroDeNegocio e)
         {

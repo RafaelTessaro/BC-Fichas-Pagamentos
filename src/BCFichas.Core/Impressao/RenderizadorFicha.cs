@@ -22,10 +22,12 @@ public static class RenderizadorFicha
     {
         var largura = config.LarguraPontos;
         var s = largura / 576f;
-        var layout = new Layout(largura, (int)((config.Moldura ? 22 : 16) * s));
+        // Com moldura, faixas de lado a lado param na borda (não passam para fora dela)
+        var layout = new Layout(largura, (int)((config.Moldura ? 22 : 16) * s), config.Moldura ? Layout.LarguraBorda : 0);
         var d = new Dados(ficha, config, s);
 
-        if (config.Moldura) layout.Espaco((int)(8 * s));
+        // O modelo 7 começa com a faixa preta: com moldura ela encosta na borda de cima
+        if (config.Moldura) layout.Espaco(config.Modelo == ModeloFicha.Destaque ? Layout.LarguraBorda : (int)(8 * s));
         switch (config.Modelo)
         {
             case ModeloFicha.Classico1: Classico1(layout, d, logo); break;
@@ -176,7 +178,7 @@ public static class RenderizadorFicha
         l.Texto(d.Ficha.Detalhe, d.Normal, d.T(24), maxLinhas: 1);
     }
 
-    /// <summary>Marca de reimpressão, código de barras e rodapé (iguais em todos os modelos).</summary>
+    /// <summary>Marca de reimpressão, código de barras, rodapé e a mensagem fixa (iguais em todos os modelos).</summary>
     private static void Final(Layout l, Dados d)
     {
         if (d.Ficha.Reimpressao)
@@ -189,11 +191,15 @@ public static class RenderizadorFicha
             l.Espaco(d.P(6));
             l.CodigoDeBarras(d.Ficha.Codigo, d.P(56), d.Normal, d.T(16));
         }
-        if (!string.IsNullOrWhiteSpace(d.Ficha.Rodape))
+        var rodape = Configuracao.RodapeSemMensagemFixa(d.Ficha.Rodape);
+        if (rodape.Length > 0)
         {
             l.Espaco(d.P(6));
-            l.Texto(d.Ficha.Rodape, d.Negrito, d.T(21), maxLinhas: 2);
+            l.Texto(rodape, d.Negrito, d.T(21), maxLinhas: 2);
         }
+        // O telefone da BC Fichas sai em toda ficha, sempre por último
+        l.Espaco(d.P(rodape.Length > 0 ? 2 : 6));
+        l.Texto(Configuracao.MensagemFixa, d.Negrito, d.T(19), maxLinhas: 1);
         l.Espaco(d.P(4));
     }
 

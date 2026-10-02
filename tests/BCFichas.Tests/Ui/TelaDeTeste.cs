@@ -42,10 +42,9 @@ public sealed class TelaDeTeste : IDisposable
     public JanelaPrincipal Janela { get; }
     public string PastaImpressoes => _temporario.PastaImpressoes;
 
-    public void AbrirCaixa(string operador = "MARIA", long troco = 5000)
+    public void AbrirCaixa(long troco = 5000)
     {
         var abertura = Assert.IsType<AberturaViewModel>(Principal.Pagina);
-        abertura.Operador = operador;
         abertura.Troco.Centavos = troco;
         abertura.AbrirCaixaCommand.Execute(null);
         Principal.Aviso = null; // some com o aviso "caixa aberto" para as fotos ficarem limpas

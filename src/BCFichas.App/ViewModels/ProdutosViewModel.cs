@@ -23,6 +23,8 @@ public sealed partial class OpcaoCor(string hex) : ObservableObject
 {
     public string Hex { get; } = hex;
     public IBrush Pincel { get; } = new SolidColorBrush(Color.Parse(hex));
+    /// <summary>Cor clara (branco): ganha contorno para não sumir no fundo branco.</summary>
+    public bool Clara { get; } = Recursos.TextoSobre(Color.Parse(hex)) != Brushes.White;
     [ObservableProperty] private bool _marcada;
 }
 
@@ -55,7 +57,10 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
     [ObservableProperty] private string _nome = "";
     [ObservableProperty] private string _detalhe = "";
     [ObservableProperty] private Aba? _aba;
-    [ObservableProperty] private int _posicao = 1;
+    // Anulável: ao trocar a lista de posições o ComboBox limpa a seleção (manda null) antes de escolhermos de novo
+    [ObservableProperty] private int? _posicao;
+    /// <summary>Explica por que não há posição para escolher (aba cheia). Vazio quando está tudo certo.</summary>
+    [ObservableProperty] private string _avisoPosicao = "";
     [ObservableProperty] private int _fichasPorUnidade = 1;
     [ObservableProperty] private string _preco = "";
     [ObservableProperty] private string _custo = "";
@@ -148,6 +153,11 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
             return;
         }
         if (!int.TryParse(Estoque, out var estoque)) estoque = 0;
+        if (Posicao is not { } posicao)
+        {
+            Principal.MostrarAviso(AvisoPosicao.Length > 0 ? AvisoPosicao : "Escolha a posição do botão na tela.", erro: true);
+            return;
+        }
 
         try
         {
@@ -157,7 +167,7 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
                 Nome = Nome,
                 Detalhe = Detalhe,
                 AbaId = Aba?.Id ?? 0,
-                Posicao = Posicao,
+                Posicao = posicao,
                 FichasPorUnidade = FichasPorUnidade,
                 PrecoCentavos = preco,
                 CustoCentavos = custo,
@@ -235,8 +245,14 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
 
     private void AtualizarPosicoes(bool escolherLivre, int? atual = null)
     {
+        var anterior = Posicao;
         Posicoes.Clear();
-        if (Aba is null) return;
+        AvisoPosicao = "";
+        if (Aba is null)
+        {
+            Posicao = null;
+            return;
+        }
         var livres = Sistema.Catalogo.PosicoesLivres(Aba.Id, TotalPosicoes, Id == 0 ? null : Id);
         foreach (var p in livres) Posicoes.Add(p);
         if (atual is { } a && !Posicoes.Contains(a))
@@ -246,7 +262,16 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
             while (i < Posicoes.Count && Posicoes[i] < a) i++;
             Posicoes.Insert(i, a);
         }
-        Posicao = atual ?? (escolherLivre ? Posicoes.FirstOrDefault(1) : Posicao);
+        if (Posicoes.Count == 0)
+            AvisoPosicao = $"A aba {Aba.Nome} está cheia ({TotalPosicoes} botões). Escolha outra aba ou aumente a " +
+                           "grade em Configurações → Botões e abas.";
+
+        var escolhida = atual ?? (escolherLivre || anterior is null || !Posicoes.Contains(anterior.Value)
+            ? Posicoes.Cast<int?>().FirstOrDefault()
+            : anterior);
+        // O ComboBox perdeu a seleção ao limpar a lista: avisa de novo mesmo que o número seja o mesmo
+        Posicao = null;
+        Posicao = escolhida;
     }
 
     private void Atualizar()

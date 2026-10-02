@@ -22,14 +22,20 @@ internal sealed class Layout
 {
     private readonly List<(int Altura, Action<SKCanvas, int> Desenhar)> _blocos = new();
 
-    public Layout(int largura, int margem)
+    /// <summary>Espessura da moldura, contada da beirada do papel (traço de 3 pontos centrado em 4,5).</summary>
+    public const int LarguraBorda = 6;
+
+    /// <param name="recuo">Com moldura, quanto as faixas de lado a lado ficam afastadas da beirada.</param>
+    public Layout(int largura, int margem, int recuo = 0)
     {
         Largura = largura;
         Margem = margem;
+        Recuo = recuo;
     }
 
     public int Largura { get; }
     public int Margem { get; }
+    public int Recuo { get; }
     public int LarguraUtil => Largura - 2 * Margem;
 
     public void Espaco(int altura) => _blocos.Add((altura, (_, _) => { }));
@@ -100,7 +106,7 @@ internal sealed class Layout
         }));
     }
 
-    /// <summary>Faixa preta de lado a lado com texto branco.</summary>
+    /// <summary>Faixa preta de lado a lado (dentro da moldura, se houver) com texto branco.</summary>
     public void Faixa(string texto, SKTypeface fonte, float tamanho, int preenchimento = 8)
     {
         using var medida = Pincel(fonte, tamanho);
@@ -111,7 +117,7 @@ internal sealed class Layout
         _blocos.Add((altura, (canvas, y) =>
         {
             using var fundo = new SKPaint { Color = SKColors.Black };
-            canvas.DrawRect(0, y, Largura, altura, fundo);
+            canvas.DrawRect(Recuo, y, Largura - 2 * Recuo, altura, fundo);
             using var p = Pincel(fonte, tamanho, SKColors.White);
             var linhaY = y + preenchimento - p.FontMetrics.Ascent;
             foreach (var linha in linhas)

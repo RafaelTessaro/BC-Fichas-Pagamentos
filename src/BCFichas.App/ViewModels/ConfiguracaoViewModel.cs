@@ -217,6 +217,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         }
 
         Sistema.Config.Salvar(Montar());
+        Rodape = Sistema.Config.Atual.Rodape; // o campo mostra o que foi gravado (sem repetir a mensagem fixa)
         Principal.MostrarAviso("Configurações salvas.");
         CarregarAbas();
         if (mudouCaixa) Principal.Iniciar();
@@ -333,7 +334,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     {
         var c = Principal.Config.Clonar();
         c.NomeEvento = NomeEvento.Trim().ToUpperInvariant();
-        c.Rodape = Rodape.Trim();
+        c.Rodape = Configuracao.RodapeSemMensagemFixa(Rodape);
         c.NumeroCaixa = NumeroCaixa;
         c.DesligarAoFechar = DesligarAoFechar;
         c.TelaCheia = TelaCheia;

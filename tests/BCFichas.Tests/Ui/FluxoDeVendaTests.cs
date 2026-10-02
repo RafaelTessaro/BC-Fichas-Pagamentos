@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using BCFichas.App.ViewModels;
 using BCFichas.App.Views;
 using BCFichas.Core;
@@ -16,12 +17,21 @@ public class FluxoDeVendaTests
     {
         using var t = new TelaDeTeste();
         Assert.IsType<AberturaViewModel>(t.Principal.Pagina);
+        // Os caixas são identificados só pelo número: a abertura pede só o troco
+        Assert.DoesNotContain(t.Janela.GetVisualDescendants().OfType<TextBox>(), c => c.IsEffectivelyVisible);
+        Assert.Contains(t.Janela.GetVisualDescendants().OfType<TextBlock>(),
+            b => b.Text == "Troco Inicial (Abertura de Caixa)");
         t.Foto("01-abertura-de-caixa");
 
-        t.AbrirCaixa();
+        var abertura = Assert.IsType<AberturaViewModel>(t.Principal.Pagina);
+        abertura.Troco.Centavos = 5000;
+        abertura.AbrirCaixaCommand.Execute(null);
+        TelaDeTeste.Atualizar();
 
         Assert.IsType<VendaViewModel>(t.Principal.Pagina);
-        Assert.Equal("MARIA", t.Principal.Operador);
+        Assert.Equal("Caixa 01 aberto. Boas vendas!", t.Principal.Aviso);
+        Assert.Equal("", t.Principal.Operador);
+        Assert.Equal(5000, t.Principal.Sessao!.ValorAberturaCentavos);
         Assert.Equal(12, t.Venda.Botoes.Count);
         Assert.Equal(["COMIDAS", "BEBIDAS", "DOCES"], t.Venda.Abas.Select(a => a.Nome));
     }
@@ -167,7 +177,11 @@ public class FluxoDeVendaTests
     public void Teclado_na_tela_digita_no_campo_selecionado()
     {
         using var t = new TelaDeTeste();
-        var campo = t.Achar<TextBox>();
+        t.AbrirCaixa();
+        var produtos = new ProdutosViewModel(t.Principal);
+        t.Principal.Abrir(produtos);
+        TelaDeTeste.Atualizar();
+        var campo = t.Achar<TextBox>(c => c.Watermark == "Ex.: PASTEL");
         campo.Focus();
         TelaDeTeste.Atualizar();
         Assert.True(t.Principal.TecladoVisivel);
@@ -182,11 +196,10 @@ public class FluxoDeVendaTests
         }
         Clicar(teclado, "⌫");
         Clicar(teclado, "O");
-        t.Foto("12-abertura-com-teclado");
+        t.Foto("12-produtos-com-teclado");
 
         Assert.Equal("JOÃO", campo.Text);
-        var abertura = Assert.IsType<AberturaViewModel>(t.Principal.Pagina);
-        Assert.Equal("JOÃO", abertura.Operador);
+        Assert.Equal("JOÃO", produtos.Nome);
 
         Clicar(teclado, "esconder");
         Assert.False(t.Principal.TecladoVisivel);

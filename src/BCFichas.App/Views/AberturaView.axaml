@@ -37,14 +37,12 @@
                 <Run Text="Abrir o" />
                 <Run Text="{Binding Caixa}" />
               </TextBlock>
-              <TextBlock Text="Informe quem vai trabalhar no caixa e o troco que está na gaveta." Classes="suave" />
+              <TextBlock Text="Informe o troco que está na gaveta para começar as vendas." Classes="suave" />
             </StackPanel>
           </StackPanel>
 
-          <StackPanel Grid.Row="1" Margin="0,0,24,0">
-            <TextBlock Text="Nome do operador" Classes="rotulo" />
-            <TextBox Text="{Binding Operador}" Watermark="Ex.: MARIA" MaxLength="30" />
-            <TextBlock Text="Troco inicial (fundo de caixa)" Classes="rotulo" Margin="2,18,0,4" />
+          <StackPanel Grid.Row="1" Margin="0,0,24,0" VerticalAlignment="Center">
+            <TextBlock Text="Troco Inicial (Abertura de Caixa)" Classes="rotulo" Margin="2,0,0,4" />
             <Border Background="{StaticResource Fundo}" CornerRadius="12" Padding="16,8">
               <TextBlock Text="{Binding Troco.Texto}" FontSize="38" FontWeight="ExtraBold" TextAlignment="Right" />
             </Border>

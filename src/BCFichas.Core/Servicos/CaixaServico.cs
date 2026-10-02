@@ -25,10 +25,10 @@ public sealed class CaixaServico
     public SessaoCaixa? Sessao(long id) =>
         _banco.Consultar($"SELECT {ColunasSessao} FROM sessoes WHERE id = $id", LerSessao, ("$id", id)).FirstOrDefault();
 
-    public SessaoCaixa Abrir(int caixa, string operador, long valorAbertura)
+    /// <param name="operador">Opcional: os caixas são identificados só pelo número (sessões antigas têm o nome).</param>
+    public SessaoCaixa Abrir(int caixa, string? operador, long valorAbertura)
     {
         operador = (operador ?? "").Trim().ToUpperInvariant();
-        if (operador.Length == 0) throw new ErroDeNegocio("Informe o nome do operador.");
         if (valorAbertura < 0) throw new ErroDeNegocio("O valor de abertura não pode ser negativo.");
         if (SessaoAberta(caixa) is not null) throw new ErroDeNegocio($"O caixa {caixa:00} já está aberto.");
 

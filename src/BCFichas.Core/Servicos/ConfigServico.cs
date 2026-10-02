@@ -31,6 +31,7 @@ public sealed class ConfigServico
         configuracao.Linhas = Math.Clamp(configuracao.Linhas, 2, 6);
         configuracao.LarguraPapelMm = configuracao.LarguraPapelMm <= 58 ? 58 : 80;
         configuracao.Zoom = Math.Clamp(configuracao.Zoom, 60, 160);
+        configuracao.Rodape = Configuracao.RodapeSemMensagemFixa(configuracao.Rodape);
 
         var json = JsonSerializer.Serialize(configuracao, Json);
         _banco.Executar(
@@ -46,7 +47,9 @@ public sealed class ConfigServico
         if (string.IsNullOrEmpty(json)) return new Configuracao();
         try
         {
-            return JsonSerializer.Deserialize<Configuracao>(json, Json) ?? new Configuracao();
+            var config = JsonSerializer.Deserialize<Configuracao>(json, Json) ?? new Configuracao();
+            config.Rodape = Configuracao.RodapeSemMensagemFixa(config.Rodape);
+            return config;
         }
         catch (JsonException)
         {

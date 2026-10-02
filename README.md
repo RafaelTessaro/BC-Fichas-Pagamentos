@@ -19,8 +19,8 @@ na **Elgin i9** em papel de 80 mm.
 | **Reimprimir fichas** | Segunda via do pedido inteiro ou de um item só (sai marcado "REIMPRESSÃO"). |
 | **Sangria / Suprimento** | Tira ou põe dinheiro no caixa, com comprovante impresso. |
 | **Relatórios** | Caixa atual, caixas anteriores e sangrias: totais por forma de pagamento e produtos vendidos. |
-| **Abrir / Fechar caixa** | Operador e troco inicial; no fechamento confere o dinheiro da gaveta (falta/sobra) e imprime o relatório. |
-| **Configurações** | Nome do evento, rodapé, modelo da ficha (7 modelos com prévia), borda, fonte, logotipo, código de barras, grade de botões, impressora, corte da guilhotina, senha master por tela. |
+| **Abrir / Fechar caixa** | Só o troco inicial (cada caixa é identificado pelo número: Caixa 01, 02…); no fechamento confere o dinheiro da gaveta (falta/sobra) e imprime o relatório. |
+| **Configurações** | Nome do evento, rodapé (opcional; embaixo dele toda ficha traz o telefone da BC Fichas), modelo da ficha (7 modelos com prévia), borda, fonte, logotipo, código de barras, grade de botões, impressora, corte da guilhotina, senha master por tela. |
 
 Também tem teclado na tela (para tablet sem teclado físico), ajuste de tamanho da tela e modo tela cheia.
 

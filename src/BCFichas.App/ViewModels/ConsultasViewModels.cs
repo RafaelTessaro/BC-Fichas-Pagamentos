@@ -112,7 +112,7 @@ public sealed partial class ReimpressaoViewModel(PrincipalViewModel principal) :
 public sealed class SessaoItem(SessaoCaixa s, long total)
 {
     public SessaoCaixa Sessao { get; } = s;
-    public string Titulo { get; } = $"Caixa {s.Caixa:00} • {s.Operador}";
+    public string Titulo { get; } = Formato.Caixa(s.Caixa, s.Operador);
     public string Periodo { get; } = Formato.DataHora(s.AbertaEm) +
                                       (s.FechadaEm is { } f ? " → " + Formato.Hora(f) : " • aberto");
     public string Total { get; } = Dinheiro.Formatar(total);
@@ -173,7 +173,7 @@ public sealed partial class RelatoriosViewModel(PrincipalViewModel principal) : 
         {
             if (m.Tipo == TipoMovimento.Sangria) sangrias += m.ValorCentavos;
             else suprimentos += m.ValorCentavos;
-            Movimentos.Add(new MovimentoItem($"{Formato.DataHora(m.CriadoEm)} • Caixa {m.Caixa:00} • {m.Usuario}",
+            Movimentos.Add(new MovimentoItem($"{Formato.DataHora(m.CriadoEm)} • {Formato.Caixa(m.Caixa, m.Usuario)}",
                 m.Tipo == TipoMovimento.Sangria ? "Sangria" : "Suprimento",
                 (m.Tipo == TipoMovimento.Sangria ? "− " : "+ ") + Dinheiro.Formatar(m.ValorCentavos),
                 m.Motivo, m.Tipo == TipoMovimento.Sangria));

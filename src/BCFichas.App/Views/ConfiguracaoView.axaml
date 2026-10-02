@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:core="using:BCFichas.Core"
              xmlns:vm="using:BCFichas.App.ViewModels"
              xmlns:v="using:BCFichas.App.Views"
              x:Class="BCFichas.App.Views.ConfiguracaoView"
@@ -45,8 +46,12 @@
               <TextBox Text="{Binding NomeEvento}" MaxLength="40" Watermark="Ex.: FESTA JUNINA SÃO JOÃO" />
               <TextBlock Text="Sai no topo da tela e de cada ficha." Classes="dica" />
 
-              <TextBlock Text="Rodapé da ficha" Classes="rotulo" />
-              <TextBox Text="{Binding Rodape}" MaxLength="80" Watermark="Ex.: Obrigado e volte sempre!" />
+              <TextBlock Text="Rodapé da ficha (opcional)" Classes="rotulo" />
+              <TextBox Text="{Binding Rodape}" MaxLength="80" Watermark="Ex.: OBRIGADO E VOLTE SEMPRE!" />
+              <TextBlock Classes="dica" TextWrapping="Wrap">
+                <Run Text="Sai no fim de cada ficha. Embaixo dele sai sempre a linha" />
+                <Run Text="{x:Static core:Configuracao.MensagemFixa}" FontWeight="SemiBold" />
+              </TextBlock>
 
               <Grid Classes="linha" ColumnDefinitions="*,16,*">
                 <StackPanel>

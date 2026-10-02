@@ -23,9 +23,12 @@
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="{Binding Principal.CaixaTexto}"
                        Foreground="White" FontWeight="Bold" FontSize="16" />
-            <TextBlock Text="•" Foreground="#A7F3D0" />
+            <!-- Só caixas abertos antes da versão 3.1 têm operador -->
+            <TextBlock Text="•" Foreground="#A7F3D0"
+                       IsVisible="{Binding Principal.Operador, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
             <TextBlock Text="{Binding Principal.Operador}"
-                       Foreground="White" FontSize="16" />
+                       Foreground="White" FontSize="16"
+                       IsVisible="{Binding Principal.Operador, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           </StackPanel>
         </Border>
         <TextBlock Grid.Column="3" Text="{Binding Principal.Relogio}"
