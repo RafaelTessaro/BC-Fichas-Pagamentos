@@ -281,6 +281,15 @@ public class TelasDaVersao32Tests
         tela.AbaSelecionada = 4;
         TelaDeTeste.Atualizar();
         t.Foto("24b-config-maquininha");
+
+        // A maquininha se escolhe tocando no cartão
+        tela.EscolherMaquininhaCommand.Execute(TipoMaquininha.Simulador);
+        Assert.True(tela.MaquininhaSimulador);
+        Assert.False(tela.MaquininhaSeparada);
+        TelaDeTeste.Atualizar();
+        t.Foto("24c-config-maquininha-simulador");
+        tela.SalvarCommand.Execute(null);
+        Assert.Equal(TipoMaquininha.Simulador, t.Sistema.Config.Atual.Maquininha);
     }
 
     [AvaloniaFact]

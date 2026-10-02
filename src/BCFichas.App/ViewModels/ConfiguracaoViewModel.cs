@@ -106,8 +106,12 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     [ObservableProperty] private Bitmap? _previa;
 
     // Botões
-    [ObservableProperty] private int _colunas = 4;
-    [ObservableProperty] private int _linhas = 3;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CelulasGrade), nameof(TextoGrade))]
+    private int _colunas = 4;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CelulasGrade), nameof(TextoGrade))]
+    private int _linhas = 3;
     [ObservableProperty] private string _pastaFotos = "";
 
     // Impressora
@@ -124,7 +128,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
 
     // Maquininha
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(MaquininhaSimulador))]
+    [NotifyPropertyChangedFor(nameof(MaquininhaSimulador), nameof(MaquininhaSeparada))]
     private Opcao<TipoMaquininha>? _tipoMaquininha;
     [ObservableProperty] private int _simuladorSegundos;
 
@@ -141,6 +145,10 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     public string PastaDados => Sistema.PastaDados;
     public bool SemImpressoras => Impressoras.Count == 0;
     public bool MaquininhaSimulador => TipoMaquininha?.Valor == Core.TipoMaquininha.Simulador;
+    public bool MaquininhaSeparada => !MaquininhaSimulador;
+    /// <summary>Um quadradinho por botão, para o desenho da grade (colunas × linhas).</summary>
+    public List<int> CelulasGrade => Enumerable.Range(1, Colunas * Linhas).ToList();
+    public string TextoGrade => $"{Colunas} × {Linhas} = {Colunas * Linhas} botões em cada aba";
     public bool TemSenha => SenhaMaster.Length > 0;
     public bool SemSenha => !TemSenha;
     public string AjusteTexto => AjusteHorizontal == 0
@@ -432,6 +440,19 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     }
 
     [RelayCommand]
+    private void EscolherMaquininha(TipoMaquininha tipo) =>
+        TipoMaquininha = TiposMaquininha.FirstOrDefault(t => t.Valor == tipo) ?? TipoMaquininha;
+
+    [RelayCommand]
+    private async Task EscolherPastaFotos()
+    {
+        if (Principal.EscolherPasta is null) return;
+        var atual = string.IsNullOrWhiteSpace(PastaFotos) ? new Configuracao().PastaFotos : PastaFotos.Trim();
+        var pasta = await Principal.EscolherPasta(Directory.Exists(atual) ? atual : null);
+        if (pasta is not null) PastaFotos = pasta;
+    }
+
+    [RelayCommand]
     private async Task EscolherPastaBackup()
     {
         if (Principal.EscolherPasta is null) return;
@@ -668,18 +689,22 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         Executar(() => Sistema.Programacao.ApagarVendas(devolverEstoque),
             "Vendas apagadas: a máquina está pura, só com a programação.");
 
-    /// <summary>Como um banco vazio: apaga tudo e mantém só o que é da máquina.</summary>
+    /// <summary>
+    /// Reprogramação para um novo evento (o banco vazio do sistema antigo): zera a programação e mantém só o que é
+    /// da máquina.
+    /// </summary>
     [RelayCommand]
-    private async Task DeixarComoNova()
+    private async Task ZerarProgramacao()
     {
         var s = Sistema.Programacao.Situacao();
-        if (!await Principal.Confirmar("Deixar a máquina como nova?",
-                "Apaga TUDO: vendas, testes, produtos, abas, combos, evento e modelo da ficha. Ficam só o número do " +
-                "caixa, a impressora, as opções de tela, as pastas e a senha master." + Avisos(s, estoque: false) +
+        if (!await Principal.Confirmar("Reprogramar para um novo evento?",
+                "Zera a programação: apaga vendas, testes, produtos, abas, combos, evento e modelo da ficha. Ficam só o " +
+                "número do caixa, a impressora, as opções de tela, as pastas e a senha master." + Avisos(s, estoque: false) +
                 "\n\nFica uma cópia de segurança.",
-                "Apagar tudo", "Voltar", perigo: true))
+                "Zerar programação", "Voltar", perigo: true))
             return;
-        await Executar(() => Sistema.Programacao.DeixarComoNova(), "Máquina como nova. Cadastre os produtos do próximo evento.");
+        await Executar(() => Sistema.Programacao.ZerarProgramacao(),
+            "Programação zerada. Cadastre os produtos do novo evento.");
     }
 
     private async Task Executar(Action acao, string aviso)

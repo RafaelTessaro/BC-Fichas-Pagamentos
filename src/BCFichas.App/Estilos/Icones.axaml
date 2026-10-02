@@ -6,6 +6,9 @@
   <StreamGeometry x:Key="IconeFechar">M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z</StreamGeometry>
   <StreamGeometry x:Key="IconeMais">M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z</StreamGeometry>
   <StreamGeometry x:Key="IconeMenos">M19,13H5V11H19V13Z</StreamGeometry>
+  <StreamGeometry x:Key="IconeGrade">M3,11H11V3H3M3,21H11V13H3M13,21H21V13H13M13,3V11H21V3</StreamGeometry>
+  <StreamGeometry x:Key="IconeTela">M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16A2,2 0 0,0 3,18H10V20H8V22H16V20H14V18H21A2,2 0 0,0 23,16V4C23,2.89 22.1,2 21,2Z</StreamGeometry>
+  <StreamGeometry x:Key="IconeAbas">M21,3H3A2,2 0 0,0 1,5V19A2,2 0 0,0 3,21H21A2,2 0 0,0 23,19V5A2,2 0 0,0 21,3M21,19H3V5H13V9H21V19Z</StreamGeometry>
   <StreamGeometry x:Key="IconePasta">M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z</StreamGeometry>
   <StreamGeometry x:Key="IconeOk">M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z</StreamGeometry>
   <StreamGeometry x:Key="IconeLixo">M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z</StreamGeometry>

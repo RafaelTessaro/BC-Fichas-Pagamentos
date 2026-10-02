@@ -6,7 +6,7 @@ using Xunit;
 
 namespace BCFichas.Tests.Ui;
 
-/// <summary>Aba Máquina: backup da programação, restaurar, deixar pura para o cliente e como nova.</summary>
+/// <summary>Aba Máquina: backup da programação, restaurar, deixar pura para o cliente e reprogramação para novo evento.</summary>
 public class TelaMaquinaTests
 {
     private const int AbaMaquina = 6;
@@ -329,18 +329,18 @@ public class TelaMaquinaTests
     }
 
     [AvaloniaFact]
-    public async Task Deixar_como_nova_volta_para_a_abertura_sem_produtos()
+    public async Task Reprogramacao_para_novo_evento_volta_para_a_abertura_sem_produtos()
     {
         using var t = new TelaDeTeste();
         var tela = AbrirAbaMaquina(t);
-        var apagar = tela.DeixarComoNovaCommand.ExecuteAsync(null);
+        var apagar = tela.ZerarProgramacaoCommand.ExecuteAsync(null);
         await EsperarMensagem(t);
-        t.Foto("45-como-nova-confirmar");
+        t.Foto("45-reprogramacao-confirmar");
         ((MensagemViewModel)t.Principal.Dialogo!).SimCommand.Execute(null);
         await apagar;
 
         Assert.Empty(t.Sistema.Catalogo.Produtos());
         Assert.IsType<AberturaViewModel>(t.Principal.Pagina);
-        Assert.Equal("Máquina como nova. Cadastre os produtos do próximo evento.", t.Principal.Aviso);
+        Assert.Equal("Programação zerada. Cadastre os produtos do novo evento.", t.Principal.Aviso);
     }
 }

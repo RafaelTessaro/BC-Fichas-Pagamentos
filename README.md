@@ -22,7 +22,7 @@ na **Elgin i9** em papel de 80 mm.
 | **Relatórios** | Caixa atual, caixas anteriores e sangrias: totais por forma de pagamento, fichas devolvidas, venda líquida e produtos vendidos. |
 | **Abrir / Fechar caixa** | Só o troco inicial (cada caixa é identificado pelo número: Caixa 01, 02…) e imprime o comprovante de **abertura de caixa** (troco, data e hora); no fechamento confere o dinheiro da gaveta (falta/sobra), imprime o relatório e, se configurado, desliga o tablet na hora. |
 | **Configurações** | Nome do evento, rodapé (opcional; embaixo dele toda ficha traz o telefone da BC Fichas), modelo da ficha (7 modelos com prévia), borda, fonte, logotipo, código de barras, grade de botões, pasta das fotos, impressora (com ajuste da posição no papel), corte da guilhotina, maquininha, senha master e telas travadas. |
-| **Máquina** | Backup da programação (pasta padrão e pendrive) e restaurar em outra máquina escolhendo o número do caixa; deixa a máquina pura para o cliente ou como nova. Veja "Programar várias máquinas". |
+| **Máquina** | Backup da programação (pasta padrão e pendrive) e restaurar em outra máquina escolhendo o número do caixa; deixa a máquina pura para o cliente ou zera a programação para um novo evento. Veja "Programar várias máquinas". |
 
 Também tem teclado na tela (para tablet sem teclado físico), ajuste de tamanho da tela e modo tela cheia.
 
@@ -33,6 +33,10 @@ Também tem teclado na tela (para tablet sem teclado físico), ajuste de tamanho
 | Sangria | Segurança | Modo teste |
 | --- | --- | --- |
 | ![](docs/telas/27-sangria.png) | ![](docs/telas/25-config-seguranca.png) | ![](docs/telas/38-modo-teste-venda.png) |
+
+| Configurações: Geral | Ficha | Impressora |
+| --- | --- | --- |
+| ![](docs/telas/21-config-geral.png) | ![](docs/telas/22-config-ficha.png) | ![](docs/telas/24-config-impressora.png) |
 
 ### Modelos de ficha (papel de 80 mm)
 
@@ -156,8 +160,8 @@ vendas, para entregar ao cliente) ou **Deixar como está** (outra festa com o qu
 máquina que ainda tem vendas, o programa já pergunta se quer apagar — menos com o caixa aberto com vendas, para
 ninguém apagar um evento em andamento com um toque.
 
-**Deixar a máquina como nova → Apagar tudo:** é o "banco vazio" de antes. Apaga vendas, produtos, combos, abas,
-evento e o jeito da ficha. Ficam só o número do caixa, a impressora, as opções de tela, as pastas e a senha
+**Reprogramação para novo evento → Zerar programação:** é o "banco vazio" de antes, para cadastrar um evento
+diferente. Apaga vendas, produtos, combos, abas, evento e o jeito da ficha. Ficam só o número do caixa, a impressora, as opções de tela, as pastas e a senha
 master.
 
 | Aba Máquina | Qual backup restaurar | Número do caixa |

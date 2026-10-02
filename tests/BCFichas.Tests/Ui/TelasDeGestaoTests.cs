@@ -168,6 +168,9 @@ public class TelasDeGestaoTests
 
         tela.NomeEvento = "quermesse";
         tela.Colunas = 3;
+        // O desenho da grade acompanha colunas × linhas
+        Assert.Equal(9, tela.CelulasGrade.Count);
+        Assert.Equal("3 × 3 = 9 botões em cada aba", tela.TextoGrade);
         // Quem digitar o telefone da BC Fichas no rodapé não o vê duas vezes: ele já sai sozinho
         tela.Rodape = " bc-fichas fone: (19) 3023-9050 ";
         tela.SalvarCommand.Execute(null);

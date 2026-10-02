@@ -162,7 +162,7 @@ public sealed class Configuracao
     /// <summary>
     /// Cópia desta configuração com o que é de cada máquina vindo de <paramref name="maquina"/>: número do caixa,
     /// impressora (tipo, nome, porta, papel, corte, posição), tela e Windows. Usado ao carregar a programação
-    /// de outra máquina e ao deixar a máquina como nova.
+    /// de outra máquina e ao zerar a programação (novo evento).
     /// </summary>
     public Configuracao ComDadosDaMaquina(Configuracao maquina)
     {

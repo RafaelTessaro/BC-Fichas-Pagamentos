@@ -36,7 +36,8 @@ public sealed record ResultadoProcura(List<ProgramacaoEncontrada> Achados, List<
 /// número do caixa. O arquivo nunca leva vendas: quem restaura recebe a programação pura.</item>
 /// <item>Apagar as vendas: deixa a máquina pura para o cliente (ou pronta para outra festa) e mantém produtos e
 /// configurações.</item>
-/// <item>Deixar a máquina como nova: apaga tudo e mantém só o que é da máquina (impressora, número, senha).</item>
+/// <item>Reprogramação para novo evento: zera a programação e mantém só o que é da máquina (impressora, número,
+/// senha).</item>
 /// </list>
 /// Antes de trocar ou apagar qualquer coisa, guarda uma cópia do banco em dados\backups.
 /// </summary>
@@ -317,12 +318,13 @@ public sealed class ProgramacaoServico
     }
 
     /// <summary>
-    /// Como um banco vazio: apaga vendas, produtos, abas, combos, evento e ficha. Ficam o número do caixa, a
-    /// impressora, as opções de tela e a senha master (com as telas travadas).
+    /// Reprogramação para um novo evento (como o banco vazio do sistema antigo): apaga vendas, produtos, abas, combos,
+    /// evento e ficha. Ficam o número do caixa, a impressora, as opções de tela, as pastas e a senha master (com as
+    /// telas travadas).
     /// </summary>
-    public void DeixarComoNova()
+    public void ZerarProgramacao()
     {
-        CopiaDeSeguranca("antes-de-deixar-como-nova");
+        CopiaDeSeguranca("antes-de-zerar-programacao");
         _banco.Transacao((c, t) =>
         {
             ApagarVendas(c, t);

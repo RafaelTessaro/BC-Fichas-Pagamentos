@@ -6,7 +6,7 @@ using Xunit;
 
 namespace BCFichas.Tests.Core;
 
-/// <summary>Backup da programação para outras máquinas, deixar a máquina pura e deixar a máquina como nova.</summary>
+/// <summary>Backup da programação para outras máquinas, deixar a máquina pura e zerar a programação para um novo evento.</summary>
 public class ProgramacaoTests : IDisposable
 {
     private readonly SistemaTemporario _a = new();
@@ -157,7 +157,7 @@ public class ProgramacaoTests : IDisposable
     }
 
     [Fact]
-    public void Como_nova_apaga_tudo_menos_impressora_numero_e_senha()
+    public void Zerar_programacao_apaga_tudo_menos_impressora_numero_e_senha()
     {
         ProgramarA();
         var a = _a.Sistema;
@@ -166,7 +166,7 @@ public class ProgramacaoTests : IDisposable
         config.AjusteHorizontal = 12;
         a.Config.Salvar(config);
 
-        a.Programacao.DeixarComoNova();
+        a.Programacao.ZerarProgramacao();
 
         Assert.Empty(a.Catalogo.Produtos());
         Assert.Equal(["ITENS"], a.Catalogo.Abas().Select(x => x.Nome));
@@ -179,7 +179,7 @@ public class ProgramacaoTests : IDisposable
         Assert.Equal(12, c.AjusteHorizontal);
         Assert.Equal(TipoImpressora.Arquivo, c.Impressora);
         Assert.Equal("2468", c.SenhaMaster);
-        Assert.Single(Directory.GetFiles(a.Programacao.PastaBackups, "*antes-de-deixar-como-nova.db"));
+        Assert.Single(Directory.GetFiles(a.Programacao.PastaBackups, "*antes-de-zerar-programacao.db"));
     }
 
     [Fact]
@@ -388,7 +388,7 @@ public class ProgramacaoTests : IDisposable
     }
 
     [Fact]
-    public void Restaurar_e_deixar_como_nova_funcionam_com_o_caixa_aberto()
+    public void Restaurar_e_zerar_programacao_funcionam_com_o_caixa_aberto()
     {
         ProgramarA();
         var arquivo = Path.Combine(_a.Pasta, "a.bcf");
@@ -403,7 +403,7 @@ public class ProgramacaoTests : IDisposable
         Assert.Null(b.Caixa.SessaoTesteAberta(1));
 
         b.Caixa.Abrir(5, null, 0);
-        b.Programacao.DeixarComoNova();
+        b.Programacao.ZerarProgramacao();
         Assert.True(b.Programacao.Situacao().Pura);
         Assert.Empty(b.Catalogo.Produtos());
     }
