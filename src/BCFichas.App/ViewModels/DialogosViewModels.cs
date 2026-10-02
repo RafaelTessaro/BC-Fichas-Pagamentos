@@ -301,11 +301,23 @@ public sealed partial class EscolherBackupViewModel : ViewModelBase
     {
         _p = principal;
         Itens = achados.Select(a => new BackupItem(a)).ToList();
-        Recusados = string.Join("\n", recusados.Select(r => $"{Path.GetFileName(r.Arquivo)} ({r.Lugar}): {r.Motivo}"));
+        Recusados = DescreverRecusados(recusados.ToList(), "\n", ": ");
         PodeProcurar = podeProcurar;
         Explicacao = Itens.Count == 1
             ? "Achei este. Toque nele para ver o que tem e restaurar, ou procure outro arquivo."
             : "Achei estes na pasta do backup e nos pendrives. O mais novo está em cima.";
+    }
+
+    /// <summary>"arquivo (lugar): motivo" dos 3 primeiros e quantos mais (para a mensagem caber na tela).</summary>
+    public static string DescreverRecusados(IReadOnlyList<Core.Servicos.ArquivoRecusado> recusados, string entre,
+        string antesDoMotivo)
+    {
+        const int Mostrados = 3;
+        var texto = string.Join(entre, recusados.Take(Mostrados)
+            .Select(r => $"{Path.GetFileName(r.Arquivo)} ({r.Lugar}){antesDoMotivo}{r.Motivo}"));
+        if (recusados.Count > Mostrados)
+            texto += $"{entre}... e mais {recusados.Count - Mostrados} arquivo(s) que não dá para usar.";
+        return texto;
     }
 
     public List<BackupItem> Itens { get; }

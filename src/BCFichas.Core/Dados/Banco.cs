@@ -335,9 +335,29 @@ public sealed class Banco
         if (versao < 5)
         {
             using var t = conexao.BeginTransaction();
-            foreach (var tabela in new[] { "itens_pedido", "componentes_item" })
-                if (Escalar<long>(conexao, t, $"SELECT COUNT(*) FROM pragma_table_info('{tabela}') WHERE name = 'baixado'") == 0)
-                    Executar(conexao, t, $"ALTER TABLE {tabela} ADD COLUMN baixado INTEGER NOT NULL DEFAULT 0");
+            bool Adicionar(string tabela)
+            {
+                if (Escalar<long>(conexao, t, $"SELECT COUNT(*) FROM pragma_table_info('{tabela}') WHERE name = 'baixado'") > 0)
+                    return false;
+                Executar(conexao, t, $"ALTER TABLE {tabela} ADD COLUMN baixado INTEGER NOT NULL DEFAULT 0");
+                return true;
+            }
+            // Vendas de antes da 3.7: como não se sabe quanto saiu, conta a venda inteira dos produtos que controlam
+            // estoque (vendas pagas = status 1, fora do teste), como o estoque era baixado.
+            if (Adicionar("itens_pedido"))
+                Executar(conexao, t, """
+                    UPDATE itens_pedido SET baixado = quantidade
+                    WHERE produto_id IN (SELECT id FROM produtos WHERE controla_estoque = 1)
+                      AND pedido_id IN (SELECT id FROM pedidos WHERE status = 1 AND teste = 0)
+                    """);
+            if (Adicionar("componentes_item"))
+                Executar(conexao, t, """
+                    UPDATE componentes_item
+                    SET baixado = quantidade * (SELECT i.quantidade FROM itens_pedido i WHERE i.id = componentes_item.item_id)
+                    WHERE produto_id IN (SELECT id FROM produtos WHERE controla_estoque = 1)
+                      AND item_id IN (SELECT i.id FROM itens_pedido i JOIN pedidos p ON p.id = i.pedido_id
+                                      WHERE p.status = 1 AND p.teste = 0)
+                    """);
             Executar(conexao, t, "INSERT INTO versao (v) VALUES (5)");
             t.Commit();
         }

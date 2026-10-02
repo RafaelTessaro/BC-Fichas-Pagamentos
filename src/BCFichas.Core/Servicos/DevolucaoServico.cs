@@ -122,12 +122,17 @@ public sealed class DevolucaoServico
                     ("$d", devolucao.Id), ("$i", item.ItemId), ("$c", item.ComponenteId), ("$n", item.Nome),
                     ("$p", item.PrecoCentavos), ("$q", item.Quantidade), ("$v", item.TotalCentavos));
 
-                // A ficha voltou sem ser usada: o produto volta para o estoque (no teste o estoque não mexe).
+                // A ficha voltou sem ser usada: o que a venda tirou do estoque volta para ele. No teste, numa venda
+                // feita sem controle de estoque ou antes de o estoque ser digitado de novo, a venda não tirou nada.
                 var produtoId = linha.Componente is { } componente ? componente.ProdutoId : linha.Item.ProdutoId;
-                if (!pedido.Teste && produtoId is not null)
+                var baixado = item.ComponenteId is { } idComponente
+                    ? Banco.Escalar<long>(c, t, "SELECT baixado FROM componentes_item WHERE id = $id", ("$id", idComponente))
+                    : Banco.Escalar<long>(c, t, "SELECT baixado FROM itens_pedido WHERE id = $id", ("$id", item.ItemId));
+                var volta = Math.Min(item.Quantidade, Math.Max(baixado - jaDevolvidas, 0));
+                if (!pedido.Teste && produtoId is not null && volta > 0)
                     Banco.Executar(c, t,
                         "UPDATE produtos SET estoque = estoque + $q WHERE controla_estoque = 1 AND id = $p",
-                        ("$q", item.Quantidade), ("$p", produtoId));
+                        ("$q", volta), ("$p", produtoId));
             }
             // O valor pode ter mudado um centavo se outra devolução entrou no meio.
             devolucao.ValorCentavos = itens.Sum(i => i.TotalCentavos);

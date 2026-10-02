@@ -131,6 +131,21 @@ public class TelaMaquinaTests
         Assert.Equal("QUERMESSE NOVA", t.Sistema.Config.Atual.NomeEvento);
         var arquivo = Path.Combine(pasta, "BCFichas - QUERMESSE NOVA.bcf");
         Assert.Equal("QUERMESSE NOVA", t.Sistema.Programacao.Resumo(arquivo).Evento);
+
+        // A maquininha também vai no backup; a impressora e a tela são da máquina e não contam
+        tela.Zoom = 125;
+        tela.TipoMaquininha = tela.TiposMaquininha.Single(m => m.Valor == TipoMaquininha.Simulador);
+        backup = tela.FazerBackupCommand.ExecuteAsync(null);
+        salvar = await EsperarMensagem(t);
+        Assert.Equal("Alterações não salvas", salvar.Titulo);
+        salvar.NaoCommand.Execute(null);
+        await backup;
+        tela.TipoMaquininha = tela.TiposMaquininha.Single(m => m.Valor == TipoMaquininha.Separada);
+        backup = tela.FazerBackupCommand.ExecuteAsync(null);
+        feito = await EsperarMensagem(t);
+        Assert.Equal("Backup feito", feito.Titulo);
+        feito.SimCommand.Execute(null);
+        await backup;
     }
 
     [AvaloniaFact]
@@ -237,13 +252,15 @@ public class TelaMaquinaTests
         resumo.NaoCommand.Execute(null);
         await restaurar;
 
-        // Um arquivo pela metade (cópia do acesso remoto que não terminou): diz o motivo em vez de "não achei"
-        File.WriteAllText(Path.Combine(pasta, "BCFichas - FESTA.bcf"), "PK pela metade");
+        // Arquivos pela metade (cópia do acesso remoto que não terminou): diz o motivo em vez de "não achei", e
+        // mostra só os 3 primeiros para a mensagem caber na tela
+        for (var i = 1; i <= 5; i++) File.WriteAllText(Path.Combine(pasta, $"BCFichas - FESTA {i}.bcf"), "PK pela metade");
         restaurar = tela.RestaurarCommand.ExecuteAsync(null);
         var recusado = await EsperarMensagem(t);
         Assert.Equal("Não dá para usar o backup", recusado.Titulo);
-        Assert.Contains("BCFichas - FESTA.bcf (Pasta do backup):", recusado.Texto);
+        Assert.Contains("BCFichas - FESTA 1.bcf (Pasta do backup):", recusado.Texto);
         Assert.Contains("ainda está sendo copiado", recusado.Texto);
+        Assert.EndsWith("... e mais 2 arquivo(s) que não dá para usar.", recusado.Texto);
         recusado.NaoCommand.Execute(null);
         await restaurar;
     }

@@ -270,12 +270,10 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     /// </summary>
     private async Task<bool> SalvarAlteracoesAntes(string antes)
     {
-        var a = Montar();
+        // Compara tudo o que vai no backup (o que é da máquina — impressora, tela, pastas — fica de fora).
         var c = Principal.Config;
-        var mudou = a.NomeEvento != c.NomeEvento || a.Rodape != c.Rodape || a.Modelo != c.Modelo || a.Fonte != c.Fonte ||
-                    a.Moldura != c.Moldura || a.CodigoDeBarras != c.CodigoDeBarras ||
-                    a.MostrarValorNaFicha != c.MostrarValorNaFicha || a.Logo != c.Logo || a.Colunas != c.Colunas ||
-                    a.Linhas != c.Linhas || a.TelasProtegidas != c.TelasProtegidas ||
+        var mudou = System.Text.Json.JsonSerializer.Serialize(Montar().ComDadosDaMaquina(c)) !=
+                    System.Text.Json.JsonSerializer.Serialize(c) ||
                     Abas.Any(x => x.Nome.Trim().ToUpperInvariant() != x.Aba.Nome);
         if (!mudou) return true;
         if (!await Principal.Confirmar("Alterações não salvas",
@@ -574,7 +572,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
             if (procura.Recusados.Count > 0)
             {
                 titulo = "Não dá para usar o backup";
-                texto = string.Join("\n\n", procura.Recusados.Select(r => $"{Path.GetFileName(r.Arquivo)} ({r.Lugar}):\n{r.Motivo}"));
+                texto = EscolherBackupViewModel.DescreverRecusados(procura.Recusados, "\n\n", ":\n");
             }
             else
             {

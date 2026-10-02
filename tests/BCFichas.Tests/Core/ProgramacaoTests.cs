@@ -277,33 +277,77 @@ public class ProgramacaoTests : IDisposable
         }
         int Atual(Produto p) => a.Catalogo.Produto(p.Id)!.Estoque;
         var sessao = a.Caixa.Abrir(1, null, 0);
-        void Vender(Produto p, int quantidade)
+        Pedido Vender(Produto p, int quantidade)
         {
             var carrinho = new Carrinho();
             carrinho.Adicionar(a.Catalogo.Produto(p.Id)!, quantidade);
-            a.Vendas.CriarPedido(sessao, carrinho.Linhas, FormaPagamento.Dinheiro, 100_000);
+            return a.Vendas.CriarPedido(sessao, carrinho.Linhas, FormaPagamento.Dinheiro, 100_000);
         }
+        void Devolver(Pedido pedido, int quantidade) =>
+            a.Devolucoes.Devolver(sessao, pedido.Id, new Dictionary<long, int> { [pedido.Itens[0].Id] = quantidade }, null);
 
         // Vendido sem controle de estoque e só depois o estoque foi ligado: não tirou nada, não devolve nada
-        Vender(pastel, 3);
+        var pasteis = Vender(pastel, 3);
         Estoque(pastel, true, 40);
+        Devolver(pasteis, 1);
+        Assert.Equal(40, Atual(pastel));
         // Vendido e depois o estoque foi contado e digitado de novo: vale a contagem
         Estoque(cerveja, true, 100);
-        Vender(cerveja, 5);
+        var cervejas = Vender(cerveja, 5);
         Estoque(cerveja, true, 200);
-        // Vendido e ninguém mexeu no estoque: volta o que saiu
+        Devolver(cervejas, 2);
+        Assert.Equal(200, Atual(cerveja));
+        // Vendido e ninguém mexeu no estoque: volta o que saiu (a ficha devolvida já voltou)
         Estoque(refri, true, 30);
-        Vender(refri, 4);
-        Assert.Equal(4, a.Programacao.Situacao().EstoqueAVoltar);
+        var refris = Vender(refri, 4);
+        Devolver(refris, 1);
+        Assert.Equal(27, Atual(refri));
+        Assert.Equal(3, a.Programacao.Situacao().EstoqueAVoltar);
 
         // Outra festa com o que sobrou: o estoque fica como está
         a.Programacao.ApagarVendas(devolverEstoque: false);
-        Assert.Equal([40, 200, 26], new[] { pastel, cerveja, refri }.Select(Atual));
+        Assert.Equal([40, 200, 27], new[] { pastel, cerveja, refri }.Select(Atual));
 
         sessao = a.Caixa.Abrir(1, null, 0);
         Vender(refri, 6);
         a.Programacao.ApagarVendas();
-        Assert.Equal([40, 200, 26], new[] { pastel, cerveja, refri }.Select(Atual));
+        Assert.Equal([40, 200, 27], new[] { pastel, cerveja, refri }.Select(Atual));
+    }
+
+    [Fact]
+    public void Vendas_de_antes_da_versao_37_tambem_voltam_para_o_estoque()
+    {
+        var a = _a.Sistema;
+        var cerveja = a.Catalogo.Produtos().First(x => x.Nome == "CERVEJA");
+        cerveja.ControlaEstoque = true;
+        cerveja.Estoque = 100;
+        a.Catalogo.SalvarProduto(cerveja, 30);
+        a.Catalogo.SalvarProduto(new Produto
+        {
+            Nome = "Combo cerveja", AbaId = cerveja.AbaId, Posicao = a.Catalogo.PosicoesLivres(cerveja.AbaId, 30).First(),
+            PrecoCentavos = 3500,
+            Componentes = [new ComponenteCombo { ProdutoId = cerveja.Id, Nome = "CERVEJA", Quantidade = 5, ValorCentavos = 800 }],
+        }, 30);
+        var combo = a.Catalogo.Produtos().First(x => x.Nome == "COMBO CERVEJA");
+        var sessao = a.Caixa.Abrir(1, null, 0);
+        foreach (var (produto, quantidade) in new[] { (cerveja, 3), (combo, 1) })
+        {
+            var carrinho = new Carrinho();
+            carrinho.Adicionar(a.Catalogo.Produto(produto.Id)!, quantidade);
+            a.Vendas.CriarPedido(sessao, carrinho.Linhas, FormaPagamento.Dinheiro, 100_000);
+        }
+        Assert.Equal(92, a.Catalogo.Produto(cerveja.Id)!.Estoque);
+        // Volta o banco para a versão 4 (a 3.6 não guardava quanto cada venda tirou do estoque)
+        a.Banco.Executar("""
+            ALTER TABLE itens_pedido DROP COLUMN baixado; ALTER TABLE componentes_item DROP COLUMN baixado;
+            DELETE FROM versao WHERE v = 5;
+            """);
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+
+        var atualizado = Sistema.Iniciar(_a.Pasta, criarExemplos: false);
+        Assert.Equal(8, atualizado.Programacao.Situacao().EstoqueAVoltar);
+        atualizado.Programacao.ApagarVendas();
+        Assert.Equal(100, atualizado.Catalogo.Produto(cerveja.Id)!.Estoque);
     }
 
     [Fact]
