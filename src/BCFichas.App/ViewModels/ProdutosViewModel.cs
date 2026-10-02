@@ -147,7 +147,6 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
     [ObservableProperty] private string _fichaDetalhe = "";
     [ObservableProperty] private string _fichaQuantidade = "1";
     [ObservableProperty] private string _fichaValor = "";
-    private long? _fichaProduto;
 
     public bool Editando => Id != 0;
     public bool NaoEhCombo => !EhCombo;
@@ -188,14 +187,22 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
     }
 
     partial void OnPrecoChanged(string value) => AtualizarResumoCombo();
-    partial void OnNomeChanged(string value) => OnPropertyChanged(nameof(NomeDoCombo));
 
-    // Mudou o nome digitado: deixa de ser o produto cadastrado que foi escolhido no atalho.
-    partial void OnFichaNomeChanged(string value)
+    // Prévia do botão: cor marcada e foto (sumiram por engano na versão 3.4)
+    partial void OnCorChanged(string value)
     {
-        if (_fichaProduto is { } id && ParaOCombo.FirstOrDefault(p => p.Id == id)?.Nome != value.Trim().ToUpperInvariant())
-            _fichaProduto = null;
+        foreach (var c in Cores) c.Marcada = c.Hex == value;
+        var cor = Recursos.CorOuPadrao(value);
+        PreviaFundo = new SolidColorBrush(cor);
+        PreviaTexto = Recursos.TextoSobre(cor);
     }
+
+    partial void OnImagemChanged(string? value)
+    {
+        ImagemPrevia = CacheImagens.Obter(Sistema.Impressao.CaminhoImagem(value), 200);
+        OnPropertyChanged(nameof(TemImagem));
+    }
+    partial void OnNomeChanged(string value) => OnPropertyChanged(nameof(NomeDoCombo));
 
     partial void OnAtivoChanged(bool value)
     {
@@ -260,32 +267,35 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
         if (igual is not null)
             igual.Quantidade = Math.Min(200, igual.Quantidade + quantidade);
         else
-            Componentes.Add(new ComponenteEdicao(_fichaProduto, nome, detalhe, quantidade, valor, AtualizarResumoCombo, RemoverFicha));
+            Componentes.Add(new ComponenteEdicao(null, nome, detalhe, quantidade, valor, AtualizarResumoCombo, RemoverFicha));
 
         FichaNome = "";
         FichaQuantidade = "1";
         FichaValor = "";
-        _fichaProduto = null;
         AtualizarResumoCombo();
     }
 
-    /// <summary>Atalho de vale: "VALE R$ 10,00" com valor de R$ 10,00.</summary>
+    /// <summary>Atalho de vale: um toque põe "VALE R$ 10,00" de R$ 10,00 no combo (com a Qtde e o Detalhe digitados).</summary>
     [RelayCommand]
-    private void UsarVale(long centavos)
-    {
-        FichaNome = "VALE " + Dinheiro.Formatar(centavos);
-        FichaValor = Dinheiro.ParaEdicao(centavos);
-        _fichaProduto = null;
-    }
+    private void AdicionarVale(long centavos) => PorAtalho("VALE " + Dinheiro.Formatar(centavos), centavos, null);
 
-    /// <summary>Atalho de produto cadastrado: preenche nome, detalhe e valor e liga ao estoque dele.</summary>
+    /// <summary>Atalho de produto cadastrado: um toque põe a ficha dele no combo (e liga ao estoque dele).</summary>
     [RelayCommand]
-    private void UsarProduto(Produto produto)
+    private void AdicionarProduto(Produto produto) =>
+        PorAtalho(produto.Nome, produto.PrecoCentavos, produto.Id, produto.Detalhe);
+
+    private void PorAtalho(string nome, long valor, long? produtoId, string detalheDoProduto = "")
     {
-        FichaNome = produto.Nome;
-        if (produto.Detalhe.Length > 0) FichaDetalhe = produto.Detalhe;
-        FichaValor = Dinheiro.ParaEdicao(produto.PrecoCentavos);
-        _fichaProduto = produto.Id;
+        var quantidade = int.TryParse(FichaQuantidade.Trim(), out var q) && q is >= 1 and <= 200 ? q : 1;
+        var detalhe = FichaDetalhe.Trim().ToUpperInvariant();
+        if (detalhe.Length == 0) detalhe = detalheDoProduto;
+        var igual = Componentes.FirstOrDefault(c => c.Nome == nome && c.Detalhe == detalhe && c.ValorCentavos == valor);
+        if (igual is not null)
+            igual.Quantidade = Math.Min(200, igual.Quantidade + quantidade);
+        else
+            Componentes.Add(new ComponenteEdicao(produtoId, nome, detalhe, quantidade, valor, AtualizarResumoCombo, RemoverFicha));
+        FichaQuantidade = "1";
+        AtualizarResumoCombo();
     }
 
     [RelayCommand]

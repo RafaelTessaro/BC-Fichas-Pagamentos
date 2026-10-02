@@ -82,8 +82,9 @@ combo**, igual à do sistema antigo, só que mais fácil:
 - Escreva o **produto** (o que sai grande na ficha), o **detalhe** (opcional, ex.: `VAL. 05/10/26`), a **quantidade**
   e o **valor de cada** ficha e toque em **Adicionar**. Repetindo a mesma ficha, a quantidade soma. Depois de
   adicionar, o detalhe continua preenchido para a próxima linha.
-- **Atalhos:** `Vale R$ 1,00` … `Vale R$ 50,00` preenchem nome e valor do vale; os produtos cadastrados também
-  aparecem como atalho (aí a ficha baixa o estoque daquele produto).
+- **Atalhos** (painel à direita): **um toque já põe a ficha no combo**, usando a Qtde e o Detalhe digitados em
+  cima. Vales de R$ 1, 2, 5, 10, 20 e 50 e os produtos cadastrados (esses baixam o estoque do produto). Tocando de
+  novo, soma na mesma linha.
 - Na lista: **−** tira uma ficha, **+** põe mais uma, a **lixeira** tira todas daquela linha.
 - Embaixo aparecem quantas fichas são, o **total das fichas** e se ele confere com o preço do combo; o botão
   **Usar o total como preço do combo** acerta o preço. **Salvar combo** grava.

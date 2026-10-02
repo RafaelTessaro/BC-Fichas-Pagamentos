@@ -15,6 +15,10 @@ public static class Conversores
     /// <summary>Tempo do simulador: 0 = espera o operador; 3 = "3 segundos".</summary>
     public static readonly IValueConverter Centavos = new FuncValueConverter<long, string>(c => Dinheiro.Formatar(c));
 
+    /// <summary>"R$ 10" (sem centavos quando é redondo) para os atalhos de vale.</summary>
+    public static readonly IValueConverter CentavosCurto = new FuncValueConverter<long, string>(c =>
+        c % 100 == 0 ? $"R$ {c / 100}" : Dinheiro.Formatar(c));
+
     public static readonly IValueConverter Segundos = new FuncValueConverter<int, string>(s =>
         s == 0 ? "Nunca (eu toco em aprovar ou recusar)" : $"{s} segundos");
 }

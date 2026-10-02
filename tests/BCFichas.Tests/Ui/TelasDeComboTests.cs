@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.VisualTree;
 using BCFichas.App.ViewModels;
 using BCFichas.Core;
 using BCFichas.Core.Vendas;
@@ -32,12 +33,13 @@ public class TelasDeComboTests
         tela.Cor = "#2B8A3E";
         tela.EhCombo = true;
         Assert.True(tela.EditandoCombo); // ligar "Combo" abre a tela das fichas
-        // Atalho do produto cadastrado: preenche nome e valor (e liga ao estoque da Heineken)
-        tela.UsarProdutoCommand.Execute(tela.ParaOCombo.Single(p => p.Nome == "HEINEKEN"));
-        Assert.Equal("6,50", tela.FichaValor);
-        tela.FichaQuantidade = "5";
-        tela.AdicionarFichaCommand.Execute(null);
+        // Atalho do produto cadastrado: um toque põe a ficha (com a Qtde digitada) e liga ao estoque da Heineken
+        tela.FichaQuantidade = "4";
+        tela.AdicionarProdutoCommand.Execute(tela.ParaOCombo.Single(p => p.Nome == "HEINEKEN"));
+        Assert.Equal("1", tela.FichaQuantidade);
+        tela.AdicionarProdutoCommand.Execute(tela.ParaOCombo.Single(p => p.Nome == "HEINEKEN"));
         var linha = Assert.Single(tela.Componentes);
+        Assert.Equal(650, linha.ValorCentavos);
         Assert.True(linha.Ligado);
         Assert.Equal(5, linha.Quantidade);
         Assert.Equal("R$ 32,50", tela.TotalFichas);
@@ -114,11 +116,12 @@ public class TelasDeComboTests
         Assert.Equal("", tela.FichaNome);
         Ficha("VALE R$ 5,00", "4", "5");
         Ficha("VALE R$ 5,00", "2", "5,00");   // a mesma ficha de novo: soma (fica 6)
-        tela.UsarValeCommand.Execute(200L);   // atalho do vale de R$ 2,00
-        Assert.Equal("VALE R$ 2,00", tela.FichaNome);
         tela.FichaQuantidade = "5";
-        tela.AdicionarFichaCommand.Execute(null);
-        Ficha("VALE R$ 1,00", "11", "1");
+        tela.AdicionarValeCommand.Execute(200L);   // atalho: 5 vales de R$ 2,00 com a validade digitada
+        Assert.Equal("VALE R$ 2,00", tela.Componentes[^1].Nome);
+        Assert.Equal("VAL. 05/10/26", tela.Componentes[^1].Detalhe);
+        Ficha("VALE R$ 1,00", "10", "1");
+        tela.AdicionarValeCommand.Execute(100L);   // mais um vale de R$ 1,00 pelo atalho: soma na mesma linha
         Assert.Equal(["VALE R$ 10,00", "VALE R$ 5,00", "VALE R$ 2,00", "VALE R$ 1,00"], tela.Componentes.Select(c => c.Nome));
         Assert.Equal(6, tela.Componentes[1].Quantidade);
         Assert.Equal("R$ 101,00", tela.TotalFichas);
@@ -150,6 +153,40 @@ public class TelasDeComboTests
         Assert.False(tela.EditandoCombo);
         Assert.Equal(4, tela.Componentes.Count);
         Assert.StartsWith("26 fichas • as fichas somam R$ 100,00", tela.ResumoCombo);
+    }
+
+    [AvaloniaFact]
+    public void Previa_do_botao_mostra_a_foto_e_a_cor_escolhida()
+    {
+        using var t = new TelaDeTeste(catalogoPadrao: true);
+        var origem = Path.Combine(t.Sistema.PastaDados, "foto.png");
+        using (var bmp = new SkiaSharp.SKBitmap(300, 300))
+        {
+            using var c = new SkiaSharp.SKCanvas(bmp);
+            c.Clear(SkiaSharp.SKColors.OrangeRed);
+            BCFichas.Core.Impressao.ImagemUtil.SalvarPng(bmp, origem);
+        }
+        t.Principal.EscolherImagem = (_, _) => Task.FromResult<string?>(origem);
+        t.AbrirCaixa();
+        var tela = new ProdutosViewModel(t.Principal);
+        t.Principal.Abrir(tela);
+
+        tela.Selecionado = tela.Lista.Single(p => p.Nome == "PASTEL");
+        tela.EscolherImagemCommand.Execute(null);
+        Assert.True(tela.TemImagem);
+        Assert.NotNull(tela.ImagemPrevia);
+        tela.Cor = "#C92A2A";
+        Assert.True(tela.Cores.Single(c => c.Hex == "#C92A2A").Marcada);
+        tela.SalvarCommand.Execute(null);
+
+        // Abrindo o produto de novo, a prévia continua com a foto e a cor
+        tela.NovoCommand.Execute(null);
+        Assert.Null(tela.ImagemPrevia);
+        tela.Selecionado = tela.Lista.Single(p => p.Nome == "PASTEL");
+        Assert.NotNull(tela.ImagemPrevia);
+        Assert.True(tela.Cores.Single(c => c.Hex == "#C92A2A").Marcada);
+        TelaDeTeste.Atualizar();
+        Assert.Contains(t.Janela.GetVisualDescendants().OfType<Image>(), i => i.IsEffectivelyVisible && i.Source is not null);
     }
 
     [AvaloniaFact]
