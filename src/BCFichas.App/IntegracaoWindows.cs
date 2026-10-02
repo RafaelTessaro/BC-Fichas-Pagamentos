@@ -26,6 +26,7 @@ internal static class IntegracaoWindows
     public static void Aplicar(Configuracao config)
     {
         ManterTelaLigada(config.ManterTelaLigada);
+        CriarPastaBackup(config.PastaBackup);
         try
         {
             var exe = Environment.ProcessPath;
@@ -36,6 +37,20 @@ internal static class IntegracaoWindows
         catch (Exception e)
         {
             Log.Erro("Iniciar com o Windows", e);
+        }
+    }
+
+    /// <summary>A pasta do backup já fica criada: pelo acesso remoto é só copiar o arquivo .bcf para ela.</summary>
+    private static void CriarPastaBackup(string pasta)
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        try
+        {
+            Directory.CreateDirectory(Core.Servicos.ProgramacaoServico.CaminhoDaPasta(pasta));
+        }
+        catch (Exception e)
+        {
+            Log.Erro("Criar a pasta do backup", e);
         }
     }
 

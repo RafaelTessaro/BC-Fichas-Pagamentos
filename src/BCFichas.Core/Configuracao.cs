@@ -103,6 +103,11 @@ public sealed class Configuracao
     public int Linhas { get; set; } = 3;
     /// <summary>Onde o botão "Imagem" do cadastro de produtos começa a procurar as fotos.</summary>
     public string PastaFotos { get; set; } = @"C:\Sistema_New\produtos";
+    /// <summary>
+    /// Onde o "Fazer backup" grava a programação e onde o "Restaurar" procura (pelo acesso remoto, é só pôr o
+    /// arquivo .bcf nesta pasta da outra máquina).
+    /// </summary>
+    public string PastaBackup { get; set; } = @"C:\Sistema_New\backup";
 
     // Ficha
     public ModeloFicha Modelo { get; set; } = ModeloFicha.Classico2;
@@ -170,6 +175,7 @@ public sealed class Configuracao
         c.IniciarComWindows = maquina.IniciarComWindows;
         c.DesligarAoFechar = maquina.DesligarAoFechar;
         c.PastaFotos = maquina.PastaFotos;
+        c.PastaBackup = maquina.PastaBackup;
         c.Impressora = maquina.Impressora;
         c.NomeImpressora = maquina.NomeImpressora;
         c.PortaSerial = maquina.PortaSerial;

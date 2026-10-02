@@ -504,36 +504,63 @@
           <ScrollViewer>
             <StackPanel Margin="6,6,6,24" MaxWidth="900" HorizontalAlignment="Left" Spacing="14">
               <Border Background="{StaticResource FundoLateral}" CornerRadius="14" Padding="18,14">
-                <StackPanel Spacing="2">
-                  <TextBlock Text="ESTA MÁQUINA" Foreground="{StaticResource Marca}" FontSize="12" FontWeight="Bold" />
-                  <TextBlock Text="{Binding SituacaoMaquina}" Foreground="White" FontSize="17" FontWeight="SemiBold"
-                             TextWrapping="Wrap" />
-                </StackPanel>
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="ESTA MÁQUINA" Foreground="{StaticResource Marca}" FontSize="12" FontWeight="Bold" />
+                    <TextBlock Text="{Binding SituacaoMaquina}" Foreground="White" FontSize="17" FontWeight="SemiBold"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SituacaoVendas}" Foreground="#CBD5E1" FontSize="14" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <Border Grid.Column="1" Background="{StaticResource Primaria}" CornerRadius="8" Padding="12,6"
+                          Margin="12,0,0,0" VerticalAlignment="Center" IsVisible="{Binding MaquinaPura}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <PathIcon Data="{StaticResource IconeOk}" Foreground="White" Width="16" Height="16" />
+                      <TextBlock Text="PURA" Foreground="White" FontWeight="Bold" FontSize="14" />
+                    </StackPanel>
+                  </Border>
+                  <Border Grid.Column="1" Background="{StaticResource Aviso}" CornerRadius="8" Padding="12,6"
+                          Margin="12,0,0,0" VerticalAlignment="Center" IsVisible="{Binding !MaquinaPura}">
+                    <TextBlock Text="COM VENDAS" Foreground="White" FontWeight="Bold" FontSize="14" />
+                  </Border>
+                </Grid>
               </Border>
 
-              <!-- Programação no pendrive -->
+              <!-- Backup da programação -->
               <Border Classes="bloco">
                 <Grid ColumnDefinitions="Auto,*">
                   <Border Classes="icone-bloco" Background="{StaticResource Azul}">
                     <PathIcon Data="{StaticResource IconeTroca}" Foreground="White" Width="28" Height="28" />
                   </Border>
                   <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="8">
-                    <TextBlock Text="Copiar a programação para outra máquina" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="Backup da programação" FontSize="18" FontWeight="Bold" />
                     <TextBlock Classes="dica" Margin="0" FontSize="14"
-                               Text="Programe uma máquina e salve no pendrive. Nas outras, carregue do pendrive e diga só o número do caixa. Vai junto: evento, produtos, abas, combos, fotos, logo, modelo da ficha e senha. Não vão as vendas nem a impressora (cada máquina fica com a sua)." />
+                               Text="Faça o backup na máquina programada e restaure nas outras: só muda o número do caixa (PDV). Vai tudo num arquivo só (produtos, abas, combos, imagens, logotipo, evento, ficha e senha) e nunca vão as vendas, então quem restaura chega pura para o cliente. A impressora e a tela continuam as de cada máquina." />
+                    <TextBlock Text="Pasta do backup" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0" />
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBox Text="{Binding PastaBackup}" MaxLength="250" Watermark="C:\Sistema_New\backup" />
+                      <Button Grid.Column="1" Classes="suave" Command="{Binding EscolherPastaBackupCommand}"
+                              Margin="8,0,0,0" Padding="14,0" MinHeight="44">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <PathIcon Data="{StaticResource IconePasta}" Width="18" Height="18" />
+                          <TextBlock Text="Escolher" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                    </Grid>
+                    <TextBlock Classes="dica" Margin="0" FontSize="13"
+                               Text="Pelo acesso remoto, é só copiar o arquivo .bcf para esta pasta da outra máquina. Com pendrive no tablet, o backup vai também para ele e o Restaurar procura nele." />
                     <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
-                      <Button Classes="primario" Command="{Binding SalvarProgramacaoCommand}" IsEnabled="{Binding !Ocupado}"
+                      <Button Classes="primario" Command="{Binding FazerBackupCommand}" IsEnabled="{Binding !Ocupado}"
                               Height="54" Padding="20,0">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                           <PathIcon Data="{StaticResource IconeSetaBaixo}" Foreground="White" />
-                          <TextBlock Text="Salvar no pendrive" Foreground="White" FontSize="17" VerticalAlignment="Center" />
+                          <TextBlock Text="Fazer backup" Foreground="White" FontSize="17" VerticalAlignment="Center" />
                         </StackPanel>
                       </Button>
-                      <Button Classes="suave" Command="{Binding CarregarProgramacaoCommand}" IsEnabled="{Binding !Ocupado}"
+                      <Button Classes="suave" Command="{Binding RestaurarCommand}" IsEnabled="{Binding !Ocupado}"
                               Height="54" Padding="20,0">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                           <PathIcon Data="{StaticResource IconeSetaCima}" />
-                          <TextBlock Text="Carregar do pendrive" FontSize="17" VerticalAlignment="Center" />
+                          <TextBlock Text="Restaurar" FontSize="17" VerticalAlignment="Center" />
                         </StackPanel>
                       </Button>
                     </StackPanel>
@@ -541,19 +568,19 @@
                 </Grid>
               </Border>
 
-              <!-- Começar outra festa -->
+              <!-- Deixar pura para o cliente -->
               <Border Classes="bloco">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                   <Border Classes="icone-bloco" Background="{StaticResource Aviso}">
                     <PathIcon Data="{StaticResource IconeFicha}" Foreground="White" Width="28" Height="28" />
                   </Border>
                   <StackPanel Grid.Column="1" Margin="14,0" Spacing="4" VerticalAlignment="Center">
-                    <TextBlock Text="Começar outra festa" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Text="Deixar pura para o cliente" FontSize="18" FontWeight="Bold" />
                     <TextBlock Classes="dica" Margin="0" FontSize="14"
-                               Text="Apaga as vendas, caixas, sangrias e devoluções. Os produtos, combos e configurações ficam. A numeração dos pedidos volta para 1." />
+                               Text="Apaga vendas, testes, caixas (até o aberto), sangrias e devoluções, e o pedido volta para o 1. Ficam os produtos e as configurações. Use antes de entregar a máquina ou para começar outra festa com o mesmo cardápio." />
                   </StackPanel>
-                  <Button Grid.Column="2" Classes="suave" Command="{Binding ComecarOutraFestaCommand}" VerticalAlignment="Center"
-                          Height="54" Padding="18,0">
+                  <Button Grid.Column="2" Classes="suave" Command="{Binding LimparVendasCommand}" IsEnabled="{Binding !Ocupado}"
+                          VerticalAlignment="Center" Height="54" Padding="18,0">
                     <TextBlock Text="Apagar as vendas" Foreground="{StaticResource Aviso}" FontWeight="Bold" FontSize="16" />
                   </Button>
                 </Grid>
@@ -568,17 +595,17 @@
                   <StackPanel Grid.Column="1" Margin="14,0" Spacing="4" VerticalAlignment="Center">
                     <TextBlock Text="Deixar a máquina como nova" FontSize="18" FontWeight="Bold" />
                     <TextBlock Classes="dica" Margin="0" FontSize="14"
-                               Text="Para reprogramar do zero (como o banco vazio do sistema antigo): apaga vendas, produtos, combos, evento e ficha. Ficam o número do caixa, a impressora e a senha." />
+                               Text="Para reprogramar do zero (como o banco vazio do sistema antigo): apaga vendas, produtos, combos, evento e ficha. Ficam o número do caixa, a impressora, as pastas e a senha." />
                   </StackPanel>
-                  <Button Grid.Column="2" Classes="perigo" Command="{Binding DeixarComoNovaCommand}" VerticalAlignment="Center"
-                          Height="54" Padding="18,0">
+                  <Button Grid.Column="2" Classes="perigo" Command="{Binding DeixarComoNovaCommand}" IsEnabled="{Binding !Ocupado}"
+                          VerticalAlignment="Center" Height="54" Padding="18,0">
                     <TextBlock Text="Apagar tudo" Foreground="White" FontWeight="Bold" FontSize="16" />
                   </Button>
                 </Grid>
               </Border>
 
               <TextBlock Classes="dica" FontSize="13"
-                         Text="Antes de apagar ou trocar qualquer coisa, o programa guarda sozinho uma cópia de segurança do banco em dados\backups (as 15 últimas). Se apagar sem querer, chame o suporte." />
+                         Text="Antes de apagar ou restaurar, o programa guarda sozinho uma cópia de segurança do banco em dados\backups (as 15 últimas). Se apagar sem querer, chame o suporte." />
             </StackPanel>
           </ScrollViewer>
         </TabItem>

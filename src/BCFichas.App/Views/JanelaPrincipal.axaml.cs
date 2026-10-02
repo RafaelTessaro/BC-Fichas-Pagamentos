@@ -38,7 +38,7 @@ public partial class JanelaPrincipal : Window
         _vm.PropertyChanged += AoMudarVm;
         _vm.EscolherImagem = EscolherImagemAsync;
         _vm.EscolherProgramacao = EscolherProgramacaoAsync;
-        _vm.EscolherOndeSalvar = EscolherOndeSalvarAsync;
+        _vm.EscolherPasta = EscolherPastaAsync;
         _vm.FecharPrograma = Close;
         AplicarTelaCheia();
     }
@@ -114,17 +114,15 @@ public partial class JanelaPrincipal : Window
         return arquivos.FirstOrDefault()?.TryGetLocalPath();
     }
 
-    private async Task<string?> EscolherOndeSalvarAsync(string nome, string? pastaInicial)
+    private async Task<string?> EscolherPastaAsync(string? pastaInicial)
     {
-        var arquivo = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        var pastas = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Onde salvar a programação",
-            SuggestedFileName = nome,
-            DefaultExtension = Core.Servicos.ProgramacaoServico.Extensao.TrimStart('.'),
-            FileTypeChoices = [TipoProgramacao],
+            Title = "Escolha a pasta do backup",
+            AllowMultiple = false,
             SuggestedStartLocation = await Pasta(pastaInicial),
         });
-        return arquivo?.TryGetLocalPath();
+        return pastas.FirstOrDefault()?.TryGetLocalPath();
     }
 
     /// <param name="pastaInicial">Pasta em que o seletor abre (ex.: C:\Sistema_New\produtos).</param>

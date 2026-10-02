@@ -271,3 +271,55 @@ public sealed partial class NumeroViewModel : ViewModelBase
         _resposta.TrySetResult(null);
     }
 }
+
+/// <summary>O que foi escolhido na lista do "Restaurar": um arquivo, procurar em outro lugar ou nada (voltar).</summary>
+public sealed record EscolhaBackup(string? Arquivo, bool Procurar = false);
+
+/// <summary>Um backup na lista do "Restaurar".</summary>
+public sealed class BackupItem(Core.Servicos.ProgramacaoEncontrada achado)
+{
+    public string Arquivo { get; } = achado.Arquivo;
+    public string Evento { get; } = achado.Resumo.Evento.Length > 0 ? achado.Resumo.Evento : "(evento sem nome)";
+    public string Lugar { get; } = achado.Lugar;
+    public string Detalhes { get; } =
+        $"Salvo em {Formato.DataHora(achado.Resumo.SalvoEm)} no Caixa {achado.Resumo.Caixa:00} • " +
+        $"{achado.Resumo.Produtos} produto(s)" + (achado.Resumo.Combos > 0 ? $" • {achado.Resumo.Combos} combo(s)" : "");
+    public string NomeArquivo { get; } = Path.GetFileName(achado.Arquivo);
+}
+
+/// <summary>
+/// Lista dos backups achados na pasta do backup e nos pendrives (o mais novo primeiro), para escolher qual
+/// restaurar. Aparece só quando há mais de um.
+/// </summary>
+public sealed partial class EscolherBackupViewModel : ViewModelBase
+{
+    private readonly PrincipalViewModel _p;
+    private readonly TaskCompletionSource<EscolhaBackup> _resposta = new();
+
+    public EscolherBackupViewModel(PrincipalViewModel principal, IEnumerable<Core.Servicos.ProgramacaoEncontrada> achados,
+        bool podeProcurar)
+    {
+        _p = principal;
+        Itens = achados.Select(a => new BackupItem(a)).ToList();
+        PodeProcurar = podeProcurar;
+    }
+
+    public List<BackupItem> Itens { get; }
+    public bool PodeProcurar { get; }
+    public Task<EscolhaBackup> Resposta => _resposta.Task;
+
+    [RelayCommand]
+    private void Escolher(BackupItem item) => Responder(new EscolhaBackup(item.Arquivo));
+
+    [RelayCommand]
+    private void Procurar() => Responder(new EscolhaBackup(null, Procurar: true));
+
+    [RelayCommand]
+    private void Cancelar() => Responder(new EscolhaBackup(null));
+
+    private void Responder(EscolhaBackup escolha)
+    {
+        _p.FecharDialogo(this);
+        _resposta.TrySetResult(escolha);
+    }
+}

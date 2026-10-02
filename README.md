@@ -22,7 +22,7 @@ na **Elgin i9** em papel de 80 mm.
 | **Relatórios** | Caixa atual, caixas anteriores e sangrias: totais por forma de pagamento, fichas devolvidas, venda líquida e produtos vendidos. |
 | **Abrir / Fechar caixa** | Só o troco inicial (cada caixa é identificado pelo número: Caixa 01, 02…) e imprime o comprovante de **abertura de caixa** (troco, data e hora); no fechamento confere o dinheiro da gaveta (falta/sobra), imprime o relatório e, se configurado, desliga o tablet na hora. |
 | **Configurações** | Nome do evento, rodapé (opcional; embaixo dele toda ficha traz o telefone da BC Fichas), modelo da ficha (7 modelos com prévia), borda, fonte, logotipo, código de barras, grade de botões, pasta das fotos, impressora (com ajuste da posição no papel), corte da guilhotina, maquininha, senha master e telas travadas. |
-| **Máquina** | Copia a programação para outra máquina pelo pendrive, começa outra festa ou deixa a máquina como nova. Veja "Programar várias máquinas". |
+| **Máquina** | Backup da programação (pasta padrão e pendrive) e restaurar em outra máquina escolhendo o número do caixa; deixa a máquina pura para o cliente ou como nova. Veja "Programar várias máquinas". |
 
 Também tem teclado na tela (para tablet sem teclado físico), ajuste de tamanho da tela e modo tela cheia.
 
@@ -131,34 +131,37 @@ tablet, e digite a senha master.
 
 ## Programar várias máquinas
 
-No sistema antigo era copiar o banco de dados de uma máquina para a outra e mudar o número do caixa. Aqui é o
-mesmo, só que pelo pendrive e sem mexer em arquivo: **Menu → Configurações → Máquina**.
+No sistema antigo era copiar o banco de dados, o logo e as imagens de uma máquina para a outra e mudar o número
+do caixa. Aqui é um arquivo só, em **Menu → Configurações → Máquina**:
 
-**Programe uma máquina** (produtos, combos, abas, evento, modelo da ficha) e:
+1. **Programe uma máquina** (produtos, combos, abas, evento, logotipo, modelo da ficha) e toque em **Fazer
+   backup**. Sai o arquivo `BCFichas - NOME DO EVENTO.bcf` na **pasta do backup** (padrão `C:\Sistema_New\backup`,
+   dá para mudar na mesma tela) e, se tiver pendrive no tablet, nele também. O arquivo leva produtos, combos,
+   imagens, logotipo, evento, ficha e senha, e **nunca leva vendas**.
+2. **Na outra máquina** copie o arquivo para a pasta do backup dela (pelo acesso remoto) ou ponha o pendrive e
+   toque em **Restaurar**. O programa acha o arquivo sozinho (se tiver mais de um, mostra a lista com o mais novo
+   em cima), mostra o evento e quantos produtos tem e pergunta só o **número do caixa (PDV)**. Pronto.
 
-1. Coloque o pendrive e toque em **Salvar no pendrive**. Sai um arquivo `BCFichas - NOME DO EVENTO.bcf` com toda
-   a programação (fotos e logotipo juntos).
-2. Nas outras máquinas: pendrive no tablet → **Carregar do pendrive**. O programa acha o arquivo sozinho, mostra
-   o evento e quantos produtos tem, e pergunta só o **número do caixa** (02, 03…). Pronto.
+Ao restaurar, a máquina fica igual à que foi programada, mas **a impressora, o tamanho da tela, o teclado e as
+pastas continuam os dela**. Tudo o que estava guardado nela (vendas, testes, caixas, até um caixa aberto) é
+apagado, e o programa avisa antes o que vai sair.
 
-Ao carregar, a máquina fica igual à que foi programada, mas **a impressora, o tamanho da tela, o teclado e a
-pasta das fotos continuam os dela**. As vendas que estavam guardadas nela são apagadas (o programa avisa quantas
-são antes). O caixa precisa estar fechado.
+**Deixar pura para o cliente:** depois de testar a máquina, toque em **Apagar as vendas**. Saem vendas, testes,
+caixas (até o aberto), sangrias e devoluções; o pedido volta para o 1 e o que foi vendido volta para o estoque.
+Os produtos e as configurações ficam. Ao fazer o backup numa máquina que ainda tem vendas, o programa já
+pergunta se quer apagar. O mesmo botão serve para começar outra festa com o mesmo cardápio.
 
-| Aba Máquina | Número do caixa |
-| --- | --- |
-| ![](docs/telas/42-config-maquina.png) | ![](docs/telas/44-numero-do-caixa.png) |
+**Deixar a máquina como nova → Apagar tudo:** é o "banco vazio" de antes. Apaga vendas, produtos, combos, abas,
+evento e o jeito da ficha. Ficam só o número do caixa, a impressora, as opções de tela, as pastas e a senha
+master.
 
-Para recomeçar, também na aba **Máquina**:
+| Aba Máquina | Qual backup restaurar | Número do caixa |
+| --- | --- | --- |
+| ![](docs/telas/42-config-maquina.png) | ![](docs/telas/47-restaurar-lista.png) | ![](docs/telas/44-numero-do-caixa.png) |
 
-- **Começar outra festa → Apagar as vendas:** mesmo cardápio, evento novo. Apaga vendas, caixas, sangrias e
-  devoluções; os produtos e as configurações ficam, e o número do pedido volta para 1.
-- **Deixar a máquina como nova → Apagar tudo:** é o "banco vazio" de antes. Apaga vendas, produtos, combos,
-  abas, evento e o jeito da ficha. Ficam só o número do caixa, a impressora, as opções de tela e a senha master.
-
-Antes de apagar ou carregar, o programa sempre guarda uma **cópia de segurança** em `dados\backups` (as 15
-últimas). Para voltar uma cópia: feche o BC Fichas, copie o arquivo `.db` da cópia para `dados\bcfichas.db`
-(substituindo) e abra de novo.
+Antes de apagar ou restaurar, o programa sempre guarda uma **cópia de segurança** do banco em `dados\backups`
+(as 15 últimas). Para voltar uma cópia: feche o BC Fichas, copie o arquivo `.db` da cópia para
+`dados\bcfichas.db` (substituindo) e abra de novo.
 
 ## Instalar no tablet
 
@@ -205,7 +208,7 @@ barras saem iguais à prévia da tela.
 ### Backup
 
 Tudo fica na pasta `dados` ao lado do programa (`bcfichas.db` e as imagens). Para fazer backup, copie essa pasta.
-Antes de carregar uma programação ou apagar as vendas, o programa guarda sozinho uma cópia em `dados\backups`
+Antes de restaurar um backup ou apagar as vendas, o programa guarda sozinho uma cópia em `dados\backups`
 (veja "Programar várias máquinas"). Erros ficam registrados em `dados\erros.log`.
 
 ### Memória com muitas vendas

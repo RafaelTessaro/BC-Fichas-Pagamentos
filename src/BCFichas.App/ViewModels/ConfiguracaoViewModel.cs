@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using BCFichas.Core;
 using BCFichas.Core.Impressao;
+using BCFichas.Core.Servicos;
 
 namespace BCFichas.App.ViewModels;
 
@@ -146,7 +147,11 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         ? "Centralizada"
         : $"{Math.Abs(AjusteHorizontal) / 8.0:0.0} mm para a {(AjusteHorizontal < 0 ? "esquerda" : "direita")}".Replace('.', ',');
 
+    // Máquina
+    [ObservableProperty] private string _pastaBackup = "";
     [ObservableProperty] private string _situacaoMaquina = "";
+    [ObservableProperty] private string _situacaoVendas = "";
+    [ObservableProperty] private bool _maquinaPura;
     [ObservableProperty] private bool _ocupado;
 
     public override void AoAbrir()
@@ -178,6 +183,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         Colunas = c.Colunas;
         Linhas = c.Linhas;
         PastaFotos = c.PastaFotos;
+        PastaBackup = c.PastaBackup;
         CarregarAbas();
 
         ProcurarImpressoras(c.NomeImpressora, c.PortaSerial);
@@ -339,51 +345,243 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         foreach (var p in Protecoes) p.Marcada = false;
     }
 
-    // ---------- Aba Máquina: programação no pendrive e começar de novo ----------
+    // ---------- Aba Máquina: backup da programação e começar de novo ----------
 
     private void AtualizarSituacao()
     {
         var s = Sistema.Programacao.Situacao();
         var texto = $"Caixa {Principal.Config.NumeroCaixa:00} • {s.Produtos} produto(s) em {s.Abas} aba(s)";
         if (s.Combos > 0) texto += $" • {s.Combos} combo(s)";
-        texto += s.Pedidos == 0 ? " • nenhuma venda guardada" : $" • {s.Pedidos} pedido(s) de {s.Caixas} caixa(s) guardados";
         SituacaoMaquina = texto;
+        MaquinaPura = s.Pura;
+        if (s.Pura)
+        {
+            SituacaoVendas = "Pura: nenhuma venda, teste ou caixa guardado";
+            return;
+        }
+        var vendas = "Guardado: " + DescreverVendas(s);
+        if (s.CaixaAberto) vendas += " • caixa aberto";
+        if (s.ModoTeste) vendas += " • modo teste ligado";
+        SituacaoVendas = vendas;
     }
 
-    /// <summary>Grava a programação no pendrive (se houver um só) ou onde o operador escolher.</summary>
-    [RelayCommand]
-    private async Task SalvarProgramacao()
+    /// <summary>"12 pedido(s) + 5 de teste em 3 caixa(s)".</summary>
+    private static string DescreverVendas(SituacaoMaquina s)
     {
-        var pendrives = Principal.Pendrives();
+        var pedidos = s.Pedidos > 0 && s.PedidosTeste > 0 ? $"{s.Pedidos} pedido(s) + {s.PedidosTeste} de teste"
+            : s.Pedidos > 0 ? $"{s.Pedidos} pedido(s)"
+            : s.PedidosTeste > 0 ? $"{s.PedidosTeste} pedido(s) de teste"
+            : "";
+        return pedidos.Length > 0 ? $"{pedidos} em {s.Caixas} caixa(s)" : $"{s.Caixas} caixa(s) sem vendas";
+    }
+
+    /// <summary>O que mais acontece ao apagar as vendas (caixa aberto, modo teste, estoque), uma coisa por linha.</summary>
+    private static string Avisos(SituacaoMaquina s, bool estoque)
+    {
+        var linhas = new List<string>();
+        if (s.CaixaAberto)
+            linhas.Add(s.PedidosNoCaixaAberto > 0
+                ? $"Atenção: o caixa está aberto com {s.PedidosNoCaixaAberto} venda(s) e será apagado sem imprimir o fechamento."
+                : "O caixa aberto também é apagado.");
+        if (s.ModoTeste) linhas.Add("O modo teste é desligado.");
+        if (estoque && s.ControlaEstoque && s.Pedidos > 0) linhas.Add("O que foi vendido volta para o estoque.");
+        return linhas.Count == 0 ? "" : "\n\n" + string.Join("\n", linhas);
+    }
+
+    /// <summary>
+    /// A pasta do campo, já gravada na configuração (vale na hora, sem tocar em Salvar). Devolve o caminho completo.
+    /// </summary>
+    private string GuardarPastaBackup()
+    {
+        var texto = string.IsNullOrWhiteSpace(PastaBackup) ? new Configuracao().PastaBackup : PastaBackup.Trim();
+        if (texto != PastaBackup) PastaBackup = texto;
+        if (texto != Principal.Config.PastaBackup)
+        {
+            var c = Principal.Config.Clonar();
+            c.PastaBackup = texto;
+            Sistema.Config.Salvar(c);
+        }
+        return Core.Servicos.ProgramacaoServico.CaminhoDaPasta(texto);
+    }
+
+    [RelayCommand]
+    private async Task EscolherPastaBackup()
+    {
+        if (Principal.EscolherPasta is null) return;
+        var atual = Core.Servicos.ProgramacaoServico.CaminhoDaPasta(
+            string.IsNullOrWhiteSpace(PastaBackup) ? new Configuracao().PastaBackup : PastaBackup);
+        var pasta = await Principal.EscolherPasta(Directory.Exists(atual) ? atual : null);
+        if (pasta is null) return;
+        PastaBackup = pasta;
+        GuardarPastaBackup();
+        Principal.MostrarAviso("Pasta do backup gravada.");
+    }
+
+    /// <summary>
+    /// Grava o backup da programação na pasta do backup e nos pendrives ligados. O backup nunca leva vendas; se
+    /// esta máquina tem vendas ou testes guardados, oferece apagar para ela também ir pura para o cliente.
+    /// </summary>
+    [RelayCommand]
+    private async Task FazerBackup()
+    {
+        var pasta = GuardarPastaBackup();
         var nome = Sistema.Programacao.NomeArquivo();
-        string? arquivo;
-        if (pendrives.Count == 1)
-        {
-            arquivo = Path.Combine(pendrives[0], nome);
-        }
-        else
-        {
-            if (pendrives.Count == 0 && !await Principal.Confirmar("Nenhum pendrive encontrado",
-                    "Coloque o pendrive no tablet e toque em Salvar de novo, ou escolha outra pasta para salvar.",
-                    "Escolher pasta", "Voltar"))
-                return;
-            if (Principal.EscolherOndeSalvar is null) return;
-            arquivo = await Principal.EscolherOndeSalvar(nome, pendrives.FirstOrDefault());
-            if (arquivo is null) return;
-        }
+        var arquivo = Path.Combine(pasta, nome);
+        var pendrives = Principal.Pendrives();
+        var copias = new List<string>();
+        var falhas = new List<string>();
 
         Ocupado = true;
         try
         {
-            await Task.Run(() => Sistema.Programacao.Salvar(arquivo));
-            await Principal.Mensagem("Programação salva",
-                $"Salva em {arquivo}\n\nNa outra máquina: Configurações → Máquina → Carregar do pendrive. " +
-                "Vai junto: evento, produtos, combos, fotos, modelo da ficha e senha. Não vão as vendas nem a impressora.");
+            await Task.Run(() =>
+            {
+                Directory.CreateDirectory(pasta);
+                Sistema.Programacao.Salvar(arquivo);
+                foreach (var pendrive in pendrives)
+                {
+                    var copia = Path.Combine(pendrive, nome);
+                    if (string.Equals(Path.GetFullPath(copia), Path.GetFullPath(arquivo), StringComparison.OrdinalIgnoreCase))
+                        continue; // a pasta do backup já é o pendrive
+                    try
+                    {
+                        File.Copy(arquivo, copia, overwrite: true);
+                        copias.Add(pendrive);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Erro("Copiar o backup para o pendrive", e);
+                        falhas.Add(pendrive);
+                    }
+                }
+            });
         }
         catch (Exception e)
         {
-            Log.Erro("Salvar programação", e);
-            await Principal.Mensagem("Não consegui salvar", e is ErroDeNegocio ? e.Message : "Erro ao gravar o arquivo: " + e.Message);
+            Log.Erro("Fazer backup", e);
+            await Principal.Mensagem("Não consegui fazer o backup",
+                (e is ErroDeNegocio ? e.Message : $"Erro ao gravar em {pasta}: {e.Message}") +
+                "\n\nConfira a pasta do backup (ou escolha outra).");
+            return;
+        }
+        finally
+        {
+            Ocupado = false;
+        }
+
+        var texto = $"Salvo em:\n{arquivo}";
+        foreach (var copia in copias) texto += $"\ne no pendrive {copia}";
+        foreach (var falha in falhas) texto += $"\nNão consegui copiar para o pendrive {falha}.";
+        texto += "\n\nVai só a programação (produtos, combos, fotos, logotipo, ficha e senha), nunca as vendas. " +
+                 "Na outra máquina: ponha o arquivo na pasta do backup dela (ou o pendrive) e toque em Restaurar.";
+
+        var s = Sistema.Programacao.Situacao();
+        if (s.Pura)
+        {
+            await Principal.Mensagem("Backup feito", texto);
+            return;
+        }
+        texto += $"\n\nEsta máquina ainda tem {DescreverVendas(s)}. Apagar agora, para ela também ir pura para o " +
+                 "cliente?" + Avisos(s, estoque: true);
+        if (await Principal.Confirmar("Backup feito", texto, "Apagar as vendas", "Agora não", perigo: true))
+            await ApagarVendasAgora();
+        else
+            AtualizarSituacao();
+    }
+
+    /// <summary>
+    /// Restaura um backup (como copiar o banco de outra máquina): procura na pasta do backup e nos pendrives,
+    /// mostra o que vem nele e pergunta só o número do caixa (PDV).
+    /// </summary>
+    [RelayCommand]
+    private async Task Restaurar()
+    {
+        var pasta = GuardarPastaBackup();
+        var lugares = new List<(string, string)> { (pasta, "Pasta do backup") };
+        lugares.AddRange(Principal.Pendrives().Select(p => (p, "Pendrive " + p.TrimEnd('\\', '/'))));
+
+        List<Core.Servicos.ProgramacaoEncontrada> achados;
+        Ocupado = true;
+        try
+        {
+            achados = await Task.Run(() => Sistema.Programacao.Procurar(lugares));
+        }
+        finally
+        {
+            Ocupado = false;
+        }
+
+        string? arquivo;
+        if (achados.Count == 1)
+        {
+            arquivo = achados[0].Arquivo;
+        }
+        else
+        {
+            var podeProcurar = Principal.EscolherProgramacao is not null;
+            bool procurar;
+            if (achados.Count > 1)
+            {
+                var lista = new EscolherBackupViewModel(Principal, achados, podeProcurar);
+                Principal.AbrirDialogo(lista);
+                var escolha = await lista.Resposta;
+                arquivo = escolha.Arquivo;
+                procurar = escolha.Procurar;
+            }
+            else
+            {
+                arquivo = null;
+                var texto = $"Não achei backup (arquivo .bcf) na pasta do backup nem em pendrive.\n\nPasta do backup: {pasta}\n\n" +
+                            "Copie o arquivo para essa pasta (pelo acesso remoto) ou ponha o pendrive e toque em Restaurar de novo.";
+                if (!podeProcurar)
+                {
+                    await Principal.Mensagem("Nenhum backup encontrado", texto);
+                    return;
+                }
+                procurar = await Principal.Confirmar("Nenhum backup encontrado", texto, "Procurar em outro lugar", "Voltar");
+            }
+            if (procurar && Principal.EscolherProgramacao is not null)
+                arquivo = await Principal.EscolherProgramacao(Directory.Exists(pasta) ? pasta : null);
+            if (arquivo is null) return;
+        }
+
+        await RestaurarArquivo(arquivo);
+    }
+
+    private async Task RestaurarArquivo(string arquivo)
+    {
+        try
+        {
+            var resumo = Sistema.Programacao.Resumo(arquivo);
+            var s = Sistema.Programacao.Situacao();
+            var texto = $"Evento: {resumo.Evento}\n{resumo.Produtos} produto(s) em {resumo.Abas} aba(s)" +
+                        (resumo.Combos > 0 ? $", {resumo.Combos} combo(s)" : "") +
+                        $"\nSalvo em {Formato.DataHora(resumo.SalvoEm)} no Caixa {resumo.Caixa:00}.\nArquivo: {arquivo}\n\n" +
+                        "Os produtos e as configurações desta máquina serão trocados por estes (a impressora e a tela " +
+                        "continuam as desta máquina).";
+            if (!s.Pura) texto += $" Também apaga o que está guardado aqui: {DescreverVendas(s)}.";
+            texto += " Fica uma cópia de segurança." + Avisos(s, estoque: false);
+            if (!await Principal.Confirmar("Restaurar este backup?", texto, "Restaurar", "Voltar")) return;
+
+            var numero = new NumeroViewModel(Principal, "Número deste caixa (PDV)",
+                "Cada máquina do evento tem um número diferente (sai na ficha e nos relatórios).", Principal.Config.NumeroCaixa);
+            Principal.AbrirDialogo(numero);
+            if (await numero.Resposta is not { } caixa) return;
+
+            Ocupado = true;
+            await Task.Run(() => Sistema.Programacao.Carregar(arquivo, caixa));
+            Principal.Venda.LimparPedido();
+            Principal.MostrarAviso($"Backup restaurado: {resumo.Evento}, Caixa {caixa:00}.");
+            Principal.Iniciar();
+        }
+        catch (ErroDeNegocio e)
+        {
+            await Principal.Mensagem("Não deu para restaurar", e.Message);
+        }
+        catch (Exception e)
+        {
+            Log.Erro("Restaurar backup", e);
+            await Principal.Mensagem("Não deu para restaurar", "Erro ao ler o arquivo: " + e.Message);
         }
         finally
         {
@@ -392,90 +590,40 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     }
 
     /// <summary>
-    /// Carrega a programação de outra máquina (acha o arquivo no pendrive sozinho) e pergunta só o número do caixa.
+    /// Deixa a máquina pura para o cliente (ou pronta para outra festa com os mesmos produtos): apaga vendas,
+    /// testes e caixas, até o que estiver aberto. Produtos e configurações ficam.
     /// </summary>
     [RelayCommand]
-    private async Task CarregarProgramacao()
-    {
-        var pendrives = Principal.Pendrives();
-        var achados = pendrives
-            .SelectMany(p => SemErro(() => Directory.GetFiles(p, "*" + Core.Servicos.ProgramacaoServico.Extensao)))
-            .ToList();
-        string? arquivo;
-        if (achados.Count == 1)
-        {
-            arquivo = achados[0];
-        }
-        else
-        {
-            if (Principal.EscolherProgramacao is null)
-            {
-                Principal.MostrarAviso(pendrives.Count == 0 ? "Coloque o pendrive com a programação." : "Nenhuma programação no pendrive.", erro: true);
-                return;
-            }
-            arquivo = await Principal.EscolherProgramacao(pendrives.FirstOrDefault());
-            if (arquivo is null) return;
-        }
-
-        try
-        {
-            var resumo = Sistema.Programacao.Resumo(arquivo);
-            var situacao = Sistema.Programacao.Situacao();
-            var texto = $"Evento: {resumo.Evento}\n{resumo.Produtos} produto(s) em {resumo.Abas} aba(s)" +
-                        (resumo.Combos > 0 ? $", {resumo.Combos} combo(s)" : "") +
-                        $"\nSalva em {Formato.DataHora(resumo.SalvoEm)} no Caixa {resumo.Caixa:00}.\n\n" +
-                        "Os produtos e as configurações desta máquina serão trocados por estes (a impressora continua a desta máquina).";
-            if (situacao.Pedidos > 0)
-                texto += $" As {situacao.Pedidos} vendas guardadas aqui serão apagadas.";
-            texto += " Fica uma cópia de segurança.";
-            if (!await Principal.Confirmar("Carregar esta programação?", texto, "Carregar", "Voltar")) return;
-
-            var numero = new NumeroViewModel(Principal, "Número deste caixa",
-                "Cada máquina do evento tem um número diferente (sai na ficha e nos relatórios).", Principal.Config.NumeroCaixa);
-            Principal.AbrirDialogo(numero);
-            if (await numero.Resposta is not { } caixa) return;
-
-            Ocupado = true;
-            await Task.Run(() => Sistema.Programacao.Carregar(arquivo, caixa));
-            Principal.MostrarAviso($"Programação carregada: {resumo.Evento}, Caixa {caixa:00}.");
-            Principal.Iniciar();
-        }
-        catch (ErroDeNegocio e)
-        {
-            await Principal.Mensagem("Não deu para carregar", e.Message);
-        }
-        catch (Exception e)
-        {
-            Log.Erro("Carregar programação", e);
-            await Principal.Mensagem("Não deu para carregar", "Erro ao ler o arquivo: " + e.Message);
-        }
-        finally
-        {
-            Ocupado = false;
-        }
-    }
-
-    /// <summary>Outra festa com os mesmos produtos: apaga as vendas e volta a numeração para 1.</summary>
-    [RelayCommand]
-    private async Task ComecarOutraFesta()
+    private async Task LimparVendas()
     {
         var s = Sistema.Programacao.Situacao();
-        if (!await Principal.Confirmar("Começar outra festa?",
-                $"Apaga as vendas, caixas, sangrias e devoluções desta máquina ({s.Pedidos} pedido(s) de {s.Caixas} caixa(s)). " +
-                "Os produtos, combos e configurações ficam. A numeração dos pedidos volta para 1.\n\n" +
-                "Antes, imprima ou anote os relatórios que precisar. Fica uma cópia de segurança.",
+        if (s.Pura)
+        {
+            await Principal.Mensagem("A máquina já está pura",
+                "Não há vendas, testes nem caixas guardados. Os produtos e as configurações estão prontos para o cliente.");
+            return;
+        }
+        if (!await Principal.Confirmar("Apagar as vendas?",
+                $"Apaga desta máquina {DescreverVendas(s)}, com as sangrias e devoluções. Ficam os produtos, combos e " +
+                "configurações, e o pedido volta para o 1." + Avisos(s, estoque: true) +
+                "\n\nAntes, imprima ou anote os relatórios que precisar. Fica uma cópia de segurança.",
                 "Apagar as vendas", "Voltar", perigo: true))
             return;
-        await Executar(() => Sistema.Programacao.ApagarVendas(), "Vendas apagadas. Pronto para a próxima festa.");
+        await ApagarVendasAgora();
     }
+
+    private Task ApagarVendasAgora() =>
+        Executar(() => Sistema.Programacao.ApagarVendas(), "Vendas apagadas: a máquina está pura, só com a programação.");
 
     /// <summary>Como um banco vazio: apaga tudo e mantém só o que é da máquina.</summary>
     [RelayCommand]
     private async Task DeixarComoNova()
     {
+        var s = Sistema.Programacao.Situacao();
         if (!await Principal.Confirmar("Deixar a máquina como nova?",
-                "Apaga TUDO: vendas, produtos, abas, combos, evento e modelo da ficha. Ficam só o número do caixa, a " +
-                "impressora, as opções de tela e a senha master.\n\nFica uma cópia de segurança.",
+                "Apaga TUDO: vendas, testes, produtos, abas, combos, evento e modelo da ficha. Ficam só o número do " +
+                "caixa, a impressora, as opções de tela, as pastas e a senha master." + Avisos(s, estoque: false) +
+                "\n\nFica uma cópia de segurança.",
                 "Apagar tudo", "Voltar", perigo: true))
             return;
         await Executar(() => Sistema.Programacao.DeixarComoNova(), "Máquina como nova. Cadastre os produtos do próximo evento.");
@@ -483,9 +631,11 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
 
     private async Task Executar(Action acao, string aviso)
     {
+        Ocupado = true;
         try
         {
-            acao();
+            await Task.Run(acao);
+            Principal.Venda.LimparPedido();
             Principal.MostrarAviso(aviso);
             Principal.Iniciar();
         }
@@ -493,17 +643,14 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         {
             await Principal.Mensagem("Não deu para apagar", e.Message);
         }
-    }
-
-    private static IEnumerable<string> SemErro(Func<IEnumerable<string>> listar)
-    {
-        try
+        catch (Exception e)
         {
-            return listar();
+            Log.Erro("Apagar", e);
+            await Principal.Mensagem("Não deu para apagar", "Erro: " + e.Message);
         }
-        catch (Exception)
+        finally
         {
-            return [];
+            Ocupado = false;
         }
     }
 
@@ -609,6 +756,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         c.Colunas = Colunas;
         c.Linhas = Linhas;
         c.PastaFotos = string.IsNullOrWhiteSpace(PastaFotos) ? new Configuracao().PastaFotos : PastaFotos.Trim();
+        c.PastaBackup = string.IsNullOrWhiteSpace(PastaBackup) ? new Configuracao().PastaBackup : PastaBackup.Trim();
         c.Impressora = TipoImpressora?.Valor ?? Core.TipoImpressora.Windows;
         c.NomeImpressora = NomeImpressora ?? "";
         c.PortaSerial = PortaSerial ?? "COM3";

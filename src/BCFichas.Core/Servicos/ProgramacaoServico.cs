@@ -10,15 +10,25 @@ namespace BCFichas.Core.Servicos;
 public sealed record ResumoProgramacao(string Evento, int Produtos, int Abas, int Combos, DateTime SalvoEm, int Caixa,
     string Versao);
 
-/// <summary>O que esta máquina tem guardado (mostrado na aba Máquina).</summary>
-public sealed record SituacaoMaquina(int Produtos, int Abas, int Combos, int Pedidos, int Caixas);
+/// <summary>O que esta máquina tem guardado (mostrado na aba Máquina e antes de apagar ou restaurar).</summary>
+public sealed record SituacaoMaquina(int Produtos, int Abas, int Combos, int Pedidos, int PedidosTeste, int Caixas,
+    bool CaixaAberto, int PedidosNoCaixaAberto, bool ModoTeste, bool ControlaEstoque)
+{
+    /// <summary>Sem vendas, testes nem caixas guardados: a máquina vai "pura" para o cliente.</summary>
+    public bool Pura => Pedidos == 0 && PedidosTeste == 0 && Caixas == 0;
+}
+
+/// <summary>Um backup achado na pasta do backup ou num pendrive.</summary>
+public sealed record ProgramacaoEncontrada(string Arquivo, string Lugar, ResumoProgramacao Resumo);
 
 /// <summary>
 /// Programar várias máquinas e começar de novo, do jeito simples do sistema antigo (copiar o banco e trocar o
 /// número do caixa; banco vazio para reprogramar):
 /// <list type="bullet">
-/// <item>Salvar a programação num arquivo (pendrive) e carregar em outra máquina, mudando só o número do caixa.</item>
-/// <item>Começar outra festa: apaga as vendas e mantém produtos e configurações.</item>
+/// <item>Backup da programação num arquivo (pasta do backup e pendrive) e restaurar em outra máquina, mudando só o
+/// número do caixa. O arquivo nunca leva vendas: quem restaura recebe a programação pura.</item>
+/// <item>Apagar as vendas: deixa a máquina pura para o cliente (ou pronta para outra festa) e mantém produtos e
+/// configurações.</item>
 /// <item>Deixar a máquina como nova: apaga tudo e mantém só o que é da máquina (impressora, número, senha).</item>
 /// </list>
 /// Antes de trocar ou apagar qualquer coisa, guarda uma cópia do banco em dados\backups.
@@ -47,6 +57,13 @@ public sealed class ProgramacaoServico
 
     public string PastaBackups => Path.Combine(_pastaDados, "backups");
 
+    /// <summary>
+    /// Caminho completo da pasta do backup. Aceita %USERPROFILE% e afins; um caminho sem a letra do disco vale a
+    /// partir da pasta do programa (ele abre junto com o Windows numa pasta qualquer).
+    /// </summary>
+    public static string CaminhoDaPasta(string pasta) =>
+        Path.GetFullPath(Environment.ExpandEnvironmentVariables(pasta.Trim()), AppContext.BaseDirectory);
+
     /// <summary>Nome sugerido do arquivo: "BCFichas - FESTA JUNINA.bcf".</summary>
     public string NomeArquivo()
     {
@@ -54,12 +71,60 @@ public sealed class ProgramacaoServico
         return $"BCFichas - {(evento.Length == 0 ? "programacao" : evento)}{Extensao}";
     }
 
-    public SituacaoMaquina Situacao() => new(
-        (int)_banco.Escalar<long>("SELECT COUNT(*) FROM produtos"),
-        (int)_banco.Escalar<long>("SELECT COUNT(*) FROM abas"),
-        (int)_banco.Escalar<long>("SELECT COUNT(DISTINCT combo_id) FROM componentes_combo"),
-        (int)_banco.Escalar<long>("SELECT COUNT(*) FROM pedidos WHERE teste = 0"),
-        (int)_banco.Escalar<long>("SELECT COUNT(*) FROM sessoes WHERE teste = 0"));
+    public SituacaoMaquina Situacao()
+    {
+        int Contar(string sql) => (int)_banco.Escalar<long>(sql);
+        return new SituacaoMaquina(
+            Produtos: Contar("SELECT COUNT(*) FROM produtos"),
+            Abas: Contar("SELECT COUNT(*) FROM abas"),
+            Combos: Contar("SELECT COUNT(DISTINCT combo_id) FROM componentes_combo"),
+            Pedidos: Contar("SELECT COUNT(*) FROM pedidos WHERE teste = 0"),
+            PedidosTeste: Contar("SELECT COUNT(*) FROM pedidos WHERE teste = 1"),
+            Caixas: Contar("SELECT COUNT(*) FROM sessoes"),
+            CaixaAberto: Contar("SELECT COUNT(*) FROM sessoes WHERE fechada_em IS NULL AND teste = 0") > 0,
+            PedidosNoCaixaAberto: Contar("""
+                SELECT COUNT(*) FROM pedidos p JOIN sessoes s ON s.id = p.sessao_id
+                WHERE s.fechada_em IS NULL AND s.teste = 0
+                """),
+            ModoTeste: Contar("SELECT COUNT(*) FROM sessoes WHERE fechada_em IS NULL AND teste = 1") > 0,
+            ControlaEstoque: Contar("SELECT COUNT(*) FROM produtos WHERE controla_estoque = 1") > 0);
+    }
+
+    /// <summary>
+    /// Backups (.bcf) achados direto nas pastas (pasta do backup, pendrives), do mais novo para o mais velho.
+    /// Arquivos que não dá para ler ficam de fora.
+    /// </summary>
+    public List<ProgramacaoEncontrada> Procurar(IEnumerable<(string Pasta, string Lugar)> lugares)
+    {
+        var achados = new List<ProgramacaoEncontrada>();
+        var vistos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (pasta, lugar) in lugares)
+        {
+            string[] arquivos;
+            try
+            {
+                arquivos = Directory.Exists(pasta) ? Directory.GetFiles(pasta, "*" + Extensao) : [];
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                continue;
+            }
+            // No Windows "*.bcf" também acha "*.bcfx": confere a extensão inteira.
+            foreach (var arquivo in arquivos.Where(a => a.EndsWith(Extensao, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!vistos.Add(Path.GetFullPath(arquivo))) continue;
+                try
+                {
+                    achados.Add(new ProgramacaoEncontrada(arquivo, lugar, Resumo(arquivo)));
+                }
+                catch (Exception e) when (e is ErroDeNegocio or IOException or UnauthorizedAccessException)
+                {
+                    // arquivo com defeito ou sendo copiado: não aparece na lista
+                }
+            }
+        }
+        return achados.OrderByDescending(a => a.Resumo.SalvoEm).ToList();
+    }
 
     // ---------- Salvar e carregar a programação ----------
 
@@ -123,14 +188,14 @@ public sealed class ProgramacaoServico
 
     /// <summary>
     /// Troca a programação desta máquina pela do arquivo (como copiar o banco de outra máquina): produtos, abas,
-    /// combos, evento, ficha e senha vêm do arquivo; impressora, tela e Windows continuam os desta máquina. As
-    /// vendas desta máquina são apagadas (a numeração volta para 1) e fica uma cópia de segurança.
+    /// combos, evento, ficha e senha vêm do arquivo; impressora, tela, pastas e Windows continuam os desta máquina.
+    /// As vendas, testes e caixas desta máquina (até o aberto) são apagados, a numeração volta para 1 e fica uma
+    /// cópia de segurança.
     /// </summary>
     public void Carregar(string arquivo, int numeroCaixa)
     {
         if (numeroCaixa is < 1 or > 99) throw new ErroDeNegocio("O número do caixa vai de 1 a 99.");
         var dados = Ler(arquivo);
-        ConferirCaixasFechados();
         CopiaDeSeguranca("antes-de-carregar");
 
         var importada = JsonSerializer.Deserialize<Configuracao>(dados.Config, ConfigServico.Json)
@@ -194,14 +259,18 @@ public sealed class ProgramacaoServico
     // ---------- Começar de novo ----------
 
     /// <summary>
-    /// Outra festa com o mesmo cardápio: apaga vendas, caixas, sangrias e devoluções; a numeração dos pedidos
-    /// volta para 1. Produtos e configurações ficam.
+    /// Deixa a máquina pura para o cliente (ou pronta para outra festa com o mesmo cardápio): apaga vendas, testes,
+    /// caixas (até o que estiver aberto), sangrias e devoluções; a numeração dos pedidos volta para 1 e o que as
+    /// vendas tiraram do estoque volta para ele. Produtos e configurações ficam.
     /// </summary>
     public void ApagarVendas()
     {
-        ConferirCaixasFechados();
         CopiaDeSeguranca("antes-de-apagar-vendas");
-        _banco.Transacao(ApagarVendas);
+        _banco.Transacao((c, t) =>
+        {
+            DevolverAoEstoque(c, t);
+            ApagarVendas(c, t);
+        });
         _catalogo.AvisarAlteracao();
     }
 
@@ -211,7 +280,6 @@ public sealed class ProgramacaoServico
     /// </summary>
     public void DeixarComoNova()
     {
-        ConferirCaixasFechados();
         CopiaDeSeguranca("antes-de-deixar-como-nova");
         _banco.Transacao((c, t) =>
         {
@@ -244,13 +312,24 @@ public sealed class ProgramacaoServico
         return destino;
     }
 
-    private void ConferirCaixasFechados()
-    {
-        var abertos = _banco.Escalar<long>("SELECT COUNT(*) FROM sessoes WHERE fechada_em IS NULL AND teste = 0");
-        if (abertos > 0) throw new ErroDeNegocio("Feche o caixa antes (Menu → Fechar caixa).");
-        if (_banco.Escalar<long>("SELECT COUNT(*) FROM sessoes WHERE fechada_em IS NULL AND teste = 1") > 0)
-            throw new ErroDeNegocio("Saia do modo teste antes.");
-    }
+    /// <summary>
+    /// O que as vendas pagas tiraram do estoque volta para ele (menos o que as devoluções já devolveram), como se
+    /// as vendas não tivessem acontecido. Vendas de teste e não pagas não mexeram no estoque. No combo, o próprio
+    /// combo e os produtos das fichas.
+    /// </summary>
+    private static void DevolverAoEstoque(SqliteConnection c, SqliteTransaction t) =>
+        Banco.Executar(c, t, """
+            UPDATE produtos SET estoque = estoque
+                + (SELECT COALESCE(SUM(i.quantidade - (SELECT COALESCE(SUM(d.quantidade), 0) FROM itens_devolucao d
+                                                       WHERE d.item_id = i.id AND d.componente_id IS NULL)), 0)
+                   FROM itens_pedido i JOIN pedidos p ON p.id = i.pedido_id
+                   WHERE i.produto_id = produtos.id AND p.status = $pago AND p.teste = 0)
+                + (SELECT COALESCE(SUM(i.quantidade * x.quantidade - (SELECT COALESCE(SUM(d.quantidade), 0)
+                                                                      FROM itens_devolucao d WHERE d.componente_id = x.id)), 0)
+                   FROM componentes_item x JOIN itens_pedido i ON i.id = x.item_id JOIN pedidos p ON p.id = i.pedido_id
+                   WHERE x.produto_id = produtos.id AND p.status = $pago AND p.teste = 0)
+            WHERE controla_estoque = 1
+            """, ("$pago", (int)StatusPedido.Pago));
 
     private static void ApagarVendas(SqliteConnection c, SqliteTransaction t) =>
         Banco.Executar(c, t, """

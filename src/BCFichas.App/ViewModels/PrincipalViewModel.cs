@@ -96,8 +96,8 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
     /// <summary>Escolher um arquivo de programação para abrir (preenchido pela janela). Recebe a pasta inicial.</summary>
     public Func<string?, Task<string?>>? EscolherProgramacao { get; set; }
 
-    /// <summary>Escolher onde salvar a programação (preenchido pela janela). Recebe o nome sugerido e a pasta.</summary>
-    public Func<string, string?, Task<string?>>? EscolherOndeSalvar { get; set; }
+    /// <summary>Escolher uma pasta (preenchido pela janela). Recebe a pasta em que o seletor abre.</summary>
+    public Func<string?, Task<string?>>? EscolherPasta { get; set; }
 
     private static IReadOnlyList<string> PendrivesLigados()
     {
