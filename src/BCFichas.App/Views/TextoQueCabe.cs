@@ -16,9 +16,19 @@ public class TextoQueCabe : TextBlock
     public static readonly StyledProperty<double> TamanhoMinimoProperty =
         AvaloniaProperty.Register<TextoQueCabe, double>(nameof(TamanhoMinimo), 10);
 
+    /// <summary>Faz o texto inteiro caber numa linha (não só a maior palavra).</summary>
+    public static readonly StyledProperty<bool> LinhaUnicaProperty =
+        AvaloniaProperty.Register<TextoQueCabe, bool>(nameof(LinhaUnica));
+
     static TextoQueCabe()
     {
-        AffectsMeasure<TextoQueCabe>(TamanhoMaximoProperty, TamanhoMinimoProperty);
+        AffectsMeasure<TextoQueCabe>(TamanhoMaximoProperty, TamanhoMinimoProperty, LinhaUnicaProperty);
+    }
+
+    public bool LinhaUnica
+    {
+        get => GetValue(LinhaUnicaProperty);
+        set => SetValue(LinhaUnicaProperty, value);
     }
 
     protected override Type StyleKeyOverride => typeof(TextBlock);
@@ -42,8 +52,10 @@ public class TextoQueCabe : TextBlock
         var texto = Text ?? "";
         if (!double.IsInfinity(largura) && largura > 0 && texto.Length > 0)
         {
-            var maiorPalavra = texto.Split([' ', '-'], StringSplitOptions.RemoveEmptyEntries)
-                .OrderByDescending(p => p.Length).FirstOrDefault() ?? texto;
+            var maiorPalavra = LinhaUnica
+                ? texto
+                : texto.Split([' ', '-'], StringSplitOptions.RemoveEmptyEntries)
+                    .OrderByDescending(p => p.Length).FirstOrDefault() ?? texto;
             var fonte = new Typeface(FontFamily, FontStyle, FontWeight);
             while (tamanho > TamanhoMinimo && Largura(maiorPalavra, fonte, tamanho) > largura) tamanho -= 0.5;
         }

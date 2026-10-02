@@ -51,7 +51,7 @@ public sealed class VendaServico
 
         var pedido = _banco.Transacao((c, t) =>
         {
-            ConferirEstoque(c, t, linhas);
+            var combos = ConferirEstoque(c, t, linhas);
 
             var numero = Banco.Escalar<long>(c, t,
                 "UPDATE contadores SET valor = valor + 1 WHERE nome = $n RETURNING valor",
@@ -79,6 +79,8 @@ public sealed class VendaServico
 
             foreach (var linha in linhas.Where(l => l.Quantidade > 0))
             {
+                // Combo: as fichas são as do combo como está agora no cadastro (guardadas junto com a venda).
+                var componentes = combos[linha.Produto.Id];
                 var item = new ItemPedido
                 {
                     PedidoId = p.Id,
@@ -87,7 +89,9 @@ public sealed class VendaServico
                     Detalhe = linha.Produto.Detalhe,
                     PrecoCentavos = linha.Produto.PrecoCentavos,
                     Quantidade = linha.Quantidade,
-                    FichasPorUnidade = Math.Max(1, linha.Produto.FichasPorUnidade),
+                    FichasPorUnidade = componentes.Count > 0
+                        ? componentes.Sum(x => x.Quantidade)
+                        : Math.Max(1, linha.Produto.FichasPorUnidade),
                 };
                 item.Id = Banco.Escalar<long>(c, t, """
                     INSERT INTO itens_pedido (pedido_id, produto_id, nome, detalhe, preco, quantidade, fichas_por_unidade)
@@ -95,6 +99,25 @@ public sealed class VendaServico
                     """,
                     ("$p", item.PedidoId), ("$pr", item.ProdutoId), ("$n", item.Nome), ("$d", item.Detalhe),
                     ("$v", item.PrecoCentavos), ("$q", item.Quantidade), ("$f", item.FichasPorUnidade));
+                for (var i = 0; i < componentes.Count; i++)
+                {
+                    var x = componentes[i];
+                    var componente = new ComponenteItem
+                    {
+                        ProdutoId = x.ProdutoId,
+                        Nome = x.Nome,
+                        Detalhe = x.Detalhe,
+                        ValorCentavos = x.ValorCentavos,
+                        Quantidade = x.Quantidade,
+                    };
+                    componente.Id = Banco.Escalar<long>(c, t, """
+                        INSERT INTO componentes_item (item_id, produto_id, nome, detalhe, valor, quantidade, ordem)
+                        VALUES ($i, $p, $n, $d, $v, $q, $o) RETURNING id
+                        """,
+                        ("$i", item.Id), ("$p", componente.ProdutoId), ("$n", componente.Nome), ("$d", componente.Detalhe),
+                        ("$v", componente.ValorCentavos), ("$q", componente.Quantidade), ("$o", i + 1));
+                    item.Componentes.Add(componente);
+                }
                 p.Itens.Add(item);
             }
 
@@ -202,32 +225,61 @@ public sealed class VendaServico
 
     public static string IdCobranca(Pedido pedido) => $"C{pedido.Caixa:00}-P{pedido.Numero:000000}-{pedido.Id}";
 
-    private static void ConferirEstoque(SqliteConnection c, SqliteTransaction t, IReadOnlyList<LinhaCarrinho> linhas)
+    /// <summary>
+    /// Confere se os produtos existem, estão à venda e têm estoque — somando o que os combos usam (um combo
+    /// de 5 HEINEKEN gasta 5 do estoque da HEINEKEN). Devolve as fichas de cada combo.
+    /// </summary>
+    private static Dictionary<long, List<ComponenteCombo>> ConferirEstoque(SqliteConnection c, SqliteTransaction t,
+        IReadOnlyList<LinhaCarrinho> linhas)
     {
+        var combos = new Dictionary<long, List<ComponenteCombo>>();
+        var necessario = new Dictionary<long, int>();
+        void Precisa(long produtoId, int quantidade) =>
+            necessario[produtoId] = necessario.GetValueOrDefault(produtoId) + quantidade;
+
         foreach (var linha in linhas.Where(l => l.Quantidade > 0))
         {
-            var atual = Banco.Consultar(c, t, "SELECT controla_estoque, estoque, ativo FROM produtos WHERE id = $id",
-                l => (Controla: l.GetInt64(0) != 0, Estoque: l.GetInt32(1), Ativo: l.GetInt64(2) != 0),
-                ("$id", linha.Produto.Id)).FirstOrDefault();
-            if (atual == default)
+            var atual = Banco.Consultar(c, t, "SELECT ativo FROM produtos WHERE id = $id",
+                l => l.GetInt64(0) != 0, ("$id", linha.Produto.Id)).Cast<bool?>().FirstOrDefault();
+            if (atual is null)
                 throw new ErroDeNegocio($"O produto {linha.Produto.Nome} foi excluído. Tire ele do pedido.");
-            if (!atual.Ativo)
+            if (atual == false)
                 throw new ErroDeNegocio($"O produto {linha.Produto.Nome} está inativo. Tire ele do pedido.");
-            if (atual.Controla && atual.Estoque < linha.Quantidade)
-                throw new ErroDeNegocio(atual.Estoque <= 0
-                    ? $"{linha.Produto.Nome} está esgotado."
-                    : $"Só restam {atual.Estoque} de {linha.Produto.Nome}.");
+
+            var componentes = CatalogoServico.Componentes(c, t, linha.Produto.Id);
+            combos[linha.Produto.Id] = componentes;
+            Precisa(linha.Produto.Id, linha.Quantidade);
+            foreach (var componente in componentes) Precisa(componente.ProdutoId, linha.Quantidade * componente.Quantidade);
         }
+
+        foreach (var (produtoId, quantidade) in necessario)
+        {
+            var estoque = Banco.Consultar(c, t, "SELECT controla_estoque, estoque, nome FROM produtos WHERE id = $id",
+                l => (Controla: l.GetInt64(0) != 0, Estoque: l.GetInt32(1), Nome: l.GetString(2)), ("$id", produtoId))
+                .FirstOrDefault();
+            if (estoque.Controla && estoque.Estoque < quantidade)
+                throw new ErroDeNegocio(estoque.Estoque <= 0
+                    ? $"{estoque.Nome} está esgotado."
+                    : $"Só restam {estoque.Estoque} de {estoque.Nome}.");
+        }
+        return combos;
     }
 
+    /// <summary>Baixa o estoque do produto vendido e, nos combos, dos produtos das fichas.</summary>
     private static void BaixarEstoque(SqliteConnection c, SqliteTransaction t, IEnumerable<ItemPedido> itens)
     {
-        foreach (var item in itens.Where(i => i.ProdutoId is not null))
+        foreach (var item in itens)
         {
+            if (item.ProdutoId is not null)
+                Baixar(c, t, item.ProdutoId.Value, item.Quantidade);
+            foreach (var componente in item.Componentes.Where(x => x.ProdutoId is not null))
+                Baixar(c, t, componente.ProdutoId!.Value, item.Quantidade * componente.Quantidade);
+        }
+
+        static void Baixar(SqliteConnection c, SqliteTransaction t, long produtoId, int quantidade) =>
             Banco.Executar(c, t,
                 "UPDATE produtos SET estoque = MAX(estoque - $q, 0) WHERE id = $id AND controla_estoque = 1",
-                ("$q", item.Quantidade), ("$id", item.ProdutoId));
-        }
+                ("$q", quantidade), ("$id", produtoId));
     }
 
     private static Pedido? Ler(SqliteConnection c, SqliteTransaction? t, long id)
@@ -237,7 +289,8 @@ public sealed class VendaServico
         if (pedido is null) return null;
         pedido.Itens = Banco.Consultar(c, t, """
             SELECT i.id, i.pedido_id, i.produto_id, i.nome, i.detalhe, i.preco, i.quantidade, i.fichas_por_unidade,
-                   (SELECT COALESCE(SUM(d.quantidade), 0) FROM itens_devolucao d WHERE d.item_id = i.id)
+                   (SELECT COALESCE(SUM(d.quantidade), 0) FROM itens_devolucao d
+                    WHERE d.item_id = i.id AND d.componente_id IS NULL)
             FROM itens_pedido i WHERE i.pedido_id = $p ORDER BY i.id
             """, l => new ItemPedido
         {
@@ -251,6 +304,23 @@ public sealed class VendaServico
             FichasPorUnidade = l.GetInt32(7),
             Devolvidas = l.GetInt32(8),
         }, ("$p", id));
+
+        var componentes = Banco.Consultar(c, t, """
+            SELECT ci.item_id, ci.id, ci.produto_id, ci.nome, ci.detalhe, ci.valor, ci.quantidade,
+                   (SELECT COALESCE(SUM(d.quantidade), 0) FROM itens_devolucao d WHERE d.componente_id = ci.id)
+            FROM componentes_item ci JOIN itens_pedido i ON i.id = ci.item_id
+            WHERE i.pedido_id = $p ORDER BY ci.item_id, ci.ordem, ci.id
+            """, l => (Item: l.GetInt64(0), Componente: new ComponenteItem
+        {
+            Id = l.GetInt64(1),
+            ProdutoId = l.IsDBNull(2) ? null : l.GetInt64(2),
+            Nome = l.GetString(3),
+            Detalhe = l.GetString(4),
+            ValorCentavos = l.GetInt64(5),
+            Quantidade = l.GetInt32(6),
+            Devolvidas = l.GetInt32(7),
+        }), ("$p", id)).ToLookup(x => x.Item, x => x.Componente);
+        foreach (var item in pedido.Itens) item.Componentes = componentes[item.Id].ToList();
         return pedido;
     }
 

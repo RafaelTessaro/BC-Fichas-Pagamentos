@@ -220,6 +220,13 @@ public class AmostrasDeImpressao
             ImagemUtil.SalvarPng(mono, Path.Combine(pasta, nome));
         }
         Salvar(paoDeMel, "ficha-pao-de-mel.png");
+        // Ficha que saiu de um combo: o produto e, embaixo, o nome do combo
+        Salvar(new Ficha
+        {
+            NomeEvento = config.NomeEvento, Produto = "HEINEKEN", Detalhe = "COMBO HEINEKEN", PrecoCentavos = 650,
+            NumeroPedido = 14, Caixa = 1, Data = new DateTime(2026, 10, 2, 15, 2, 41), Sequencia = 2, TotalFichas = 5,
+            Forma = FormaPagamento.Pix,
+        }, "ficha-combo.png");
         Salvar(new Ficha
         {
             NomeEvento = config.NomeEvento, Produto = "ENROLADINHO PORÇÃO", PrecoCentavos = 2000, NumeroPedido = 1, Caixa = 1,
@@ -260,6 +267,6 @@ public class AmostrasDeImpressao
         using var barras = layout.Renderizar();
         ImagemUtil.SalvarPng(barras, Path.Combine(pasta, "codigo-conjunto-c.png"));
 
-        Assert.Equal(Enum.GetValues<ModeloFicha>().Length + 7, Directory.GetFiles(pasta, "*.png").Length);
+        Assert.Equal(Enum.GetValues<ModeloFicha>().Length + 8, Directory.GetFiles(pasta, "*.png").Length);
     }
 }

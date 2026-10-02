@@ -69,6 +69,8 @@ public sealed class CaixaServico
             DELETE FROM itens_devolucao WHERE devolucao_id IN
                 (SELECT id FROM devolucoes WHERE sessao_id IN (SELECT id FROM sessoes WHERE teste = 1));
             DELETE FROM devolucoes WHERE sessao_id IN (SELECT id FROM sessoes WHERE teste = 1);
+            DELETE FROM componentes_item WHERE item_id IN
+                (SELECT id FROM itens_pedido WHERE pedido_id IN (SELECT id FROM pedidos WHERE teste = 1));
             DELETE FROM itens_pedido WHERE pedido_id IN (SELECT id FROM pedidos WHERE teste = 1);
             DELETE FROM pedidos WHERE teste = 1;
             DELETE FROM movimentos WHERE sessao_id IN (SELECT id FROM sessoes WHERE teste = 1);
@@ -156,7 +158,7 @@ public sealed class CaixaServico
             "SELECT forma, SUM(valor), COUNT(*) FROM devolucoes WHERE sessao_id = $s GROUP BY forma",
             l => ((FormaPagamento)l.GetInt32(0), l.GetInt64(1), l.GetInt32(2)), ("$s", sessaoId));
         var devolvidos = _banco.Consultar("""
-            SELECT i.nome, SUM(i.quantidade), SUM(i.quantidade * i.preco)
+            SELECT i.nome, SUM(i.quantidade), SUM(i.valor)
             FROM itens_devolucao i JOIN devolucoes d ON d.id = i.devolucao_id
             WHERE d.sessao_id = $s
             GROUP BY i.nome ORDER BY SUM(i.quantidade) DESC, i.nome

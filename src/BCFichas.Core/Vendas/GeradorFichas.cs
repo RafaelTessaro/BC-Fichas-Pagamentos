@@ -3,9 +3,10 @@ namespace BCFichas.Core.Vendas;
 public static class GeradorFichas
 {
     /// <summary>
-    /// Uma ficha por unidade vendida (vezes as fichas por unidade do produto).
+    /// Uma ficha por unidade vendida (vezes as fichas por unidade do produto). No combo saem as fichas dos
+    /// produtos do combo, com o valor de cada uma e o nome do combo embaixo.
     /// Com <paramref name="somenteItemId"/>, reimprime só as fichas daquele item.
-    /// Na reimpressão, as unidades que o cliente devolveu ficam de fora (a numeração "1/6" não muda).
+    /// Na reimpressão, as fichas que o cliente devolveu ficam de fora (a numeração "1/6" não muda).
     /// </summary>
     public static List<Ficha> Gerar(Pedido pedido, Configuracao config, bool reimpressao = false,
         long? somenteItemId = null)
@@ -14,33 +15,34 @@ public static class GeradorFichas
         var fichas = new List<Ficha>(total);
         var sequencia = 0;
 
-        foreach (var item in pedido.Itens)
+        foreach (var linha in FichasDoPedido.Linhas(pedido))
         {
-            var porUnidade = Math.Max(1, item.FichasPorUnidade);
-            var fichasDoItem = item.Quantidade * porUnidade;
-            var validas = (item.Quantidade - item.Devolvidas) * porUnidade;
-            for (var i = 0; i < fichasDoItem; i++)
+            var validas = linha.PodeDevolver;
+            for (var unidade = 0; unidade < linha.Total; unidade++)
             {
-                sequencia++;
-                if (somenteItemId is not null && item.Id != somenteItemId) continue;
-                if (i >= validas) continue;
-
-                fichas.Add(new Ficha
+                for (var f = 0; f < linha.FichasPorUnidade; f++)
                 {
-                    NomeEvento = config.NomeEvento,
-                    Produto = item.Nome,
-                    Detalhe = item.Detalhe,
-                    PrecoCentavos = item.PrecoCentavos,
-                    NumeroPedido = pedido.Numero,
-                    Caixa = pedido.Caixa,
-                    Data = pedido.CriadoEm,
-                    Sequencia = sequencia,
-                    TotalFichas = total,
-                    Rodape = config.Rodape,
-                    Reimpressao = reimpressao,
-                    Forma = pedido.Forma,
-                    Teste = pedido.Teste,
-                });
+                    sequencia++;
+                    if (somenteItemId is not null && linha.Item.Id != somenteItemId) continue;
+                    if (unidade >= validas) continue;
+
+                    fichas.Add(new Ficha
+                    {
+                        NomeEvento = config.NomeEvento,
+                        Produto = linha.Nome,
+                        Detalhe = linha.Detalhe,
+                        PrecoCentavos = linha.ValorNaFicha,
+                        NumeroPedido = pedido.Numero,
+                        Caixa = pedido.Caixa,
+                        Data = pedido.CriadoEm,
+                        Sequencia = sequencia,
+                        TotalFichas = total,
+                        Rodape = config.Rodape,
+                        Reimpressao = reimpressao,
+                        Forma = pedido.Forma,
+                        Teste = pedido.Teste,
+                    });
+                }
             }
         }
 

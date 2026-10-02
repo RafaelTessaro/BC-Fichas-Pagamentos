@@ -73,9 +73,41 @@ public sealed class Produto
     public int Estoque { get; set; }
     public string Cor { get; set; } = "#0E9F6E";
     public string? Imagem { get; set; }
+    /// <summary>Aparece como botão na tela de venda. Desligado: escondido (ex.: vale usado só dentro de combos).</summary>
     public bool Ativo { get; set; } = true;
 
-    public bool Esgotado => ControlaEstoque && Estoque <= 0;
+    /// <summary>
+    /// Combo: vende por um preço só e imprime as fichas destes produtos (ex.: COMBO HEINEKEN = 5 fichas de
+    /// HEINEKEN de R$ 6,50; COMBO R$ 100 = vales de vários valores). No relatório aparece o combo.
+    /// </summary>
+    public List<ComponenteCombo> Componentes { get; set; } = new();
+
+    public bool EhCombo => Componentes.Count > 0;
+
+    /// <summary>Fichas que saem para cada unidade vendida.</summary>
+    public int FichasPorVenda => EhCombo ? Componentes.Sum(c => c.Quantidade) : Math.Max(1, FichasPorUnidade);
+
+    /// <summary>Soma do valor das fichas do combo (pode ser maior que o preço: o desconto do combo).</summary>
+    public long ValorDasFichas => Componentes.Sum(c => c.TotalCentavos);
+
+    public bool Esgotado => (ControlaEstoque && Estoque <= 0) ||
+                            Componentes.Any(c => c.ControlaEstoque && c.Estoque < c.Quantidade);
+}
+
+/// <summary>Uma linha do combo: qual produto sai na ficha, quantas fichas e o valor impresso em cada uma.</summary>
+public sealed class ComponenteCombo
+{
+    public long Id { get; set; }
+    public long ProdutoId { get; set; }
+    public string Nome { get; set; } = "";
+    public string Detalhe { get; set; } = "";
+    public int Quantidade { get; set; } = 1;
+    /// <summary>Valor que sai em cada ficha (normalmente o preço do produto).</summary>
+    public long ValorCentavos { get; set; }
+    public bool ControlaEstoque { get; set; }
+    public int Estoque { get; set; }
+
+    public long TotalCentavos => ValorCentavos * Quantidade;
 }
 
 public sealed class SessaoCaixa
@@ -112,8 +144,6 @@ public sealed class Pedido
 
     public int QuantidadeItens => Itens.Sum(i => i.Quantidade);
     public int QuantidadeFichas => Itens.Sum(i => i.Quantidade * i.FichasPorUnidade);
-    public int QuantidadeDevolvida => Itens.Sum(i => i.Devolvidas);
-    public long TotalDevolvidoCentavos => Itens.Sum(i => i.Devolvidas * i.PrecoCentavos);
 }
 
 public sealed class ItemPedido
@@ -126,11 +156,28 @@ public sealed class ItemPedido
     public long PrecoCentavos { get; set; }
     public int Quantidade { get; set; }
     public int FichasPorUnidade { get; set; } = 1;
-    /// <summary>Unidades que o cliente devolveu (ficha não usada).</summary>
+    /// <summary>Unidades que o cliente devolveu (ficha não usada). Nos combos a devolução é por ficha, em <see cref="Componentes"/>.</summary>
     public int Devolvidas { get; set; }
+    /// <summary>Fichas de um combo, como estavam na hora da venda (para cada unidade vendida).</summary>
+    public List<ComponenteItem> Componentes { get; set; } = new();
 
+    public bool EhCombo => Componentes.Count > 0;
     public long TotalCentavos => PrecoCentavos * Quantidade;
     public int PodeDevolver => Quantidade - Devolvidas;
+}
+
+/// <summary>Fichas de um combo vendido (cópia do combo na hora da venda).</summary>
+public sealed class ComponenteItem
+{
+    public long Id { get; set; }
+    public long? ProdutoId { get; set; }
+    public string Nome { get; set; } = "";
+    public string Detalhe { get; set; } = "";
+    public long ValorCentavos { get; set; }
+    /// <summary>Fichas deste produto em cada unidade do combo.</summary>
+    public int Quantidade { get; set; }
+    /// <summary>Fichas deste produto que o cliente devolveu (somando todas as unidades do combo).</summary>
+    public int Devolvidas { get; set; }
 }
 
 /// <summary>
@@ -158,11 +205,13 @@ public sealed class Devolucao
 public sealed class ItemDevolvido
 {
     public long ItemId { get; set; }
+    /// <summary>Ficha de um combo (nulo quando é o produto vendido sozinho).</summary>
+    public long? ComponenteId { get; set; }
     public string Nome { get; set; } = "";
+    /// <summary>Valor de cada unidade (aproximado nos combos, que devolvem a parte do preço do combo).</summary>
     public long PrecoCentavos { get; set; }
     public int Quantidade { get; set; }
-
-    public long TotalCentavos => PrecoCentavos * Quantidade;
+    public long TotalCentavos { get; set; }
 }
 
 public sealed class Movimento

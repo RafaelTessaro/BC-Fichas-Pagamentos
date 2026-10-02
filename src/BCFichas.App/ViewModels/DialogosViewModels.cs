@@ -32,7 +32,7 @@ public sealed partial class MenuViewModel : ViewModelBase
                 () => _p.AbrirProtegido(TelaProtegida.Reimpressao, () => new ReimpressaoViewModel(_p))),
             new("Devolver fichas", "Cliente não usou a ficha", "IconeTroca", "#DB2777", c.Protegida(TelaProtegida.Devolucao),
                 () => _p.AbrirProtegido(TelaProtegida.Devolucao, () => new DevolucaoViewModel(_p))),
-            new("Sangria / Suprimento", "Tirar ou pôr dinheiro no caixa", "IconeDinheiro", "#16A34A", c.Protegida(TelaProtegida.Sangria),
+            new("Sangria / Suprimento", "Tirar ou pôr dinheiro", "IconeDinheiro", "#16A34A", c.Protegida(TelaProtegida.Sangria),
                 () => _p.AbrirProtegido(TelaProtegida.Sangria, () => new SangriaViewModel(_p))),
             new("Relatórios", "Vendas, caixas e sangrias", "IconeGrafico", "#D97706", c.Protegida(TelaProtegida.Relatorios),
                 () => _p.AbrirProtegido(TelaProtegida.Relatorios, () => new RelatoriosViewModel(_p))),

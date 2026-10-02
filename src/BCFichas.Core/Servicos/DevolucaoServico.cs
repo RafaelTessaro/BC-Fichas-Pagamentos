@@ -1,4 +1,5 @@
 using BCFichas.Core.Dados;
+using BCFichas.Core.Vendas;
 using Microsoft.Data.Sqlite;
 
 namespace BCFichas.Core.Servicos;
@@ -23,10 +24,17 @@ public sealed class DevolucaoServico
         _agora = agora ?? (() => DateTime.Now);
     }
 
-    /// <param name="sessao">Caixa aberto agora (de onde sai o dinheiro).</param>
-    /// <param name="quantidades">Quantas unidades devolver de cada item (id do item → quantidade).</param>
+    /// <summary>Devolve unidades de produtos vendidos sozinhos (id do item → quantidade).</summary>
     public Devolucao Devolver(SessaoCaixa sessao, long pedidoId, IReadOnlyDictionary<long, int> quantidades,
-        string? motivo)
+        string? motivo) =>
+        Devolver(sessao, pedidoId, quantidades.Select(q => (q.Key, (long?)null, q.Value)).ToList(), motivo);
+
+    /// <param name="sessao">Caixa aberto agora (de onde sai o dinheiro).</param>
+    /// <param name="devolvidas">
+    /// O que voltou: item do pedido, ficha do combo (nulo para o produto vendido sozinho) e quantidade.
+    /// </param>
+    public Devolucao Devolver(SessaoCaixa sessao, long pedidoId,
+        IReadOnlyList<(long ItemId, long? ComponenteId, int Quantidade)> devolvidas, string? motivo)
     {
         if (!sessao.Aberta) throw new ErroDeNegocio("O caixa está fechado.");
         var pedido = _vendas.Pedido(pedidoId) ?? throw new ErroDeNegocio("Pedido não encontrado.");
@@ -36,23 +44,30 @@ public sealed class DevolucaoServico
                 ? "Este pedido é do modo teste."
                 : "No modo teste só dá para devolver fichas de teste.");
 
+        var linhas = FichasDoPedido.Linhas(pedido);
         var itens = new List<ItemDevolvido>();
-        foreach (var (itemId, quantidade) in quantidades)
+        var escolhidas = new List<(LinhaDeFichas Linha, ItemDevolvido Item)>();
+        foreach (var (itemId, componenteId, quantidade) in devolvidas)
         {
             if (quantidade <= 0) continue;
-            var item = pedido.Itens.FirstOrDefault(i => i.Id == itemId)
-                       ?? throw new ErroDeNegocio("Item não encontrado neste pedido.");
-            if (quantidade > item.PodeDevolver)
-                throw new ErroDeNegocio(item.PodeDevolver == 0
-                    ? $"{item.Nome}: todas as fichas já foram devolvidas."
-                    : $"{item.Nome}: só dá para devolver {item.PodeDevolver}.");
-            itens.Add(new ItemDevolvido
+            var linha = linhas.FirstOrDefault(l => l.Item.Id == itemId && l.Componente?.Id == componenteId)
+                        ?? throw new ErroDeNegocio("Item não encontrado neste pedido.");
+            var nome = linha.DeCombo ? $"{linha.Nome} ({linha.Item.Nome})" : linha.Nome;
+            if (quantidade > linha.PodeDevolver)
+                throw new ErroDeNegocio(linha.PodeDevolver == 0
+                    ? $"{nome}: todas as fichas já foram devolvidas."
+                    : $"{nome}: só dá para devolver {linha.PodeDevolver}.");
+            var item = new ItemDevolvido
             {
-                ItemId = item.Id,
-                Nome = item.Nome,
-                PrecoCentavos = item.PrecoCentavos,
+                ItemId = itemId,
+                ComponenteId = componenteId,
+                Nome = nome,
+                PrecoCentavos = linha.ValorUnitario,
                 Quantidade = quantidade,
-            });
+                TotalCentavos = linha.Valor(quantidade),
+            };
+            itens.Add(item);
+            escolhidas.Add((linha, item));
         }
         if (itens.Count == 0) throw new ErroDeNegocio("Escolha as fichas que o cliente está devolvendo.");
 
@@ -87,30 +102,37 @@ public sealed class DevolucaoServico
                 ("$f", (int)devolucao.Forma), ("$v", devolucao.ValorCentavos), ("$m", devolucao.Motivo),
                 ("$d", Banco.Data(devolucao.CriadoEm)));
 
-            foreach (var item in itens)
+            foreach (var (linha, item) in escolhidas)
             {
                 // Confere de novo dentro da transação (dois toques seguidos no botão não devolvem duas vezes).
-                var jaDevolvidas = Banco.Escalar<long>(c, t,
-                    "SELECT COALESCE(SUM(quantidade), 0) FROM itens_devolucao WHERE item_id = $i", ("$i", item.ItemId));
-                var vendidas = Banco.Escalar<long>(c, t, "SELECT quantidade FROM itens_pedido WHERE id = $i",
-                    ("$i", item.ItemId));
-                if (jaDevolvidas + item.Quantidade > vendidas)
+                var jaDevolvidas = (int)(item.ComponenteId is { } componenteId
+                    ? Banco.Escalar<long>(c, t,
+                        "SELECT COALESCE(SUM(quantidade), 0) FROM itens_devolucao WHERE componente_id = $c", ("$c", componenteId))
+                    : Banco.Escalar<long>(c, t,
+                        "SELECT COALESCE(SUM(quantidade), 0) FROM itens_devolucao WHERE item_id = $i AND componente_id IS NULL",
+                        ("$i", item.ItemId)));
+                if (jaDevolvidas + item.Quantidade > linha.Total)
                     throw new ErroDeNegocio($"{item.Nome}: essas fichas já foram devolvidas.");
+                item.TotalCentavos = linha.Valor(item.Quantidade, jaDevolvidas);
 
                 Banco.Executar(c, t, """
-                    INSERT INTO itens_devolucao (devolucao_id, item_id, nome, preco, quantidade)
-                    VALUES ($d, $i, $n, $p, $q)
+                    INSERT INTO itens_devolucao (devolucao_id, item_id, componente_id, nome, preco, quantidade, valor)
+                    VALUES ($d, $i, $c, $n, $p, $q, $v)
                     """,
-                    ("$d", devolucao.Id), ("$i", item.ItemId), ("$n", item.Nome), ("$p", item.PrecoCentavos),
-                    ("$q", item.Quantidade));
+                    ("$d", devolucao.Id), ("$i", item.ItemId), ("$c", item.ComponenteId), ("$n", item.Nome),
+                    ("$p", item.PrecoCentavos), ("$q", item.Quantidade), ("$v", item.TotalCentavos));
 
                 // A ficha voltou sem ser usada: o produto volta para o estoque (no teste o estoque não mexe).
-                if (!pedido.Teste)
-                    Banco.Executar(c, t, """
-                        UPDATE produtos SET estoque = estoque + $q
-                        WHERE controla_estoque = 1 AND id = (SELECT produto_id FROM itens_pedido WHERE id = $i)
-                        """, ("$q", item.Quantidade), ("$i", item.ItemId));
+                var produtoId = linha.Componente is { } componente ? componente.ProdutoId : linha.Item.ProdutoId;
+                if (!pedido.Teste && produtoId is not null)
+                    Banco.Executar(c, t,
+                        "UPDATE produtos SET estoque = estoque + $q WHERE controla_estoque = 1 AND id = $p",
+                        ("$q", item.Quantidade), ("$p", produtoId));
             }
+            // O valor pode ter mudado um centavo se outra devolução entrou no meio.
+            devolucao.ValorCentavos = itens.Sum(i => i.TotalCentavos);
+            Banco.Executar(c, t, "UPDATE devolucoes SET valor = $v WHERE id = $id",
+                ("$v", devolucao.ValorCentavos), ("$id", devolucao.Id));
         });
 
         _vendas.AvisarEstoque();
@@ -132,13 +154,15 @@ public sealed class DevolucaoServico
 
     private static List<ItemDevolvido> Itens(SqliteConnection c, long devolucaoId) =>
         Banco.Consultar(c, null,
-            "SELECT item_id, nome, preco, quantidade FROM itens_devolucao WHERE devolucao_id = $d ORDER BY id",
+            "SELECT item_id, componente_id, nome, preco, quantidade, valor FROM itens_devolucao WHERE devolucao_id = $d ORDER BY id",
             l => new ItemDevolvido
             {
                 ItemId = l.GetInt64(0),
-                Nome = l.GetString(1),
-                PrecoCentavos = l.GetInt64(2),
-                Quantidade = l.GetInt32(3),
+                ComponenteId = l.IsDBNull(1) ? null : l.GetInt64(1),
+                Nome = l.GetString(2),
+                PrecoCentavos = l.GetInt64(3),
+                Quantidade = l.GetInt32(4),
+                TotalCentavos = l.GetInt64(5),
             }, ("$d", devolucaoId));
 
     private static Devolucao Ler(SqliteDataReader l) => new()

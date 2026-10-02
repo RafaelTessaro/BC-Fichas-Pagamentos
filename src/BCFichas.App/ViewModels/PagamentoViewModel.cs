@@ -39,7 +39,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
         _aoConcluir = aoConcluir;
         TotalCentavos = linhas.Sum(l => l.TotalCentavos);
         Recebido.PropertyChanged += (_, _) => AtualizarTroco();
-        var fichas = linhas.Sum(l => l.Quantidade * Math.Max(1, l.Produto.FichasPorUnidade));
+        var fichas = linhas.Sum(l => l.Quantidade * l.Produto.FichasPorVenda);
         ResumoItens = $"{linhas.Sum(l => l.Quantidade)} item(ns) • {fichas} ficha(s)";
     }
 

@@ -116,7 +116,9 @@
                       <Grid ColumnDefinitions="*,Auto,110">
                         <StackPanel VerticalAlignment="Center">
                           <TextBlock Text="{Binding Nome}" FontWeight="Bold" FontSize="17" TextWrapping="Wrap" />
-                          <TextBlock Classes="suave" FontSize="13">
+                          <TextBlock Text="{Binding Combo}" IsVisible="{Binding DeCombo}" FontSize="13" FontWeight="SemiBold"
+                                     Foreground="{StaticResource PrimariaEscura}" />
+                          <TextBlock Classes="suave" FontSize="13" TextWrapping="Wrap">
                             <Run Text="{Binding Preco}" />
                             <Run Text="•" />
                             <Run Text="{Binding Situacao}" />

@@ -266,5 +266,40 @@ public sealed class Banco
                 """);
             t.Commit();
         }
+
+        // Versão 3.3: combos (um preço só, fichas de outros produtos).
+        if (versao < 3)
+        {
+            using var t = conexao.BeginTransaction();
+            Executar(conexao, t, """
+                CREATE TABLE componentes_combo (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    combo_id INTEGER NOT NULL REFERENCES produtos(id),
+                    produto_id INTEGER NOT NULL REFERENCES produtos(id),
+                    quantidade INTEGER NOT NULL,
+                    valor INTEGER NOT NULL,
+                    ordem INTEGER NOT NULL
+                );
+                CREATE INDEX ix_componentes_combo ON componentes_combo (combo_id);
+                CREATE INDEX ix_componentes_combo_produto ON componentes_combo (produto_id);
+                CREATE TABLE componentes_item (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    item_id INTEGER NOT NULL REFERENCES itens_pedido(id),
+                    produto_id INTEGER,
+                    nome TEXT NOT NULL,
+                    detalhe TEXT NOT NULL DEFAULT '',
+                    valor INTEGER NOT NULL,
+                    quantidade INTEGER NOT NULL,
+                    ordem INTEGER NOT NULL
+                );
+                CREATE INDEX ix_componentes_item ON componentes_item (item_id);
+                ALTER TABLE itens_devolucao ADD COLUMN componente_id INTEGER;
+                ALTER TABLE itens_devolucao ADD COLUMN valor INTEGER NOT NULL DEFAULT 0;
+                UPDATE itens_devolucao SET valor = preco * quantidade;
+                CREATE INDEX ix_itens_devolucao_componente ON itens_devolucao (componente_id);
+                INSERT INTO versao (v) VALUES (3);
+                """);
+            t.Commit();
+        }
     }
 }

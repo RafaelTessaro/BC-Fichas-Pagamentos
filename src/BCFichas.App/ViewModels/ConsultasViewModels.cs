@@ -30,11 +30,22 @@ public sealed class ItemReimpressao(ItemPedido item)
     public string Quantidade { get; } = $"{item.Quantidade} x {Dinheiro.Formatar(item.PrecoCentavos)}";
 
     /// <summary>Fichas que ainda valem (as devolvidas não são reimpressas).</summary>
-    public string Fichas { get; } = item.Devolvidas == 0
-        ? $"{item.Quantidade * item.FichasPorUnidade} ficha(s)"
-        : $"{item.PodeDevolver * item.FichasPorUnidade} ficha(s) • {item.Devolvidas} devolvida(s)";
+    public string Fichas { get; } = Texto(item);
 
-    public bool TemFichas { get; } = item.PodeDevolver > 0;
+    public bool TemFichas { get; } = Validas(item) > 0;
+
+    private static int Total(ItemPedido i) => i.Quantidade * Math.Max(1, i.FichasPorUnidade);
+    private static int Devolvidas(ItemPedido i) =>
+        i.EhCombo ? i.Componentes.Sum(c => c.Devolvidas) : i.Devolvidas * Math.Max(1, i.FichasPorUnidade);
+    private static int Validas(ItemPedido i) => Total(i) - Devolvidas(i);
+
+    private static string Texto(ItemPedido i)
+    {
+        var texto = Devolvidas(i) == 0 ? $"{Total(i)} ficha(s)" : $"{Validas(i)} ficha(s) • {Devolvidas(i)} devolvida(s)";
+        // Combo: diz quais fichas saem (ex.: 5 HEINEKEN)
+        if (i.EhCombo) texto += " • " + string.Join(", ", i.Componentes.Select(c => $"{c.Quantidade * i.Quantidade} {c.Nome}"));
+        return texto;
+    }
 }
 
 /// <summary>Segunda via das fichas de um pedido (inteiro ou de um item).</summary>

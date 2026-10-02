@@ -32,8 +32,11 @@ public sealed class BotaoProduto
     public bool Vazio => Produto is null;
     public bool Disponivel => Produto is { Esgotado: false };
     public string Nome => Produto?.Nome ?? "";
-    public string Detalhe => Produto?.Detalhe ?? "";
-    public bool TemDetalhe => !string.IsNullOrEmpty(Produto?.Detalhe);
+    /// <summary>Detalhe do produto; no combo sem detalhe, quantas fichas ele imprime.</summary>
+    public string Detalhe => Produto is null ? ""
+        : Produto.Detalhe.Length > 0 ? Produto.Detalhe
+        : Produto.EhCombo ? $"COMBO • {Produto.FichasPorVenda} FICHAS" : "";
+    public bool TemDetalhe => Detalhe.Length > 0;
     public string Preco => Produto is null ? "" : Dinheiro.Formatar(Produto.PrecoCentavos);
     public IBrush Fundo { get; } = Brushes.Transparent;
     public IBrush Texto { get; } = Brushes.White;
@@ -134,11 +137,15 @@ public sealed partial class VendaViewModel : ViewModelBase
         }
         if (!_carrinho.Adicionar(botao.Produto))
         {
-            _principal.MostrarAviso($"Só restam {botao.Produto.Estoque} de {botao.Nome}.", erro: true);
+            _principal.MostrarAviso(SemEstoque(botao.Produto), erro: true);
             return;
         }
         AtualizarPedido();
     }
+
+    private static string SemEstoque(Produto produto) => produto.EhCombo
+        ? $"Não há estoque para mais um {produto.Nome}."
+        : $"Só restam {produto.Estoque} de {produto.Nome}.";
 
     [RelayCommand]
     private void Mais(LinhaItem linha)
@@ -146,7 +153,7 @@ public sealed partial class VendaViewModel : ViewModelBase
         var produto = _carrinho.Linhas.FirstOrDefault(l => l.Produto.Id == linha.ProdutoId)?.Produto;
         if (produto is null) return;
         if (!_carrinho.Adicionar(produto))
-            _principal.MostrarAviso($"Só restam {produto.Estoque} de {produto.Nome}.", erro: true);
+            _principal.MostrarAviso(SemEstoque(produto), erro: true);
         AtualizarPedido();
     }
 
@@ -225,8 +232,9 @@ public sealed partial class VendaViewModel : ViewModelBase
         {
             var atual = _principal.Sistema.Catalogo.Produto(id);
             if (atual is not { Ativo: true }) continue;
-            var cabe = atual.ControlaEstoque ? Math.Min(quantidade, Math.Max(atual.Estoque, 0)) : quantidade;
-            if (cabe > 0) _carrinho.Adicionar(atual, cabe);
+            // Põe de volta o quanto ainda cabe no estoque (contando os produtos dos combos).
+            var cabe = quantidade;
+            while (cabe > 0 && !_carrinho.Adicionar(atual, cabe)) cabe--;
         }
         AtualizarPedido();
     }

@@ -4,25 +4,30 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using BCFichas.Core;
 using BCFichas.Core.Impressao;
+using BCFichas.Core.Vendas;
 
 namespace BCFichas.App.ViewModels;
 
-/// <summary>Um item do pedido, com quantas fichas dele o cliente está devolvendo.</summary>
-public sealed partial class ItemDevolucao(ItemPedido item, Action aoMudar) : ObservableObject
+/// <summary>
+/// Um produto do pedido, com quantas unidades o cliente está devolvendo. No combo, cada produto das fichas é
+/// uma linha e a devolução é ficha por ficha (vale a parte do preço do combo).
+/// </summary>
+public sealed partial class ItemDevolucao(LinhaDeFichas linha, Action aoMudar) : ObservableObject
 {
-    public ItemPedido Item { get; } = item;
-    public string Nome => Item.Nome;
-    public string Preco => Dinheiro.Formatar(Item.PrecoCentavos) + " cada";
-    public string Situacao => Item.Devolvidas == 0
-        ? $"{Item.Quantidade} vendido(s)"
-        : $"{Item.Quantidade} vendido(s) • {Item.Devolvidas} já devolvido(s)";
-    public bool PodeDevolver => Item.PodeDevolver > 0;
+    public LinhaDeFichas Linha { get; } = linha;
+    public string Nome => Linha.Nome;
+    public bool DeCombo => Linha.DeCombo;
+    public string Combo => Linha.DeCombo ? "Ficha do " + Linha.Item.Nome : "";
+    public string Preco => Dinheiro.Formatar(Linha.ValorUnitario) + (Linha.DeCombo ? " cada (parte do combo)" : " cada");
+    public string Situacao => (Linha.DeCombo ? $"{Linha.Total} ficha(s)" : $"{Linha.Total} vendido(s)") +
+                              (Linha.Devolvidas == 0 ? "" : $" • {Linha.Devolvidas} já devolvida(s)");
+    public bool PodeDevolver => Linha.PodeDevolver > 0;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Total), nameof(Marcado))]
     private int _quantidade;
 
-    public long TotalCentavos => Quantidade * Item.PrecoCentavos;
+    public long TotalCentavos => Linha.Valor(Quantidade);
     public string Total => Dinheiro.Formatar(TotalCentavos);
     public bool Marcado => Quantidade > 0;
 
@@ -31,7 +36,7 @@ public sealed partial class ItemDevolucao(ItemPedido item, Action aoMudar) : Obs
     [RelayCommand]
     private void Mais()
     {
-        if (Quantidade < Item.PodeDevolver) Quantidade++;
+        if (Quantidade < Linha.PodeDevolver) Quantidade++;
     }
 
     [RelayCommand]
@@ -89,7 +94,7 @@ public sealed partial class DevolucaoViewModel(PrincipalViewModel principal) : P
     {
         Itens.Clear();
         if (value is not null)
-            foreach (var item in value.Itens) Itens.Add(new ItemDevolucao(item, Recalcular));
+            foreach (var linha in FichasDoPedido.Linhas(value)) Itens.Add(new ItemDevolucao(linha, Recalcular));
         Motivo = "";
         EstornoFeito = false;
         OnPropertyChanged(nameof(TemPedido));
@@ -172,13 +177,14 @@ public sealed partial class DevolucaoViewModel(PrincipalViewModel principal) : P
     {
         var sessao = Principal.Sessao;
         if (sessao is null || Pedido is null || !PodeRegistrar) return;
-        var quantidades = Itens.Where(i => i.Quantidade > 0).ToDictionary(i => i.Item.Id, i => i.Quantidade);
+        var devolvidas = Itens.Where(i => i.Quantidade > 0)
+            .Select(i => (i.Linha.Item.Id, i.Linha.Componente?.Id, i.Quantidade)).ToList();
         var pedidoId = Pedido.Id;
 
         Ocupado = true;
         try
         {
-            var devolucao = Sistema.Devolucoes.Devolver(sessao, pedidoId, quantidades, Motivo);
+            var devolucao = Sistema.Devolucoes.Devolver(sessao, pedidoId, devolvidas, Motivo);
             var pedido = Sistema.Vendas.Pedido(pedidoId)!;
             var noCaixa = Sistema.Caixa.Resumo(sessao.Id).DinheiroEsperado;
             Principal.MostrarAviso(devolucao.EmDinheiro
@@ -201,20 +207,12 @@ public sealed partial class DevolucaoViewModel(PrincipalViewModel principal) : P
         }
     }
 
+    /// <summary>Ficha lida no leitor: marca uma unidade da linha que imprimiu essa ficha.</summary>
     private void MarcarFicha(int sequencia)
     {
-        // Mesma ordem do GeradorFichas: as fichas são numeradas item por item.
-        var inicio = 0;
-        foreach (var item in Itens)
-        {
-            var fichas = item.Item.Quantidade * Math.Max(1, item.Item.FichasPorUnidade);
-            if (sequencia > inicio && sequencia <= inicio + fichas)
-            {
-                item.MaisCommand.Execute(null);
-                return;
-            }
-            inicio += fichas;
-        }
+        if (Pedido is null || FichasDoPedido.LinhaDaFicha(Pedido, sequencia) is not { } linha) return;
+        Itens.FirstOrDefault(i => i.Linha.Item.Id == linha.Item.Id && i.Linha.Componente?.Id == linha.Componente?.Id)
+            ?.MaisCommand.Execute(null);
     }
 
     private void Recalcular()

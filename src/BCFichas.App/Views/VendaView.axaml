@@ -24,8 +24,6 @@
         </Button>
 
         <StackPanel Grid.Row="2" Spacing="10" Margin="0,18,0,0">
-          <TextBlock Text="{Binding Principal.NomeEvento}" Foreground="White" FontSize="17" FontWeight="Bold"
-                     TextAlignment="Center" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
           <Border Background="{StaticResource Primaria}" CornerRadius="10" Padding="6,6" IsVisible="{Binding !Principal.ModoTeste}">
             <StackPanel>
               <TextBlock Text="{Binding Principal.CaixaTexto}" Foreground="White" FontWeight="Bold" FontSize="16"

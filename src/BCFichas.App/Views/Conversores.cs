@@ -13,6 +13,8 @@ public static class Conversores
     });
 
     /// <summary>Tempo do simulador: 0 = espera o operador; 3 = "3 segundos".</summary>
+    public static readonly IValueConverter Centavos = new FuncValueConverter<long, string>(c => Dinheiro.Formatar(c));
+
     public static readonly IValueConverter Segundos = new FuncValueConverter<int, string>(s =>
         s == 0 ? "Nunca (eu toco em aprovar ou recusar)" : $"{s} segundos");
 }

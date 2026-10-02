@@ -21,14 +21,36 @@ public sealed class Carrinho
     public bool Adicionar(Produto produto, int quantidade = 1)
     {
         var linha = _linhas.FirstOrDefault(l => l.Produto.Id == produto.Id);
-        var atual = linha?.Quantidade ?? 0;
-        if (produto.ControlaEstoque && atual + quantidade > produto.Estoque) return false;
+        if (!CabeNoEstoque(produto, quantidade)) return false;
 
         if (linha is null)
             _linhas.Add(new LinhaCarrinho { Produto = produto, Quantidade = quantidade });
         else
             linha.Quantidade += quantidade;
         return true;
+    }
+
+    /// <summary>
+    /// Confere o estoque somando o pedido inteiro: combos gastam o estoque dos produtos das fichas (um combo de
+    /// 5 HEINEKEN mais 2 HEINEKEN avulsas precisam de 7).
+    /// </summary>
+    private bool CabeNoEstoque(Produto novo, int quantidade)
+    {
+        var precisa = new Dictionary<long, (int Quantidade, int Estoque)>();
+        void Somar(long id, bool controla, int estoque, int q)
+        {
+            if (!controla) return;
+            var atual = precisa.GetValueOrDefault(id);
+            precisa[id] = (atual.Quantidade + q, estoque);
+        }
+        void Linha(Produto p, int q)
+        {
+            Somar(p.Id, p.ControlaEstoque, p.Estoque, q);
+            foreach (var c in p.Componentes) Somar(c.ProdutoId, c.ControlaEstoque, c.Estoque, q * c.Quantidade);
+        }
+        foreach (var l in _linhas) Linha(l.Produto, l.Quantidade);
+        Linha(novo, quantidade);
+        return precisa.Values.All(p => p.Quantidade <= p.Estoque);
     }
 
     public void Remover(long produtoId, int quantidade = 1)

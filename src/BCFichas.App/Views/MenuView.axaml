@@ -1,9 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:v="using:BCFichas.App.Views"
              x:Class="BCFichas.App.Views.MenuView"
              x:DataType="vm:MenuViewModel">
-  <Border Classes="cartao" Width="880" Padding="18">
+  <Border Classes="cartao" Width="900" Padding="18">
     <Grid RowDefinitions="Auto,*">
       <Grid ColumnDefinitions="*,Auto" Margin="6,0,0,10">
         <TextBlock Text="Menu" Classes="titulo" VerticalAlignment="Center" />
@@ -30,7 +31,9 @@
                             HorizontalAlignment="Right" VerticalAlignment="Top" />
                 </Grid>
                 <StackPanel Grid.Row="1" Margin="0,10,0,0">
-                  <TextBlock Text="{Binding Titulo}" FontSize="17" FontWeight="Bold" TextWrapping="Wrap" />
+                  <!-- Título sempre numa linha: diminui a letra se não couber (ex.: Sangria / Suprimento) -->
+                  <v:TextoQueCabe Text="{Binding Titulo}" TamanhoMaximo="17" TamanhoMinimo="13" LinhaUnica="True"
+                                  FontWeight="Bold" TextWrapping="NoWrap" />
                   <TextBlock Text="{Binding Descricao}" FontSize="13" Classes="suave" TextWrapping="Wrap" />
                 </StackPanel>
               </Grid>

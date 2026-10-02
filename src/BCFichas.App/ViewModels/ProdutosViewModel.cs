@@ -12,7 +12,8 @@ public sealed class ProdutoItem(Produto p, string aba)
 {
     public Produto Produto { get; } = p;
     public string Nome { get; } = p.Nome;
-    public string Info { get; } = $"{aba} • posição {p.Posicao}" + (p.Ativo ? "" : " • INATIVO");
+    public string Info { get; } = (p.Ativo ? $"{aba} • posição {p.Posicao}" : $"{aba} • fora da tela de venda") +
+                                  (p.EhCombo ? $" • COMBO ({p.FichasPorVenda} fichas)" : "");
     public string Preco { get; } = Dinheiro.Formatar(p.PrecoCentavos);
     public string Estoque { get; } = p.ControlaEstoque ? $"Estoque: {p.Estoque}" : "";
     public IBrush Cor { get; } = new SolidColorBrush(Recursos.CorOuPadrao(p.Cor));
@@ -26,6 +27,44 @@ public sealed partial class OpcaoCor(string hex) : ObservableObject
     /// <summary>Cor clara (branco): ganha contorno para não sumir no fundo branco.</summary>
     public bool Clara { get; } = Recursos.TextoSobre(Color.Parse(hex)) != Brushes.White;
     [ObservableProperty] private bool _marcada;
+}
+
+/// <summary>Uma linha do combo no cadastro: produto que sai na ficha, quantas fichas e o valor de cada uma.</summary>
+public sealed partial class ComponenteEdicao : ObservableObject
+{
+    private readonly Action _aoMudar;
+
+    public ComponenteEdicao(long produtoId, string nome, int quantidade, long valor, Action aoMudar)
+    {
+        ProdutoId = produtoId;
+        Nome = nome;
+        _quantidade = quantidade;
+        _valor = Dinheiro.ParaEdicao(valor);
+        _aoMudar = aoMudar;
+    }
+
+    public long ProdutoId { get; }
+    public string Nome { get; }
+
+    [ObservableProperty] private int _quantidade;
+    [ObservableProperty] private string _valor;
+
+    public long? ValorCentavos => Dinheiro.TentarLer(Valor, out var v) ? v : null;
+
+    partial void OnQuantidadeChanged(int value) => _aoMudar();
+    partial void OnValorChanged(string value) => _aoMudar();
+
+    [RelayCommand]
+    private void Mais()
+    {
+        if (Quantidade < 50) Quantidade++;
+    }
+
+    [RelayCommand]
+    private void Menos()
+    {
+        if (Quantidade > 1) Quantidade--;
+    }
 }
 
 /// <summary>Cadastro dos produtos (botões da tela de venda).</summary>
@@ -49,6 +88,9 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
     public ObservableCollection<int> Posicoes { get; } = new();
     public List<OpcaoCor> Cores { get; }
     public List<int> OpcoesFichas { get; } = Enumerable.Range(1, 10).ToList();
+    public ObservableCollection<ComponenteEdicao> Componentes { get; } = new();
+    /// <summary>Produtos que podem sair nas fichas de um combo (não pode combo dentro de combo).</summary>
+    public ObservableCollection<Produto> ParaOCombo { get; } = new();
 
     [ObservableProperty] private string _busca = "";
     [ObservableProperty] private ProdutoItem? _selecionado;
@@ -72,8 +114,12 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
     [ObservableProperty] private Bitmap? _imagemPrevia;
     [ObservableProperty] private IBrush _previaFundo = new SolidColorBrush(Color.Parse(Paleta[0]));
     [ObservableProperty] private IBrush _previaTexto = Brushes.White;
+    [ObservableProperty] private bool _ehCombo;
+    [ObservableProperty] private Produto? _paraAdicionar;
+    [ObservableProperty] private string _resumoCombo = "";
 
     public bool Editando => Id != 0;
+    public bool NaoEhCombo => !EhCombo;
     public bool TemImagem => Imagem is not null;
     private int TotalPosicoes => Principal.Config.Colunas * Principal.Config.Linhas;
 
@@ -98,6 +144,59 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
     }
 
     partial void OnIdChanged(long value) => OnPropertyChanged(nameof(Editando));
+
+    partial void OnEhComboChanged(bool value)
+    {
+        OnPropertyChanged(nameof(NaoEhCombo));
+        AtualizarResumoCombo();
+    }
+
+    partial void OnPrecoChanged(string value) => AtualizarResumoCombo();
+
+    partial void OnAtivoChanged(bool value)
+    {
+        if (!_carregando && value && Posicao is null) AtualizarPosicoes(escolherLivre: true);
+    }
+
+    /// <summary>Põe o produto escolhido nas fichas do combo (ou mais uma ficha, se já estiver).</summary>
+    [RelayCommand]
+    private void AdicionarAoCombo()
+    {
+        if (ParaAdicionar is not { } produto) return;
+        var existente = Componentes.FirstOrDefault(c => c.ProdutoId == produto.Id);
+        if (existente is not null) existente.Quantidade++;
+        else Componentes.Add(new ComponenteEdicao(produto.Id, produto.Nome, 1, produto.PrecoCentavos, AtualizarResumoCombo));
+        ParaAdicionar = null;
+        AtualizarResumoCombo();
+    }
+
+    [RelayCommand]
+    private void RemoverDoCombo(ComponenteEdicao componente)
+    {
+        Componentes.Remove(componente);
+        AtualizarResumoCombo();
+    }
+
+    /// <summary>"5 fichas • somam R$ 32,50 • preço do combo R$ 30,00 (R$ 2,50 de desconto)".</summary>
+    private void AtualizarResumoCombo()
+    {
+        if (!EhCombo || Componentes.Count == 0)
+        {
+            ResumoCombo = EhCombo ? "Escolha os produtos que saem nas fichas e toque em Adicionar." : "";
+            return;
+        }
+        var fichas = Componentes.Sum(c => c.Quantidade);
+        var soma = Componentes.Sum(c => (c.ValorCentavos ?? 0) * c.Quantidade);
+        var texto = $"{fichas} ficha(s) • as fichas somam {Dinheiro.Formatar(soma)}";
+        if (Dinheiro.TentarLer(Preco, out var preco))
+        {
+            texto += $" • preço do combo {Dinheiro.Formatar(preco)}";
+            if (preco < soma) texto += $" ({Dinheiro.Formatar(soma - preco)} de desconto)";
+            else if (preco > soma) texto += $" ({Dinheiro.Formatar(preco - soma)} a mais que as fichas)";
+            else texto += " (igual às fichas)";
+        }
+        ResumoCombo = texto;
+    }
 
     partial void OnCorChanged(string value)
     {
@@ -131,6 +230,9 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
         Ativo = true;
         Cor = Paleta[0];
         Imagem = null;
+        Componentes.Clear();
+        EhCombo = false;
+        CarregarParaOCombo();
         _carregando = false;
         AtualizarPosicoes(escolherLivre: true);
     }
@@ -153,10 +255,29 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
             return;
         }
         if (!int.TryParse(Estoque, out var estoque)) estoque = 0;
-        if (Posicao is not { } posicao)
+        // Produto escondido da tela de venda (ex.: vale usado só em combos) não precisa de posição.
+        if (Ativo && Posicao is null)
         {
             Principal.MostrarAviso(AvisoPosicao.Length > 0 ? AvisoPosicao : "Escolha a posição do botão na tela.", erro: true);
             return;
+        }
+        var componentes = new List<ComponenteCombo>();
+        if (EhCombo)
+        {
+            if (Componentes.Count == 0)
+            {
+                Principal.MostrarAviso("Combo sem fichas: escolha os produtos que saem nas fichas e toque em Adicionar.", erro: true);
+                return;
+            }
+            foreach (var c in Componentes)
+            {
+                if (c.ValorCentavos is not { } valor)
+                {
+                    Principal.MostrarAviso($"{c.Nome}: digite o valor da ficha, por exemplo 6,50.", erro: true);
+                    return;
+                }
+                componentes.Add(new ComponenteCombo { ProdutoId = c.ProdutoId, Nome = c.Nome, Quantidade = c.Quantidade, ValorCentavos = valor });
+            }
         }
 
         try
@@ -167,8 +288,9 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
                 Nome = Nome,
                 Detalhe = Detalhe,
                 AbaId = Aba?.Id ?? 0,
-                Posicao = posicao,
-                FichasPorUnidade = FichasPorUnidade,
+                Posicao = Posicao ?? 0,
+                FichasPorUnidade = EhCombo ? 1 : FichasPorUnidade,
+                Componentes = componentes,
                 PrecoCentavos = preco,
                 CustoCentavos = custo,
                 ControlaEstoque = ControlaEstoque,
@@ -240,8 +362,21 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
         Ativo = p.Ativo;
         Cor = p.Cor;
         Imagem = p.Imagem;
+        Componentes.Clear();
+        foreach (var c in p.Componentes)
+            Componentes.Add(new ComponenteEdicao(c.ProdutoId, c.Nome, c.Quantidade, c.ValorCentavos, AtualizarResumoCombo));
+        EhCombo = p.EhCombo;
+        CarregarParaOCombo();
         _carregando = false;
-        AtualizarPosicoes(escolherLivre: false, atual: p.Posicao);
+        AtualizarPosicoes(escolherLivre: false, atual: p.Ativo && p.Posicao > 0 ? p.Posicao : null);
+        AtualizarResumoCombo();
+    }
+
+    private void CarregarParaOCombo()
+    {
+        ParaOCombo.Clear();
+        foreach (var p in Sistema.Catalogo.Produtos().Where(p => !p.EhCombo && p.Id != Id).OrderBy(p => p.Nome))
+            ParaOCombo.Add(p);
     }
 
     private void AtualizarPosicoes(bool escolherLivre, int? atual = null)
