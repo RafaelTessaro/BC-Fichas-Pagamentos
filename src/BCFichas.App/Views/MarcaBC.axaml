@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="BCFichas.App.Views.MarcaBC">
+  <!-- Marca da BC Fichas: o logo (marca.png na pasta do programa) ou o símbolo da ficha em verde. -->
+  <StackPanel Spacing="6" HorizontalAlignment="Center">
+    <Panel x:Name="Quadro" Width="64" Height="64" HorizontalAlignment="Center">
+      <Border x:Name="Simbolo" CornerRadius="18" BorderBrush="{StaticResource Marca}" BorderThickness="2"
+              Background="#1F22C55E" BoxShadow="0 0 16 0 #5522C55E">
+        <PathIcon Data="{StaticResource IconeFicha}" Width="38" Height="38" Foreground="{StaticResource Marca}" />
+      </Border>
+      <Image x:Name="Logo" Stretch="Uniform" IsVisible="False" />
+    </Panel>
+    <TextBlock x:Name="Nome" Text="BC-FICHAS" Foreground="{StaticResource Marca}" FontWeight="Black" FontSize="17"
+               LetterSpacing="1" HorizontalAlignment="Center" />
+  </StackPanel>
+</UserControl>

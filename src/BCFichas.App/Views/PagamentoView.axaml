@@ -106,18 +106,19 @@
         </Grid>
 
         <!-- 3. Aguardando a maquininha -->
-        <StackPanel IsVisible="{Binding EmMaquininha}" Spacing="14" Margin="10,10,10,4">
-          <Border Width="96" Height="96" CornerRadius="999" Background="{StaticResource PrimariaClara}" HorizontalAlignment="Center">
-            <PathIcon Data="{Binding IconeForma}" Width="48" Height="48" Foreground="{StaticResource Primaria}" />
+        <StackPanel IsVisible="{Binding EmMaquininha}" Spacing="12" Margin="10,6,10,4">
+          <Border Width="88" Height="88" CornerRadius="999" Background="{StaticResource PrimariaClara}" HorizontalAlignment="Center">
+            <PathIcon Data="{Binding IconeForma}" Width="44" Height="44" Foreground="{StaticResource Primaria}" />
           </Border>
           <TextBlock HorizontalAlignment="Center" FontSize="24" FontWeight="Bold">
             <Run Text="Pagamento em" />
             <Run Text="{Binding FormaTexto}" />
           </TextBlock>
-          <TextBlock Text="{Binding Andamento}" HorizontalAlignment="Center" FontSize="18" Classes="suave"
+          <TextBlock Text="{Binding Andamento}" HorizontalAlignment="Center" FontSize="19" FontWeight="SemiBold"
                      TextWrapping="Wrap" TextAlignment="Center" />
-          <ProgressBar IsIndeterminate="True" Height="6" Margin="60,0" />
 
+          <!-- Maquininha ligada ao programa (simulador / app ponte): espera a resposta dela -->
+          <ProgressBar IsVisible="{Binding EhIntegrada}" IsIndeterminate="True" Height="6" Margin="60,0" />
           <Border IsVisible="{Binding EhSimulador}" Background="{StaticResource AvisoClara}" CornerRadius="12" Padding="14">
             <StackPanel Spacing="10">
               <TextBlock Text="Modo simulador: escolha o que a maquininha responderia" FontWeight="SemiBold"
@@ -130,9 +131,29 @@
               </UniformGrid>
             </StackPanel>
           </Border>
+          <Button IsVisible="{Binding EhIntegrada}" Classes="suave" Content="Cancelar pagamento"
+                  Command="{Binding CancelarMaquininhaCommand}" HorizontalAlignment="Center" Height="54" Padding="30,0" />
 
-          <Button Classes="suave" Content="Cancelar pagamento" Command="{Binding CancelarMaquininhaCommand}"
-                  HorizontalAlignment="Center" Height="54" Padding="30,0" />
+          <!-- Maquininha separada: o operador cobra nela e confirma aqui -->
+          <StackPanel IsVisible="{Binding EhSeparada}" Spacing="12">
+            <TextBlock Text="Quando a maquininha aprovar, toque no botão verde para imprimir as fichas."
+                       HorizontalAlignment="Center" FontSize="16" Classes="suave" TextWrapping="Wrap" TextAlignment="Center" />
+            <Button Classes="primario" Command="{Binding ConfirmarNaMaquininhaCommand}" Height="72"
+                    HorizontalAlignment="Stretch" CornerRadius="14" Margin="0,4,0,0">
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <PathIcon Data="{StaticResource IconeOk}" Width="28" Height="28" Foreground="White" />
+                <TextBlock Text="APROVADO NA MAQUININHA" Foreground="White" FontSize="22" FontWeight="ExtraBold" />
+              </StackPanel>
+            </Button>
+            <Grid ColumnDefinitions="*,*">
+              <Button Classes="suave" Content="Voltar" Command="{Binding CancelarMaquininhaCommand}"
+                      HorizontalAlignment="Stretch" Height="54" Margin="0,0,6,0" />
+              <Button Grid.Column="1" Classes="suave" Command="{Binding NaoAprovouCommand}"
+                      HorizontalAlignment="Stretch" Height="54" Margin="6,0,0,0">
+                <TextBlock Text="Não aprovou" Foreground="{StaticResource Perigo}" FontWeight="Bold" />
+              </Button>
+            </Grid>
+          </StackPanel>
         </StackPanel>
 
         <!-- 4. Pago -->

@@ -206,7 +206,8 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
     private async Task EscolherImagem()
     {
         if (Principal.EscolherImagem is null) return;
-        var arquivo = await Principal.EscolherImagem();
+        // As fotos dos produtos ficam numa pasta fixa do tablet (C:\Sistema_New\produtos).
+        var arquivo = await Principal.EscolherImagem(Principal.Config.PastaFotos, true);
         if (arquivo is null) return;
         try
         {

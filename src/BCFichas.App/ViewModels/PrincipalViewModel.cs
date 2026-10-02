@@ -6,6 +6,8 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using BCFichas.Core;
 using BCFichas.Core.Impressao;
+using BCFichas.Core.Pagamento;
+using BCFichas.Core.Vendas;
 
 namespace BCFichas.App.ViewModels;
 
@@ -64,19 +66,33 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _tecladoVisivel;
     [ObservableProperty] private bool _tecladoNumerico;
 
+    /// <summary>
+    /// Modo teste: para quem está programando a máquina. As vendas vão para um caixa separado, as fichas
+    /// saem marcadas "TESTE" e, ao sair do modo, tudo é apagado (não aparece no relatório do cliente).
+    /// </summary>
+    [ObservableProperty] private bool _modoTeste;
+
     public bool TemDialogo => Dialogo is not null;
+
+    public string Suporte => "Suporte " + Configuracao.Suporte;
 
     partial void OnDialogoChanged(ViewModelBase? value) => OnPropertyChanged(nameof(TemDialogo));
 
-    /// <summary>Abre o seletor de imagem do sistema (preenchido pela janela).</summary>
-    public Func<Task<string?>>? EscolherImagem { get; set; }
+    /// <summary>
+    /// Abre o seletor de imagem do sistema (preenchido pela janela). Recebe a pasta onde começar e se deve
+    /// avisar quando ela não existe.
+    /// </summary>
+    public Func<string?, bool, Task<string?>>? EscolherImagem { get; set; }
 
     /// <summary>Fecha o programa (preenchido pela janela; nos testes não faz nada).</summary>
     public Action? FecharPrograma { get; set; }
 
     public void Iniciar()
     {
-        Sessao = Sistema.Caixa.SessaoAberta(Config.NumeroCaixa);
+        // Se o programa fechou no meio do modo teste, volta para ele (as vendas de teste continuam separadas).
+        var teste = Sistema.Caixa.SessaoTesteAberta(Config.NumeroCaixa);
+        ModoTeste = teste is not null;
+        Sessao = teste ?? Sistema.Caixa.SessaoAberta(Config.NumeroCaixa);
         AtualizarSessao();
         if (Sessao is null)
             Pagina = new AberturaViewModel(this);
@@ -119,7 +135,8 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
         else acao();
     }
 
-    public void PedirSenha(Action aoAcertar) => AbrirDialogo(new SenhaViewModel(this, aoAcertar));
+    public void PedirSenha(Action aoAcertar, string titulo = "Senha master") =>
+        AbrirDialogo(new SenhaViewModel(this, aoAcertar) { Titulo = titulo });
 
     public void AbrirDialogo(ViewModelBase dialogo)
     {
@@ -192,13 +209,17 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
             desktop.Shutdown();
     }
 
+    /// <summary>
+    /// Desliga o Windows na hora, sem a mensagem "Você escolheu sair" (que aparece quando o desligamento tem
+    /// tempo de espera). O banco já está gravado a cada venda, então não se perde nada.
+    /// </summary>
     public void DesligarComputador()
     {
         if (OperatingSystem.IsWindows())
         {
             try
             {
-                Process.Start(new ProcessStartInfo("shutdown", "/s /t 15") { CreateNoWindow = true, UseShellExecute = false });
+                Process.Start(new ProcessStartInfo("shutdown", "/s /f /t 0") { CreateNoWindow = true, UseShellExecute = false });
             }
             catch (Exception e)
             {
@@ -206,6 +227,81 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
             }
         }
         Sair();
+    }
+
+    private int _toquesNaMarca;
+    private DateTime _primeiroToque;
+
+    /// <summary>
+    /// Atalho escondido do modo teste: tocar 5 vezes seguidas no logo da BC Fichas (ou F1 no teclado).
+    /// </summary>
+    public void ToqueNaMarca()
+    {
+        var agora = DateTime.UtcNow;
+        if (_toquesNaMarca == 0 || agora - _primeiroToque > TimeSpan.FromSeconds(3))
+        {
+            _toquesNaMarca = 0;
+            _primeiroToque = agora;
+        }
+        if (++_toquesNaMarca < 5) return;
+        _toquesNaMarca = 0;
+        PedirModoTeste();
+    }
+
+    /// <summary>Liga o modo teste (pedindo a senha master, se houver) ou oferece para desligar.</summary>
+    public void PedirModoTeste()
+    {
+        if (TemDialogo) return;
+        if (ModoTeste)
+        {
+            _ = SairDoModoTeste();
+            return;
+        }
+        if (string.IsNullOrEmpty(Config.SenhaMaster)) _ = EntrarNoModoTeste();
+        else PedirSenha(() => _ = EntrarNoModoTeste(), "Modo teste");
+    }
+
+    public async Task EntrarNoModoTeste()
+    {
+        if (ModoTeste) return;
+        if (!await Confirmar("Entrar no modo teste?",
+                "Para programar e testar a máquina. As vendas feitas no modo teste não entram no relatório do " +
+                "cliente e as fichas saem marcadas \"TESTE – SEM VALOR\".\n\nAo sair do modo teste, tudo o que foi " +
+                "vendido nele é apagado.", "Entrar no modo teste", "Voltar"))
+            return;
+        try
+        {
+            var sessao = Sistema.Caixa.Abrir(Config.NumeroCaixa, null, 0, teste: true);
+            ModoTeste = true;
+            Sessao = sessao;
+            AtualizarSessao();
+            Venda.LimparPedido();
+            FecharTodosDialogos();
+            IrParaVenda();
+            MostrarAviso("Modo teste ligado: as vendas não vão para o relatório.");
+        }
+        catch (ErroDeNegocio e)
+        {
+            MostrarAviso(e.Message, erro: true);
+        }
+    }
+
+    public async Task SairDoModoTeste()
+    {
+        if (!ModoTeste) return;
+        if (!await Confirmar("Sair do modo teste?",
+                "As vendas, devoluções e sangrias feitas no modo teste serão apagadas e o caixa volta ao normal.",
+                "Sair e apagar o teste", "Continuar testando", perigo: true))
+            return;
+        Sistema.Caixa.ApagarTestes();
+        ModoTeste = false;
+        Sessao = Sistema.Caixa.SessaoAberta(Config.NumeroCaixa);
+        AtualizarSessao();
+        Venda.LimparPedido();
+        FecharTodosDialogos();
+        if (Sessao is null) Pagina = new AberturaViewModel(this);
+        else IrParaVenda();
+        MostrarAviso("Modo teste desligado. As vendas de teste foram apagadas.");
     }
 
     /// <summary>Executa a impressão fora da tela (não trava os botões) e avisa se der erro.</summary>
@@ -249,7 +345,7 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
         TelaCheia = c.TelaCheia;
         TecladoHabilitado = c.TecladoNaTela;
         if (!c.TecladoNaTela) TecladoVisivel = false;
-        StatusMaquininha = "Maquininha: " + Sistema.Maquininha.Nome;
+        StatusMaquininha = "Maquininha " + Sistema.Maquininha.Nome;
         StatusImpressora = Sistema.Impressao.Descricao();
         ImpressoraComErro = false;
     }
@@ -273,6 +369,28 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
     {
         try
         {
+            // Maquininha separada: só o operador sabe se ela aprovou. Pergunta pedido por pedido.
+            if (Sistema.Maquininha is MaquininhaSeparada)
+            {
+                foreach (var pendente in Sistema.Vendas.Pendentes())
+                {
+                    var aprovou = await Confirmar("Pagamento sem resposta",
+                        $"O pedido {pendente.Numero} ({Dinheiro.Formatar(pendente.TotalCentavos)} no " +
+                        $"{Nomes.De(pendente.Forma)}) estava esperando a maquininha quando o programa fechou.\n\n" +
+                        "A maquininha aprovou esse pagamento?", "Sim, aprovou: imprimir as fichas", "Não aprovou");
+                    if (!aprovou)
+                    {
+                        Sistema.Vendas.Cancelar(pendente.Id);
+                        continue;
+                    }
+                    var pago = Sistema.Vendas.ConfirmarPagamento(pendente.Id, null);
+                    var fichas = GeradorFichas.Gerar(pago, Config);
+                    var resultado = await ImprimirAsync(() => Sistema.Impressao.Fichas(fichas));
+                    if (resultado.Ok) Sistema.Vendas.RegistrarImpressao(pago.Id);
+                }
+                return;
+            }
+
             var pagos = await Sistema.Vendas.ResolverPendentesAsync(Sistema.Maquininha, CancellationToken.None);
             if (pagos.Count > 0)
                 await Mensagem("Pedidos recuperados",

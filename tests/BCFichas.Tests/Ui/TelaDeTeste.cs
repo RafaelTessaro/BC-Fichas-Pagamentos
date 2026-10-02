@@ -47,8 +47,29 @@ public sealed class TelaDeTeste : IDisposable
         var abertura = Assert.IsType<AberturaViewModel>(Principal.Pagina);
         abertura.Troco.Centavos = troco;
         abertura.AbrirCaixaCommand.Execute(null);
+        // A abertura imprime um comprovante: espera ele sair e limpa a pasta para o teste contar só as fichas.
+        if (Sistema.Config.Atual.Impressora == TipoImpressora.Arquivo)
+        {
+            EsperarImpressoes(1);
+            foreach (var arquivo in Directory.GetFiles(PastaImpressoes, "*.png")) File.Delete(arquivo);
+        }
         Principal.Aviso = null; // some com o aviso "caixa aberto" para as fotos ficarem limpas
         Atualizar();
+    }
+
+    /// <summary>Espera a impressão (que roda fora da tela) gravar os arquivos na pasta.</summary>
+    public string[] EsperarImpressoes(int quantidade, int milissegundos = 5000)
+    {
+        var limite = DateTime.UtcNow.AddMilliseconds(milissegundos);
+        while (true)
+        {
+            Dispatcher.UIThread.RunJobs();
+            var arquivos = Directory.Exists(PastaImpressoes) ? Directory.GetFiles(PastaImpressoes, "*.png") : [];
+            if (arquivos.Length >= quantidade) return arquivos;
+            if (DateTime.UtcNow > limite)
+                throw new TimeoutException($"Esperava {quantidade} impressão(ões), saíram {arquivos.Length}.");
+            Thread.Sleep(15);
+        }
     }
 
     public VendaViewModel Venda => Assert.IsType<VendaViewModel>(Principal.Pagina);

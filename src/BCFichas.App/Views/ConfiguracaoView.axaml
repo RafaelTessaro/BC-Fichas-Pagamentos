@@ -14,6 +14,62 @@
     <Style Selector="Grid.linha">
       <Setter Property="Margin" Value="0,10,0,0" />
     </Style>
+
+    <!-- Cartões da aba Segurança: verde quando a tela pede senha -->
+    <Style Selector="ToggleButton.protecao">
+      <Setter Property="Background" Value="{StaticResource Superficie}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Borda}" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="MinHeight" Value="72" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Fundo}" />
+      <Setter Property="BorderBrush" Value="#CBD5E1" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource PrimariaClara}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Primaria}" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:disabled /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Opacity" Value="0.5" />
+    </Style>
+    <Style Selector="ToggleButton.protecao Border.icone">
+      <Setter Property="Background" Value="{StaticResource Fundo}" />
+    </Style>
+    <Style Selector="ToggleButton.protecao Border.icone PathIcon">
+      <Setter Property="Foreground" Value="{StaticResource TextoSuave}" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked Border.icone">
+      <Setter Property="Background" Value="{StaticResource Primaria}" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked Border.icone PathIcon">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="ToggleButton.protecao Border.situacao">
+      <Setter Property="Background" Value="{StaticResource Fundo}" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked Border.situacao">
+      <Setter Property="Background" Value="{StaticResource Primaria}" />
+    </Style>
+    <Style Selector="ToggleButton.protecao :is(Control).travada">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked :is(Control).travada">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked TextBlock.travada">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked PathIcon.travada">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked TextBlock.livre">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="ToggleButton.protecao TextBlock.livre">
+      <Setter Property="Foreground" Value="{StaticResource TextoSuave}" />
+    </Style>
   </UserControl.Styles>
 
   <Grid RowDefinitions="Auto,*">
@@ -206,6 +262,10 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <TextBlock Classes="dica" Text="Os nomes das abas são gravados ao tocar em Salvar. Com uma aba só, a barra de abas fica escondida." />
+
+              <TextBlock Text="Pasta das fotos dos produtos" Classes="secao" Margin="0,22,0,4" />
+              <TextBox Text="{Binding PastaFotos}" MaxLength="200" Watermark="C:\Sistema_New\produtos" />
+              <TextBlock Classes="dica" Text="O botão Imagem do cadastro de produtos sempre começa nesta pasta." />
             </StackPanel>
           </ScrollViewer>
         </TabItem>
@@ -220,15 +280,11 @@
 
               <StackPanel IsVisible="{Binding ImpressoraWindows}">
                 <TextBlock Text="Impressora" Classes="rotulo" />
-                <Grid ColumnDefinitions="*,Auto">
-                  <ComboBox ItemsSource="{Binding Impressoras}" SelectedItem="{Binding NomeImpressora}" />
-                  <Button Grid.Column="1" Classes="suave" Content="Procurar" Margin="8,0,0,0"
-                          Command="{Binding AtualizarImpressorasCommand}" />
-                </Grid>
-                <TextBlock Classes="dica" IsVisible="{Binding SemImpressoras}"
-                           Text="Nenhuma impressora encontrada. Instale o driver da Elgin i9 no Windows e toque em Procurar." />
+                <ComboBox ItemsSource="{Binding Impressoras}" SelectedItem="{Binding NomeImpressora}" />
+                <TextBlock Classes="dica" IsVisible="{Binding SemImpressoras}" Foreground="{StaticResource Perigo}"
+                           Text="Nenhuma impressora instalada no Windows. Instale o driver da Elgin i9 e volte nesta aba." />
                 <TextBlock Classes="dica"
-                           Text="Instale o driver da Elgin i9 e escolha a impressora aqui. As fichas vão direto em ESC/POS, com corte automático." />
+                           Text="A lista de impressoras do Windows é atualizada sozinha sempre que você abre esta aba." />
               </StackPanel>
 
               <StackPanel IsVisible="{Binding ImpressoraSerial}">
@@ -265,6 +321,26 @@
               <TextBlock Text="Guilhotina depois de cada ficha" Classes="rotulo" />
               <ComboBox ItemsSource="{Binding Cortes}" SelectedItem="{Binding Corte}" />
 
+              <TextBlock Text="Posição da impressão no papel" Classes="rotulo" Margin="2,18,0,4" />
+              <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <Button Classes="suave" Width="64" Height="52" Padding="0" Command="{Binding MoverImpressaoCommand}"
+                        CommandParameter="esquerda" ToolTip.Tip="Puxar para a esquerda">
+                  <PathIcon Data="{StaticResource IconeVoltar}" />
+                </Button>
+                <Border Grid.Column="1" Background="{StaticResource Fundo}" CornerRadius="10" Margin="8,0" Height="52">
+                  <TextBlock Text="{Binding AjusteTexto}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"
+                             VerticalAlignment="Center" />
+                </Border>
+                <Button Grid.Column="2" Classes="suave" Width="64" Height="52" Padding="0" Command="{Binding MoverImpressaoCommand}"
+                        CommandParameter="direita" ToolTip.Tip="Puxar para a direita">
+                  <PathIcon Data="{StaticResource IconeVoltar}" RenderTransform="rotate(180deg)" />
+                </Button>
+                <Button Grid.Column="3" Classes="fantasma" Content="Centralizar" Margin="8,0,0,0" Height="52"
+                        Command="{Binding MoverImpressaoCommand}" CommandParameter="centro" />
+              </Grid>
+              <TextBlock Classes="dica"
+                         Text="Se a ficha sai mais para um lado do papel, puxe para o outro lado (meio milímetro por toque) e imprima um teste até a borda ficar com a mesma folga dos dois lados." />
+
               <Button Classes="primario" Command="{Binding ImprimirTesteCommand}" Height="56" Margin="0,22,0,0"
                       HorizontalAlignment="Left" Padding="28,0" IsEnabled="{Binding !ImprimindoTeste}">
                 <StackPanel Orientation="Horizontal" Spacing="10">
@@ -281,21 +357,37 @@
         <TabItem Header="Maquininha">
           <ScrollViewer>
             <StackPanel Classes="form">
-              <Border Background="{StaticResource AvisoClara}" CornerRadius="12" Padding="16">
+              <TextBlock Text="Como o cartão e o PIX são cobrados" Classes="rotulo" />
+              <ComboBox ItemsSource="{Binding TiposMaquininha}" SelectedItem="{Binding TipoMaquininha}" />
+
+              <Border Background="{StaticResource PrimariaClara}" CornerRadius="12" Padding="16" Margin="0,14,0,0"
+                      IsVisible="{Binding !MaquininhaSimulador}">
                 <StackPanel Spacing="6">
-                  <TextBlock Text="Modo simulador" FontWeight="Bold" FontSize="17" />
+                  <TextBlock Text="Maquininha separada (como funciona hoje)" FontWeight="Bold" FontSize="17" />
                   <TextBlock TextWrapping="Wrap" FontSize="15"
-                             Text="Por enquanto a maquininha é simulada: no pagamento com cartão ou PIX aparecem os botões 'Simular aprovado' e 'Simular recusado'. A ligação por Bluetooth com a maquininha de verdade é a próxima etapa do projeto." />
+                             Text="No pagamento com Débito, Crédito ou PIX, o programa mostra o valor para passar na maquininha. Quando ela aprovar, o operador toca em APROVADO NA MAQUININHA e as fichas saem. A forma de pagamento fica registrada nos relatórios e no fechamento." />
+                  <TextBlock TextWrapping="Wrap" FontSize="14" Classes="suave"
+                             Text="A ligação direta com a maquininha (Bluetooth / cabo) entra aqui como mais uma opção quando estiver pronta; o resto do programa já está preparado para ela." />
                 </StackPanel>
               </Border>
-              <TextBlock Text="Aprovar sozinho depois de" Classes="rotulo" Margin="2,16,0,4" />
-              <ComboBox ItemsSource="{Binding SegundosSimulador}" SelectedItem="{Binding SimuladorSegundos}">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="x:Int32">
-                    <TextBlock Text="{Binding Converter={x:Static v:Conversores.Segundos}}" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
+
+              <StackPanel IsVisible="{Binding MaquininhaSimulador}">
+                <Border Background="{StaticResource AvisoClara}" CornerRadius="12" Padding="16" Margin="0,14,0,0">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="Modo simulador" FontWeight="Bold" FontSize="17" />
+                    <TextBlock TextWrapping="Wrap" FontSize="15"
+                               Text="Para treinar: no pagamento com cartão ou PIX aparecem os botões 'Simular aprovado' e 'Simular recusado'." />
+                  </StackPanel>
+                </Border>
+                <TextBlock Text="Aprovar sozinho depois de" Classes="rotulo" Margin="2,16,0,4" />
+                <ComboBox ItemsSource="{Binding SegundosSimulador}" SelectedItem="{Binding SimuladorSegundos}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="x:Int32">
+                      <TextBlock Text="{Binding Converter={x:Static v:Conversores.Segundos}}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </StackPanel>
             </StackPanel>
           </ScrollViewer>
         </TabItem>
@@ -303,23 +395,82 @@
         <!-- SEGURANÇA -->
         <TabItem Header="Segurança">
           <ScrollViewer>
-            <StackPanel Classes="form">
-              <TextBlock Text="Senha master (só números)" Classes="rotulo" />
-              <TextBox Classes="numero" Text="{Binding SenhaMaster}" MaxLength="12" PasswordChar="●"
-                       Watermark="Deixe vazio para não pedir senha" />
-              <TextBlock Classes="dica" Text="Sem senha, nenhuma tela fica travada." />
+            <StackPanel Margin="6,6,6,24" MaxWidth="900" HorizontalAlignment="Left" Spacing="16">
 
-              <TextBlock Text="Pedir a senha para abrir:" Classes="secao" Margin="0,20,0,4" />
-              <ItemsControl ItemsSource="{Binding Protecoes}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ProtecaoTela">
-                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
-                      <TextBlock Text="{Binding Nome}" FontSize="16" VerticalAlignment="Center" />
-                      <ToggleSwitch Grid.Column="1" IsChecked="{Binding Marcada}" />
-                    </Grid>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
+              <!-- Senha master -->
+              <Border Background="{StaticResource Fundo}" CornerRadius="14" Padding="18">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <Border Width="56" Height="56" CornerRadius="14" Background="{StaticResource Primaria}"
+                          IsVisible="{Binding TemSenha}">
+                    <PathIcon Data="{StaticResource IconeCadeado}" Width="28" Height="28" Foreground="White" />
+                  </Border>
+                  <Border Width="56" Height="56" CornerRadius="14" Background="{StaticResource AvisoClara}"
+                          IsVisible="{Binding SemSenha}">
+                    <PathIcon Data="{StaticResource IconeAlerta}" Width="28" Height="28" Foreground="{StaticResource Aviso}" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Text="Senha master" FontSize="19" FontWeight="Bold" />
+                    <TextBlock IsVisible="{Binding TemSenha}" Classes="suave" FontSize="15" TextWrapping="Wrap"
+                               Text="Senha definida. As telas marcadas abaixo pedem a senha para abrir." />
+                    <TextBlock IsVisible="{Binding SemSenha}" Foreground="{StaticResource Aviso}" FontSize="15" TextWrapping="Wrap"
+                               Text="Sem senha: qualquer pessoa abre todas as telas." />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Classes="fantasma" Content="Tirar senha" Command="{Binding RemoverSenhaCommand}"
+                            IsVisible="{Binding TemSenha}" Foreground="{StaticResource Perigo}" />
+                    <Button Classes="primario" Command="{Binding DefinirSenhaCommand}" Height="52" Padding="22,0">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource IconeCadeado}" Foreground="White" Width="20" Height="20" />
+                        <TextBlock Text="Criar senha" Foreground="White" IsVisible="{Binding SemSenha}" />
+                        <TextBlock Text="Trocar senha" Foreground="White" IsVisible="{Binding TemSenha}" />
+                      </StackPanel>
+                    </Button>
+                  </StackPanel>
+                </Grid>
+              </Border>
+
+              <!-- Telas travadas -->
+              <StackPanel Spacing="4">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                  <StackPanel>
+                    <TextBlock Text="Telas que pedem a senha" Classes="secao" Margin="0" />
+                    <TextBlock Text="Toque numa tela para travar ou liberar. Grava ao tocar em Salvar." Classes="dica" Margin="0" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Classes="fantasma" Content="Travar todas" Command="{Binding TravarTudoCommand}"
+                          IsEnabled="{Binding TemSenha}" VerticalAlignment="Center" />
+                  <Button Grid.Column="2" Classes="fantasma" Content="Liberar todas" Command="{Binding LiberarTudoCommand}"
+                          IsEnabled="{Binding TemSenha}" VerticalAlignment="Center" />
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Protecoes}" IsEnabled="{Binding TemSenha}" Margin="-5,6,-5,0">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ProtecaoTela">
+                      <ToggleButton Classes="protecao" IsChecked="{Binding Marcada}" Margin="5" Padding="14,10"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                          <Border Classes="icone" Width="44" Height="44" CornerRadius="12">
+                            <PathIcon Data="{Binding Icone}" Width="24" Height="24" />
+                          </Border>
+                          <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Nome}" FontSize="16" FontWeight="Bold" />
+                            <TextBlock Text="{Binding Descricao}" FontSize="13" Classes="suave" />
+                          </StackPanel>
+                          <Border Grid.Column="2" Classes="situacao" CornerRadius="999" Padding="10,4" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                              <PathIcon Classes="travada" Data="{StaticResource IconeCadeado}" Width="14" Height="14" />
+                              <TextBlock Classes="travada" Text="Pede senha" FontSize="13" FontWeight="Bold" />
+                              <TextBlock Classes="livre" Text="Livre" FontSize="13" FontWeight="SemiBold" />
+                            </StackPanel>
+                          </Border>
+                        </Grid>
+                      </ToggleButton>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Classes="dica" IsVisible="{Binding SemSenha}" Text="Crie uma senha para poder travar as telas." />
+              </StackPanel>
             </StackPanel>
           </ScrollViewer>
         </TabItem>

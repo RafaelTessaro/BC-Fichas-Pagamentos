@@ -7,26 +7,31 @@ uma por item, com corte parcial da guilhotina entre uma e outra.
 Feito para rodar leve num **tablet Windows 10 de 32 bits com 1 GB de RAM** (Haier W895A, Atom Z3735G) e imprimir
 na **Elgin i9** em papel de 80 mm.
 
-![Tela de venda com fotos dos produtos](docs/telas/15-catalogo-com-fotos-960x600.png)
+![Tela de venda](docs/telas/02-venda-barra-lateral.png)
 
 ## O que tem
 
 | Tela | O que faz |
 | --- | --- |
-| **Venda** | Botões com foto do produto (ou só cor); abas opcionais (Comidas, Bebidas…); pedido com + e −; total e botão de pagamento. |
-| **Pagamento** | Dinheiro com troco calculado e notas rápidas; débito, crédito e PIX pela maquininha. |
-| **Produtos** | Nome, detalhe, preço, custo, aba, posição na tela, cor, imagem, estoque e fichas por unidade (combo). |
-| **Reimprimir fichas** | Segunda via do pedido inteiro ou de um item só (sai marcado "REIMPRESSÃO"). |
-| **Sangria / Suprimento** | Tira ou põe dinheiro no caixa, com comprovante impresso. |
-| **Relatórios** | Caixa atual, caixas anteriores e sangrias: totais por forma de pagamento e produtos vendidos. |
-| **Abrir / Fechar caixa** | Só o troco inicial (cada caixa é identificado pelo número: Caixa 01, 02…); no fechamento confere o dinheiro da gaveta (falta/sobra) e imprime o relatório. |
-| **Configurações** | Nome do evento, rodapé (opcional; embaixo dele toda ficha traz o telefone da BC Fichas), modelo da ficha (7 modelos com prévia), borda, fonte, logotipo, código de barras, grade de botões, impressora, corte da guilhotina, senha master por tela. |
+| **Venda** | Barra lateral com a marca da BC Fichas, menu, evento, caixa e relógio; botões com foto do produto (ou só cor); abas opcionais (Comidas, Bebidas…); pedido com + e − (o valor de cada linha fica sempre à vista, mesmo com nome comprido); total e botão de pagamento. |
+| **Pagamento** | Dinheiro com troco calculado e notas rápidas; débito, crédito e PIX registrados para o relatório (veja "Maquininha de cartão"). |
+| **Produtos** | Nome, detalhe, preço, custo, aba, posição na tela, cor, imagem (o botão Imagem abre sempre em `C:\Sistema_New\produtos`), estoque e fichas por unidade (combo). |
+| **Reimprimir fichas** | Segunda via do pedido inteiro ou de um item só (sai marcado "REIMPRESSÃO"); fichas devolvidas não são reimpressas. |
+| **Devolver fichas** | O cliente não usou uma ficha: acha o pedido pelo número (PED) ou passando a ficha no leitor de código de barras e marca o que voltou. Veja "Devolução de fichas". |
+| **Sangria / Suprimento** | Tira ou põe dinheiro no caixa, com comprovante impresso; mostra em destaque quanto deve haver na gaveta e quanto fica depois. |
+| **Relatórios** | Caixa atual, caixas anteriores e sangrias: totais por forma de pagamento, fichas devolvidas, venda líquida e produtos vendidos. |
+| **Abrir / Fechar caixa** | Só o troco inicial (cada caixa é identificado pelo número: Caixa 01, 02…) e imprime o comprovante de **abertura de caixa** (troco, data e hora); no fechamento confere o dinheiro da gaveta (falta/sobra), imprime o relatório e, se configurado, desliga o tablet na hora. |
+| **Configurações** | Nome do evento, rodapé (opcional; embaixo dele toda ficha traz o telefone da BC Fichas), modelo da ficha (7 modelos com prévia), borda, fonte, logotipo, código de barras, grade de botões, pasta das fotos, impressora (com ajuste da posição no papel), corte da guilhotina, maquininha, senha master e telas travadas. |
 
 Também tem teclado na tela (para tablet sem teclado físico), ajuste de tamanho da tela e modo tela cheia.
 
-| Pagamento em dinheiro | PIX na maquininha | Configuração da ficha |
+| Abertura do caixa | Pagamento no cartão / PIX | Devolução de fichas |
 | --- | --- | --- |
-| ![](docs/telas/05-pagamento-dinheiro.png) | ![](docs/telas/07-pagamento-pix-aguardando.png) | ![](docs/telas/22-config-ficha.png) |
+| ![](docs/telas/01-abertura-de-caixa.png) | ![](docs/telas/07-pagamento-maquininha-separada.png) | ![](docs/telas/34-devolucao-dinheiro.png) |
+
+| Sangria | Segurança | Modo teste |
+| --- | --- | --- |
+| ![](docs/telas/27-sangria.png) | ![](docs/telas/25-config-seguranca.png) | ![](docs/telas/38-modo-teste-venda.png) |
 
 ### Modelos de ficha (papel de 80 mm)
 
@@ -41,16 +46,58 @@ Modelos 5 a 7: novos.
 Depois de cada ficha a guilhotina faz **corte parcial** (a ficha fica presa por um ponto e o operador destaca).
 Em Configurações → Impressora dá para trocar para corte total ou sem corte.
 
+![Ficha do pão de mel e ficha do modo teste](docs/telas/ficha-pao-de-mel-e-teste.png)
+
+O produto sai o maior possível ocupando a largura da ficha, e a linha `BC-FICHAS FONE: (19) 3023-9050` sai grande,
+de lado a lado, no fim de toda ficha. Se a ficha sair mais para um lado do papel, ajuste em
+**Configurações → Impressora → Posição da impressão no papel** (meio milímetro por toque) e imprima um teste: a
+borda do teste tem de ficar com a mesma folga dos dois lados. O espaço em branco antes da primeira linha é a
+distância entre a cabeça de impressão e a guilhotina (é da impressora; toda ficha cortada tem).
+
+Comprovantes de abertura de caixa, devolução de fichas e teste de impressão:
+
+![Comprovantes](docs/telas/comprovantes.png)
+
 Mais telas em [`docs/telas`](docs/telas).
 
 ## Maquininha de cartão
 
-Por enquanto a maquininha é **simulada**: no pagamento com cartão ou PIX aparecem os botões "Simular aprovado" e
-"Simular recusado". O pedido fica gravado como "aguardando pagamento" antes de ir para a maquininha, então se o
-programa fechar no meio do pagamento nada se perde.
+Por enquanto a maquininha é usada **separada** do programa: no pagamento com débito, crédito ou PIX o programa
+mostra o valor para passar na maquininha e, quando ela aprova, o operador toca em **APROVADO NA MAQUININHA** e as
+fichas saem. A forma de pagamento fica registrada nos relatórios e no fechamento. Se o programa fechar no meio
+de um pagamento, ao abrir de novo ele pergunta se a maquininha aprovou.
 
-A ligação de verdade (tablet → Bluetooth → app ponte na maquininha Smart → pagamento) é a próxima etapa. O programa
-já conversa com a maquininha por uma interface única (`IMaquininha`), então essa etapa não mexe nas telas.
+Para treinar sem maquininha existe o modo **simulador** (Configurações → Maquininha). A ligação de verdade
+(tablet → Bluetooth/cabo → maquininha) entra como mais uma opção nessa mesma tela: o programa conversa com a
+maquininha por uma interface única (`IMaquininha`), então essa etapa não mexe nas outras telas.
+
+## Devolução de fichas
+
+O cliente comprou um cachorro-quente e um pastel e não usou a ficha do pastel? Em **Menu → Devolver fichas**:
+
+1. Pegue a ficha de volta e digite o número do pedido (o `PED:` da ficha) — ou passe a ficha no leitor de código
+   de barras, se ela tiver código.
+2. Marque quantas fichas de cada produto voltaram.
+3. **Pago em dinheiro:** devolva o valor ao cliente; ele sai da gaveta deste caixa.
+   **Pago no cartão ou no PIX:** faça o estorno na maquininha (por causa das taxas, o dinheiro não sai da gaveta)
+   e marque "Já fiz o estorno na maquininha".
+4. Toque em **Registrar devolução**: sai um comprovante para guardar junto com a ficha devolvida.
+
+A venda não é cancelada: só a parte devolvida sai do total. O fechamento e os relatórios mostram as fichas
+devolvidas por forma de pagamento, a venda líquida (vendido − devolvido) e o dinheiro esperado na gaveta já
+descontado. O produto devolvido volta para o estoque, e a mesma ficha não pode ser devolvida duas vezes. Por
+padrão a devolução pede a senha master.
+
+## Modo teste (para quem programa a máquina)
+
+Para testar a máquina na montagem sem que as vendas apareçam no relatório do cliente: toque **5 vezes seguidas
+no logo da BC Fichas** (na barra lateral ou na tela de abrir o caixa) ou aperte **F1** num teclado ligado ao
+tablet, e digite a senha master.
+
+- Aparece a faixa laranja **MODO TESTE**; as vendas vão para um caixa separado, com numeração própria (começa do 1).
+- As fichas saem marcadas **FICHA DE TESTE • SEM VALOR** e o estoque não é mexido.
+- Para sair: **Menu → Sair do modo teste** (ou o botão na faixa laranja). Tudo o que foi feito no teste é apagado
+  e o programa volta ao caixa normal.
 
 ## Instalar no tablet
 
@@ -60,7 +107,12 @@ já conversa com a maquininha por uma interface única (`IMaquininha`), então e
 3. Para abrir sozinho ao ligar o tablet: crie um atalho do `BCFichas.exe` na pasta `shell:startup`.
 
 Na primeira vez o sistema já vem com os produtos do cardápio padrão (pastel, massinha, porções, cervejas…),
-sem fotos. Para pôr a foto de um produto: **Menu → Produtos → escolha o produto → Imagem**.
+sem fotos. Para pôr a foto de um produto: **Menu → Produtos → escolha o produto → Imagem**. O seletor abre sempre
+na pasta `C:\Sistema_New\produtos` (dá para mudar em Configurações → Botões e abas); se ela não existir, o
+programa avisa e deixa escolher a imagem em outro lugar.
+
+Para pôr o logo oficial da BC Fichas na barra lateral, salve-o como `marca.png` na pasta do programa (ao lado do
+`BCFichas.exe`); sem ele aparece o símbolo verde da ficha.
 
 ### Tablet com Windows 10 antigo (versão 1511)
 
@@ -73,7 +125,7 @@ Windows.
 
 1. Instale o driver da Elgin i9 no Windows (site da Elgin).
 2. No BC Fichas: **Menu → Configurações → Impressora**, escolha "Impressora instalada no Windows", selecione a i9
-   e toque em **Imprimir teste**.
+   e toque em **Imprimir teste**. A lista de impressoras se atualiza sozinha cada vez que você abre essa aba.
 3. Se a i9 aparecer só como porta COM no Gerenciador de Dispositivos, escolha "Porta COM" e a porta certa.
 
 As fichas são desenhadas como imagem e mandadas em ESC/POS, então a fonte, os acentos, o logotipo e o código de
@@ -83,6 +135,13 @@ barras saem iguais à prévia da tela.
 
 Tudo fica na pasta `dados` ao lado do programa (`bcfichas.db` e as imagens). Para fazer backup, copie essa pasta.
 Erros ficam registrados em `dados\erros.log`.
+
+### Memória com muitas vendas
+
+As telas leem do banco só o que mostram, então a memória não cresce com o número de vendas. Medido com o
+programa aberto na tela de venda: banco vazio ≈ 43 MB de memória própria; banco com **302 mil pedidos** (300
+dias de festa com 1000 pedidos, 56 MB de arquivo) ≈ 48 MB. Com 100 mil pedidos, relatórios ("Tudo", 101
+caixas), reimpressão, devolução e fechamento abrem em menos de 0,2 s (teste `MemoriaComMuitasVendasTests`).
 
 ## Para quem for mexer no código
 

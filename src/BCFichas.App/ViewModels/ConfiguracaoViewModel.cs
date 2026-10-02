@@ -20,10 +20,14 @@ public sealed partial class AbaEdicao(Aba aba) : ObservableObject
     [ObservableProperty] private string _nome = aba.Nome;
 }
 
-public sealed partial class ProtecaoTela(TelaProtegida tela, string nome, bool marcada) : ObservableObject
+/// <summary>Uma tela que pode pedir a senha master para abrir.</summary>
+public sealed partial class ProtecaoTela(TelaProtegida tela, string nome, string descricao, string icone, bool marcada)
+    : ObservableObject
 {
     public TelaProtegida Tela { get; } = tela;
     public string Nome { get; } = nome;
+    public string Descricao { get; } = descricao;
+    public Avalonia.Media.Geometry Icone { get; } = Recursos.Icone(icone);
     [ObservableProperty] private bool _marcada = marcada;
 }
 
@@ -66,6 +70,12 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     public List<int> Velocidades { get; } = [9600, 19200, 38400, 57600, 115200];
     public List<int> Zooms { get; } = [70, 80, 90, 100, 110, 125, 150];
     public List<int> SegundosSimulador { get; } = [0, 2, 3, 5, 10];
+
+    public List<Opcao<TipoMaquininha>> TiposMaquininha { get; } =
+    [
+        new(Core.TipoMaquininha.Separada, "Maquininha separada: só registrar a forma de pagamento"),
+        new(Core.TipoMaquininha.Simulador, "Simulador (para treinar, sem maquininha)"),
+    ];
     public ObservableCollection<string> Fontes { get; } = new();
     public ObservableCollection<string> Impressoras { get; } = new();
     public ObservableCollection<string> Portas { get; } = new();
@@ -95,6 +105,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     // Botões
     [ObservableProperty] private int _colunas = 4;
     [ObservableProperty] private int _linhas = 3;
+    [ObservableProperty] private string _pastaFotos = "";
 
     // Impressora
     [ObservableProperty] private Opcao<TipoImpressora>? _tipoImpressora;
@@ -104,12 +115,20 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     [ObservableProperty] private int _larguraPapel = 80;
     [ObservableProperty] private Opcao<TipoCorte>? _corte;
     [ObservableProperty] private bool _imprimindoTeste;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AjusteTexto))]
+    private int _ajusteHorizontal;
 
     // Maquininha
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MaquininhaSimulador))]
+    private Opcao<TipoMaquininha>? _tipoMaquininha;
     [ObservableProperty] private int _simuladorSegundos;
 
     // Segurança
-    [ObservableProperty] private string _senhaMaster = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TemSenha), nameof(SemSenha))]
+    private string _senhaMaster = "";
 
     public bool TemLogo => Logo is not null;
     public bool ImpressoraWindows => TipoImpressora?.Valor == Core.TipoImpressora.Windows;
@@ -118,6 +137,12 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     public string PastaArquivo => Sistema.Impressao.PastaPadraoArquivo;
     public string PastaDados => Sistema.PastaDados;
     public bool SemImpressoras => Impressoras.Count == 0;
+    public bool MaquininhaSimulador => TipoMaquininha?.Valor == Core.TipoMaquininha.Simulador;
+    public bool TemSenha => SenhaMaster.Length > 0;
+    public bool SemSenha => !TemSenha;
+    public string AjusteTexto => AjusteHorizontal == 0
+        ? "Centralizada"
+        : $"{Math.Abs(AjusteHorizontal) / 8.0:0.0} mm para a {(AjusteHorizontal < 0 ? "esquerda" : "direita")}".Replace('.', ',');
 
     public override void AoAbrir()
     {
@@ -144,37 +169,32 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
 
         Colunas = c.Colunas;
         Linhas = c.Linhas;
+        PastaFotos = c.PastaFotos;
         CarregarAbas();
 
-        Impressoras.Clear();
-        foreach (var i in TransporteWindows.Impressoras()) Impressoras.Add(i);
-        if (!string.IsNullOrEmpty(c.NomeImpressora) && !Impressoras.Contains(c.NomeImpressora))
-            Impressoras.Insert(0, c.NomeImpressora);
-        Portas.Clear();
-        foreach (var p in TransporteSerial.Portas()) Portas.Add(p);
-        if (!Portas.Contains(c.PortaSerial)) Portas.Insert(0, c.PortaSerial);
+        ProcurarImpressoras(c.NomeImpressora, c.PortaSerial);
         TipoImpressora = TiposImpressora.First(t => t.Valor == c.Impressora);
-        NomeImpressora = string.IsNullOrEmpty(c.NomeImpressora)
-            ? Impressoras.FirstOrDefault(i => i.Contains("elgin", StringComparison.OrdinalIgnoreCase) ||
-                                              i.Contains("i9", StringComparison.OrdinalIgnoreCase))
-            : c.NomeImpressora;
-        PortaSerial = c.PortaSerial;
         BaudRate = c.BaudRate;
         LarguraPapel = c.LarguraPapelMm <= 58 ? 58 : 80;
         Corte = Cortes.First(x => x.Valor == c.Corte);
+        AjusteHorizontal = c.AjusteHorizontal;
 
+        TipoMaquininha = TiposMaquininha.FirstOrDefault(t => t.Valor == c.Maquininha) ?? TiposMaquininha[0];
         SimuladorSegundos = SegundosSimulador.Contains(c.SimuladorAprovarEmSegundos) ? c.SimuladorAprovarEmSegundos : 0;
 
         SenhaMaster = c.SenhaMaster;
+        ProtecaoTela Protecao(TelaProtegida tela, string nome, string descricao, string icone) =>
+            new(tela, nome, descricao, icone, c.TelasProtegidas.HasFlag(tela));
         Protecoes =
         [
-            new(TelaProtegida.Configuracao, "Configurações", c.TelasProtegidas.HasFlag(TelaProtegida.Configuracao)),
-            new(TelaProtegida.Produtos, "Produtos", c.TelasProtegidas.HasFlag(TelaProtegida.Produtos)),
-            new(TelaProtegida.Reimpressao, "Reimprimir fichas", c.TelasProtegidas.HasFlag(TelaProtegida.Reimpressao)),
-            new(TelaProtegida.Sangria, "Sangria / Suprimento", c.TelasProtegidas.HasFlag(TelaProtegida.Sangria)),
-            new(TelaProtegida.Relatorios, "Relatórios", c.TelasProtegidas.HasFlag(TelaProtegida.Relatorios)),
-            new(TelaProtegida.FecharCaixa, "Fechar caixa", c.TelasProtegidas.HasFlag(TelaProtegida.FecharCaixa)),
-            new(TelaProtegida.SairDoPrograma, "Sair do programa", c.TelasProtegidas.HasFlag(TelaProtegida.SairDoPrograma)),
+            Protecao(TelaProtegida.Configuracao, "Configurações", "Evento, ficha, impressora", "IconeConfig"),
+            Protecao(TelaProtegida.Produtos, "Produtos", "Cadastrar e mudar preços", "IconeCaixaProduto"),
+            Protecao(TelaProtegida.Relatorios, "Relatórios", "Ver quanto vendeu", "IconeGrafico"),
+            Protecao(TelaProtegida.Devolucao, "Devolver fichas", "Tira dinheiro do caixa", "IconeTroca"),
+            Protecao(TelaProtegida.Sangria, "Sangria / Suprimento", "Tirar ou pôr dinheiro", "IconeDinheiro"),
+            Protecao(TelaProtegida.Reimpressao, "Reimprimir fichas", "Segunda via de pedido", "IconeImpressora"),
+            Protecao(TelaProtegida.FecharCaixa, "Fechar caixa", "Encerrar o dia", "IconeCadeado"),
+            Protecao(TelaProtegida.SairDoPrograma, "Sair do programa", "Fechar o BC Fichas", "IconeDesligar"),
         ];
         OnPropertyChanged(nameof(Protecoes));
         OnPropertyChanged(nameof(SemImpressoras));
@@ -244,23 +264,85 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         }
     }
 
-    [RelayCommand]
-    private void AtualizarImpressoras()
+    /// <summary>
+    /// Lista de novo as impressoras do Windows e as portas COM. Acontece sozinho ao entrar na aba Impressora
+    /// (ex.: depois de instalar o driver da Elgin com o programa aberto).
+    /// </summary>
+    private void ProcurarImpressoras(string? impressora, string? porta)
     {
-        var atual = NomeImpressora;
         Impressoras.Clear();
         foreach (var i in TransporteWindows.Impressoras()) Impressoras.Add(i);
+        if (!string.IsNullOrEmpty(impressora) && !Impressoras.Contains(impressora)) Impressoras.Insert(0, impressora);
         Portas.Clear();
         foreach (var p in TransporteSerial.Portas()) Portas.Add(p);
-        NomeImpressora = Impressoras.Contains(atual ?? "") ? atual : Impressoras.FirstOrDefault();
+        if (!string.IsNullOrEmpty(porta) && !Portas.Contains(porta)) Portas.Insert(0, porta);
+        NomeImpressora = string.IsNullOrEmpty(impressora)
+            ? Impressoras.FirstOrDefault(i => i.Contains("elgin", StringComparison.OrdinalIgnoreCase) ||
+                                              i.Contains("i9", StringComparison.OrdinalIgnoreCase))
+            : impressora;
+        PortaSerial = porta;
         OnPropertyChanged(nameof(SemImpressoras));
+    }
+
+    partial void OnAbaSelecionadaChanged(int value)
+    {
+        if (value == AbaImpressora && !_carregando) ProcurarImpressoras(NomeImpressora, PortaSerial);
+    }
+
+    private const int AbaImpressora = 3;
+
+    [RelayCommand]
+    private void MoverImpressao(string direcao)
+    {
+        var passo = direcao == "esquerda" ? -4 : direcao == "direita" ? 4 : -AjusteHorizontal;
+        AjusteHorizontal = Math.Clamp(AjusteHorizontal + passo, -Configuracao.AjusteMaximo, Configuracao.AjusteMaximo);
+    }
+
+    /// <summary>Cria ou troca a senha. Ela é gravada na hora (não espera o "Salvar").</summary>
+    [RelayCommand]
+    private void DefinirSenha() => Principal.AbrirDialogo(new NovaSenhaViewModel(Principal, senha =>
+    {
+        SenhaMaster = senha;
+        GravarSenha(senha);
+        Principal.MostrarAviso("Senha master gravada.");
+    }));
+
+    [RelayCommand]
+    private async Task RemoverSenha()
+    {
+        if (!await Principal.Confirmar("Tirar a senha master?",
+                "Sem senha, qualquer pessoa abre todas as telas (configurações, relatórios, devolução...).",
+                "Tirar a senha", "Voltar", perigo: true))
+            return;
+        SenhaMaster = "";
+        GravarSenha("");
+        Principal.MostrarAviso("Senha master removida.");
+    }
+
+    [RelayCommand]
+    private void TravarTudo()
+    {
+        foreach (var p in Protecoes) p.Marcada = true;
+    }
+
+    [RelayCommand]
+    private void LiberarTudo()
+    {
+        foreach (var p in Protecoes) p.Marcada = false;
+    }
+
+    private void GravarSenha(string senha)
+    {
+        var c = Principal.Config.Clonar();
+        c.SenhaMaster = senha;
+        Sistema.Config.Salvar(c);
     }
 
     [RelayCommand]
     private async Task EscolherLogo()
     {
         if (Principal.EscolherImagem is null) return;
-        var arquivo = await Principal.EscolherImagem();
+        var arquivo = await Principal.EscolherImagem(Path.GetDirectoryName(Principal.Config.PastaFotos), false);
         if (arquivo is null) return;
         try
         {
@@ -348,12 +430,15 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         c.Logo = Logo;
         c.Colunas = Colunas;
         c.Linhas = Linhas;
+        c.PastaFotos = string.IsNullOrWhiteSpace(PastaFotos) ? new Configuracao().PastaFotos : PastaFotos.Trim();
         c.Impressora = TipoImpressora?.Valor ?? Core.TipoImpressora.Windows;
         c.NomeImpressora = NomeImpressora ?? "";
         c.PortaSerial = PortaSerial ?? "COM3";
         c.BaudRate = BaudRate;
         c.LarguraPapelMm = LarguraPapel;
         c.Corte = Corte?.Valor ?? TipoCorte.Parcial;
+        c.AjusteHorizontal = AjusteHorizontal;
+        c.Maquininha = TipoMaquininha?.Valor ?? Core.TipoMaquininha.Separada;
         c.SimuladorAprovarEmSegundos = SimuladorSegundos;
         c.SenhaMaster = SenhaMaster.Trim();
         c.TelasProtegidas = Protecoes.Where(p => p.Marcada).Aggregate(TelaProtegida.Nenhuma, (t, p) => t | p.Tela);
@@ -377,7 +462,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         if (_carregando) return;
         if (e.PropertyName is nameof(NomeEvento) or nameof(Rodape) or nameof(NumeroCaixa) or nameof(Modelo)
             or nameof(Fonte) or nameof(CodigoDeBarras) or nameof(MostrarValor) or nameof(Logo) or nameof(LarguraPapel)
-            or nameof(Moldura))
+            or nameof(Moldura) or nameof(AjusteHorizontal))
         {
             _timerPrevia.Stop();
             _timerPrevia.Start();

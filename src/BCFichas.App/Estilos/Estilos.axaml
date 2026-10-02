@@ -116,6 +116,29 @@
     <Setter Property="Foreground" Value="White" />
   </Style>
 
+  <!-- Botões da barra lateral escura -->
+  <Style Selector="Button.lateral">
+    <Setter Property="Background" Value="#14FFFFFF" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="BorderBrush" Value="{StaticResource MarcaBorda}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.lateral:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.lateral:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="#2622C55E" />
+    <Setter Property="BorderBrush" Value="{StaticResource Marca}" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.marca">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.marca:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.marca:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
   <!-- Tecla dos teclados na tela -->
   <Style Selector="Button.tecla">
     <Setter Property="Background" Value="{StaticResource Superficie}" />

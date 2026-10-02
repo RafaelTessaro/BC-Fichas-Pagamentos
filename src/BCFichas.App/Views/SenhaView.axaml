@@ -8,7 +8,7 @@
     <StackPanel Spacing="12">
       <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
         <PathIcon Data="{StaticResource IconeCadeado}" Width="26" Height="26" />
-        <TextBlock Text="Senha master" Classes="titulo" FontSize="22" />
+        <TextBlock Text="{Binding Titulo}" Classes="titulo" FontSize="22" />
       </StackPanel>
       <Border Background="{StaticResource Fundo}" CornerRadius="12" Height="60">
         <TextBlock Text="{Binding Pontos}" FontSize="30" HorizontalAlignment="Center" VerticalAlignment="Center"

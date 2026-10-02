@@ -16,6 +16,7 @@ public sealed class Sistema
         Catalogo = new CatalogoServico(banco);
         Caixa = new CaixaServico(banco);
         Vendas = new VendaServico(banco);
+        Devolucoes = new DevolucaoServico(banco, Caixa, Vendas);
         Impressao = new ServicoImpressao(() => Config.Atual, pastaDados);
         Maquininha = CriarMaquininha(Config.Atual);
         Config.Alterada += c =>
@@ -33,6 +34,7 @@ public sealed class Sistema
     public CatalogoServico Catalogo { get; }
     public CaixaServico Caixa { get; }
     public VendaServico Vendas { get; }
+    public DevolucaoServico Devolucoes { get; }
     public ServicoImpressao Impressao { get; }
     public IMaquininha Maquininha { get; private set; }
 
@@ -84,6 +86,7 @@ public sealed class Sistema
 
     private static IMaquininha CriarMaquininha(Configuracao c) => c.Maquininha switch
     {
-        _ => new MaquininhaSimulada(c.SimuladorAprovarEmSegundos),
+        TipoMaquininha.Simulador => new MaquininhaSimulada(c.SimuladorAprovarEmSegundos),
+        _ => new MaquininhaSeparada(),
     };
 }

@@ -51,7 +51,7 @@ public sealed class ServicoImpressao
     public ResultadoImpressao Documento(Documento documento, string descricao = "Relatório impresso")
     {
         var config = _config();
-        return Executar(config, () => [documento.Renderizar(config.LarguraPontos)], descricao);
+        return Executar(config, () => [documento.Renderizar(config.LarguraConteudo, config.Escala)], descricao);
     }
 
     public ResultadoImpressao Teste(Configuracao config)
@@ -62,7 +62,7 @@ public sealed class ServicoImpressao
             var logo = Logo(config);
             return
             [
-                Relatorios.Teste(config, destino.Descricao).Renderizar(config.LarguraPontos),
+                Relatorios.Teste(config, destino.Descricao).Renderizar(config.LarguraConteudo, config.Escala),
                 RenderizadorFicha.Renderizar(RenderizadorFicha.Exemplo(config), config, logo),
             ];
         }, "Teste impresso");
@@ -93,6 +93,12 @@ public sealed class ServicoImpressao
             try
             {
                 lista = paginas();
+                if (config.AjusteHorizontal != 0)
+                {
+                    var desenhos = lista;
+                    lista = desenhos.Select(p => Posicionar(p, config)).ToList();
+                    foreach (var d in desenhos) d.Dispose();
+                }
                 CriarDestino(config).Imprimir(lista);
                 resultado = new ResultadoImpressao(true, sucesso);
             }
@@ -114,6 +120,17 @@ public sealed class ServicoImpressao
         Ultimo = resultado;
         Impresso?.Invoke(resultado);
         return resultado;
+    }
+
+    /// <summary>Põe o desenho na linha da impressora, puxado para o lado do ajuste horizontal.</summary>
+    internal static SKBitmap Posicionar(SKBitmap desenho, Configuracao config)
+    {
+        var linha = new SKBitmap(new SKImageInfo(config.LarguraPontos, desenho.Height, SKColorType.Rgba8888, SKAlphaType.Premul));
+        using var canvas = new SKCanvas(linha);
+        canvas.Clear(SKColors.White);
+        canvas.DrawBitmap(desenho, config.InicioConteudo, 0);
+        canvas.Flush();
+        return linha;
     }
 
     /// <summary>Logo do evento (carregado uma vez só). Chamar sempre dentro de <see cref="_trava"/>.</summary>

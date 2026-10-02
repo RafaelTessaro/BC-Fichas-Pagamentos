@@ -230,5 +230,41 @@ public sealed class Banco
                 """);
             t.Commit();
         }
+
+        // Versão 3.2: modo teste e devolução de fichas.
+        if (versao < 2)
+        {
+            using var t = conexao.BeginTransaction();
+            Executar(conexao, t, """
+                ALTER TABLE sessoes ADD COLUMN teste INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE pedidos ADD COLUMN teste INTEGER NOT NULL DEFAULT 0;
+                CREATE INDEX ix_pedidos_numero ON pedidos (numero);
+                INSERT OR IGNORE INTO contadores (nome, valor) VALUES ('pedido_teste', 0);
+                CREATE TABLE devolucoes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    sessao_id INTEGER NOT NULL REFERENCES sessoes(id),
+                    pedido_id INTEGER NOT NULL REFERENCES pedidos(id),
+                    caixa INTEGER NOT NULL,
+                    forma INTEGER NOT NULL,
+                    valor INTEGER NOT NULL,
+                    motivo TEXT NOT NULL DEFAULT '',
+                    criado_em TEXT NOT NULL
+                );
+                CREATE INDEX ix_devolucoes_sessao ON devolucoes (sessao_id);
+                CREATE INDEX ix_devolucoes_pedido ON devolucoes (pedido_id);
+                CREATE TABLE itens_devolucao (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    devolucao_id INTEGER NOT NULL REFERENCES devolucoes(id),
+                    item_id INTEGER NOT NULL REFERENCES itens_pedido(id),
+                    nome TEXT NOT NULL,
+                    preco INTEGER NOT NULL,
+                    quantidade INTEGER NOT NULL
+                );
+                CREATE INDEX ix_itens_devolucao ON itens_devolucao (devolucao_id);
+                CREATE INDEX ix_itens_devolucao_item ON itens_devolucao (item_id);
+                INSERT INTO versao (v) VALUES (2);
+                """);
+            t.Commit();
+        }
     }
 }

@@ -7,6 +7,9 @@ public sealed class Documento
 {
     private readonly List<Action<Layout, float>> _partes = new();
 
+    /// <summary>Borda em volta da página (teste de impressão: mostra se está centralizada no papel).</summary>
+    public bool Moldura { get; init; }
+
     public Documento Titulo(string texto)
     {
         _partes.Add((l, s) => l.Texto(texto, Fontes.Negrito, 34 * s, maxLinhas: 2));
@@ -48,13 +51,15 @@ public sealed class Documento
         return this;
     }
 
-    public SKBitmap Renderizar(int largura)
+    /// <param name="largura">Largura do desenho em pontos.</param>
+    /// <param name="escala">Tamanho das letras: 1 no papel de 80 mm.</param>
+    public SKBitmap Renderizar(int largura, float? escala = null)
     {
-        var s = largura / 576f;
-        var layout = new Layout(largura, (int)(16 * s));
-        layout.Espaco((int)(10 * s));
+        var s = escala ?? largura / 576f;
+        var layout = new Layout(largura, (int)((Moldura ? 22 : 16) * s));
+        layout.Espaco((int)((Moldura ? 16 : 10) * s));
         foreach (var parte in _partes) parte(layout, s);
         layout.Espaco((int)(16 * s));
-        return layout.Renderizar();
+        return layout.Renderizar(Moldura);
     }
 }

@@ -30,6 +30,8 @@ public class FluxoDeVendaTests
 
         Assert.IsType<VendaViewModel>(t.Principal.Pagina);
         Assert.Equal("Caixa 01 aberto. Boas vendas!", t.Principal.Aviso);
+        // Abrir o caixa imprime o comprovante de abertura (troco, data e hora)
+        Assert.Single(t.EsperarImpressoes(1));
         Assert.Equal("", t.Principal.Operador);
         Assert.Equal(5000, t.Principal.Sessao!.ValorAberturaCentavos);
         Assert.Equal(12, t.Venda.Botoes.Count);
@@ -67,7 +69,7 @@ public class FluxoDeVendaTests
         Assert.True(pagamento.TemTroco);
         t.Foto("06-pagamento-concluido");
 
-        Assert.Equal(4, Directory.GetFiles(t.PastaImpressoes, "*.png").Length);
+        Assert.Equal(4, t.EsperarImpressoes(4).Length);
         Assert.True(t.Venda.Vazio);
         var resumo = t.Sistema.Caixa.Resumo(t.Principal.Sessao!.Id);
         Assert.Equal(3800, resumo.Total(FormaPagamento.Dinheiro));
@@ -77,9 +79,57 @@ public class FluxoDeVendaTests
     }
 
     [AvaloniaFact]
-    public async Task Pix_espera_a_maquininha_e_imprime_quando_aprovado()
+    public async Task Maquininha_separada_so_registra_a_forma_quando_o_operador_confirma()
     {
         using var t = new TelaDeTeste();
+        Assert.IsType<MaquininhaSeparada>(t.Sistema.Maquininha);
+        t.AbrirCaixa();
+        t.Tocar("PASTEL");
+        t.Tocar("ESPETINHO");
+        t.Venda.PagarCommand.Execute(null);
+        var pagamento = Assert.IsType<PagamentoViewModel>(t.Principal.Dialogo);
+
+        var cobranca = pagamento.DebitoCommand.ExecuteAsync(null);
+        await TelaDeTeste.Esperar(() => ((MaquininhaSeparada)t.Sistema.Maquininha).AguardandoDecisao);
+        Assert.True(pagamento.EhSeparada);
+        Assert.Equal("Passe R$ 22,00 no DÉBITO na maquininha", pagamento.Andamento);
+        t.Foto("07-pagamento-maquininha-separada");
+
+        pagamento.ConfirmarNaMaquininhaCommand.Execute(null);
+        await cobranca;
+
+        Assert.True(pagamento.EmConcluido);
+        Assert.Equal(2, t.EsperarImpressoes(2).Length);
+        var pedido = t.Sistema.Vendas.Pedidos(t.Principal.Sessao!.Id).Single();
+        Assert.Equal(StatusPedido.Pago, pedido.Status);
+        Assert.Equal(FormaPagamento.Debito, pedido.Forma);
+        Assert.Equal(2200, t.Sistema.Caixa.Resumo(t.Principal.Sessao.Id).Total(FormaPagamento.Debito));
+    }
+
+    [AvaloniaFact]
+    public async Task Maquininha_separada_nao_aprovou_cancela_o_pedido()
+    {
+        using var t = new TelaDeTeste();
+        t.AbrirCaixa();
+        t.Tocar("PASTEL");
+        t.Venda.PagarCommand.Execute(null);
+        var pagamento = Assert.IsType<PagamentoViewModel>(t.Principal.Dialogo);
+
+        var cobranca = pagamento.PixCommand.ExecuteAsync(null);
+        await TelaDeTeste.Esperar(() => ((MaquininhaSeparada)t.Sistema.Maquininha).AguardandoDecisao);
+        Assert.Equal("Gere o PIX de R$ 10,00 na maquininha", pagamento.Andamento);
+        pagamento.NaoAprovouCommand.Execute(null);
+        await cobranca;
+
+        Assert.True(pagamento.EmRecusado);
+        Assert.Equal(StatusPedido.Cancelado, t.Sistema.Vendas.Pedidos(t.Principal.Sessao!.Id).Single().Status);
+        Assert.False(t.Venda.Vazio);
+    }
+
+    [AvaloniaFact]
+    public async Task Pix_espera_a_maquininha_e_imprime_quando_aprovado()
+    {
+        using var t = new TelaDeTeste(configurar: c => c.Maquininha = TipoMaquininha.Simulador);
         t.AbrirCaixa();
         t.Tocar("PASTEL");
         t.Venda.PagarCommand.Execute(null);
@@ -96,7 +146,7 @@ public class FluxoDeVendaTests
         await cobranca;
 
         Assert.True(pagamento.EmConcluido);
-        Assert.Single(Directory.GetFiles(t.PastaImpressoes, "*.png"));
+        Assert.Single(t.EsperarImpressoes(1));
         var pedido = t.Sistema.Vendas.Pedidos(t.Principal.Sessao!.Id).Single();
         Assert.Equal(StatusPedido.Pago, pedido.Status);
         Assert.Equal(FormaPagamento.Pix, pedido.Forma);
@@ -106,7 +156,7 @@ public class FluxoDeVendaTests
     [AvaloniaFact]
     public async Task Cartao_recusado_cancela_o_pedido_e_deixa_tentar_de_novo()
     {
-        using var t = new TelaDeTeste();
+        using var t = new TelaDeTeste(configurar: c => c.Maquininha = TipoMaquininha.Simulador);
         t.AbrirCaixa();
         t.Tocar("ESPETINHO");
         t.Venda.PagarCommand.Execute(null);
@@ -157,7 +207,8 @@ public class FluxoDeVendaTests
         t.AbrirCaixa();
         t.Venda.AbrirMenuCommand.Execute(null);
         var menu = Assert.IsType<MenuViewModel>(t.Principal.Dialogo);
-        Assert.Equal(7, menu.Itens.Count);
+        Assert.Equal(8, menu.Itens.Count);
+        Assert.True(menu.Itens.Single(i => i.Titulo == "Devolver fichas").Protegido);
         t.Foto("10-menu");
 
         menu.EscolherCommand.Execute(menu.Itens.Single(i => i.Titulo == "Configurações"));

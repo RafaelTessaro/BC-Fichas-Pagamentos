@@ -20,14 +20,21 @@ public static class RenderizadorFicha
 
     public static SKBitmap Renderizar(Ficha ficha, Configuracao config, LogoFicha? logo)
     {
-        var largura = config.LarguraPontos;
-        var s = largura / 576f;
+        // Largura já descontando o ajuste horizontal; as letras seguem o tamanho do papel.
+        var largura = config.LarguraConteudo;
+        var s = config.Escala;
         // Com moldura, faixas de lado a lado param na borda (não passam para fora dela)
-        var layout = new Layout(largura, (int)((config.Moldura ? 22 : 16) * s), config.Moldura ? Layout.LarguraBorda : 0);
+        var layout = new Layout(largura, (int)((config.Moldura ? 20 : 14) * s), config.Moldura ? Layout.LarguraBorda : 0);
         var d = new Dados(ficha, config, s);
 
         // O modelo 7 começa com a faixa preta: com moldura ela encosta na borda de cima
-        if (config.Moldura) layout.Espaco(config.Modelo == ModeloFicha.Destaque ? Layout.LarguraBorda : (int)(8 * s));
+        if (config.Moldura) layout.Espaco(config.Modelo == ModeloFicha.Destaque && !ficha.Teste ? Layout.LarguraBorda : (int)(8 * s));
+        if (ficha.Teste)
+        {
+            // Ficha do modo teste não pode valer como ficha de verdade.
+            layout.Texto("FICHA DE TESTE • SEM VALOR", d.Negrito, d.T(26), maxLinhas: 1, invertido: true);
+            layout.Espaco(d.P(4));
+        }
         switch (config.Modelo)
         {
             case ModeloFicha.Classico1: Classico1(layout, d, logo); break;
@@ -68,18 +75,19 @@ public static class RenderizadorFicha
         public float T(float tamanho) => tamanho * S;
     }
 
-    // Modelo 1: evento; PRODUTO; [R$ tarja] + data/pedido + forma, com logo à direita; caixa à direita.
+    // Modelo 1: evento; PRODUTO; [R$ tarja] + data, pedido e forma, com logo à direita; caixa à direita.
     private static void Classico1(Layout l, Dados d, LogoFicha? logo)
     {
-        l.Texto(d.Ficha.NomeEvento, d.Negrito, d.T(24), maxLinhas: 1);
-        Produto(l, d, 96);
+        l.Texto(d.Ficha.NomeEvento, d.Negrito, d.T(28), maxLinhas: 1);
+        Produto(l, d);
         l.Espaco(d.P(4));
         var linhas = new List<Trecho>();
-        if (d.MostrarValor) linhas.Add(new Trecho(d.Valor, d.Negrito, d.T(30), Tarja: true));
-        linhas.Add(new Trecho($"{d.DataHora}   {d.Pedido}", d.Normal, d.T(21)));
-        linhas.Add(new Trecho(d.Forma, d.Normal, d.T(21)));
-        l.Coluna(linhas, logo?.Obter(d.P(150), d.P(96)), imagemADireita: true);
-        l.Texto(d.Caixa, d.Normal, d.T(21), Alinhamento.Direita, 1);
+        if (d.MostrarValor) linhas.Add(new Trecho(d.Valor, d.Negrito, d.T(36), Tarja: true));
+        linhas.Add(new Trecho(d.DataHora, d.Normal, d.T(22)));
+        linhas.Add(new Trecho(d.Pedido, d.Normal, d.T(22)));
+        linhas.Add(new Trecho(d.Forma, d.Normal, d.T(22), Direita: logo is null ? d.Caixa : null));
+        l.Coluna(linhas, logo?.Obter(d.P(170), d.P(110)), imagemADireita: true);
+        if (logo is not null) l.Texto(d.Caixa, d.Normal, d.T(22), Alinhamento.Direita, 1);
     }
 
     // Modelo 2: logo à esquerda do evento e da data; PRODUTO; valor; forma e caixa.
@@ -87,15 +95,16 @@ public static class RenderizadorFicha
     {
         l.Coluna(
         [
-            new Trecho(d.Ficha.NomeEvento, d.Negrito, d.T(24), Alinhamento.Centro),
-            new Trecho($"{d.DataHora}   {d.Pedido}", d.Normal, d.T(21), Alinhamento.Centro),
-        ], logo?.Obter(d.P(130), d.P(84)), imagemADireita: false);
-        l.Espaco(d.P(4));
-        Produto(l, d, 96);
-        l.Espaco(d.P(4));
+            new Trecho(d.Ficha.NomeEvento, d.Negrito, d.T(28), Alinhamento.Centro),
+            new Trecho(d.DataHora, d.Normal, d.T(22), Alinhamento.Centro),
+            new Trecho(d.Pedido, d.Normal, d.T(22), Alinhamento.Centro),
+        ], logo?.Obter(d.P(150), d.P(96)), imagemADireita: false);
+        l.Espaco(d.P(2));
+        Produto(l, d);
+        l.Espaco(d.P(2));
         var linhas = new List<Trecho>();
-        if (d.MostrarValor) linhas.Add(new Trecho(d.Valor, d.Normal, d.T(26)));
-        linhas.Add(new Trecho(d.Forma, d.Normal, d.T(21), Direita: d.Caixa));
+        if (d.MostrarValor) linhas.Add(new Trecho(d.Valor, d.Negrito, d.T(40), Alinhamento.Centro));
+        linhas.Add(new Trecho(d.Forma, d.Normal, d.T(22), Direita: d.Caixa));
         l.Coluna(linhas);
     }
 
@@ -103,25 +112,25 @@ public static class RenderizadorFicha
     private static void Classico3(Layout l, Dados d, LogoFicha? logo)
     {
         var linhas = new List<Trecho>();
-        if (d.MostrarValor) linhas.Add(new Trecho(d.Valor, d.Normal, d.T(46)));
-        linhas.Add(new Trecho($"{d.DataHora}   {d.Pedido}", d.Normal, d.T(21)));
-        linhas.Add(new Trecho(d.Forma, d.Normal, d.T(21)));
-        l.Coluna(linhas, logo?.Obter(d.P(150), d.P(96)), imagemADireita: true);
-        Produto(l, d, 96);
-        l.Texto(d.Ficha.NomeEvento, d.Negrito, d.T(24), maxLinhas: 1);
-        l.Texto(d.Caixa, d.Normal, d.T(21), Alinhamento.Direita, 1);
+        if (d.MostrarValor) linhas.Add(new Trecho(d.Valor, d.Normal, d.T(52)));
+        linhas.Add(new Trecho(d.DataHora, d.Normal, d.T(22)));
+        linhas.Add(new Trecho(d.Pedido, d.Normal, d.T(22), Direita: logo is null ? d.Forma : null));
+        if (logo is not null) linhas.Add(new Trecho(d.Forma, d.Normal, d.T(22)));
+        l.Coluna(linhas, logo?.Obter(d.P(170), d.P(110)), imagemADireita: true);
+        Produto(l, d);
+        l.Par(d.Ficha.NomeEvento, d.Caixa, d.Negrito, d.T(24));
     }
 
     // Modelo 4: evento; pedido, data e caixa; PRODUTO; logo à esquerda do valor grande e da forma.
     private static void Classico4(Layout l, Dados d, LogoFicha? logo)
     {
-        l.Texto(d.Ficha.NomeEvento, d.Negrito, d.T(24), maxLinhas: 1);
-        l.Tres(d.Pedido, d.DataHora, d.Caixa, d.Normal, d.T(20));
-        Produto(l, d, 96);
+        l.Texto(d.Ficha.NomeEvento, d.Negrito, d.T(28), maxLinhas: 1);
+        l.Tres(d.Pedido, d.DataHora, d.Caixa, d.Normal, d.T(21));
+        Produto(l, d);
         var linhas = new List<Trecho>();
-        if (d.MostrarValor) linhas.Add(new Trecho(d.Valor, d.Normal, d.T(48), Alinhamento.Direita));
-        linhas.Add(new Trecho(d.Forma, d.Normal, d.T(21), Alinhamento.Centro));
-        l.Coluna(linhas, logo?.Obter(d.P(150), d.P(96)), imagemADireita: false);
+        if (d.MostrarValor) linhas.Add(new Trecho(d.Valor, d.Negrito, d.T(56), Alinhamento.Centro));
+        linhas.Add(new Trecho(d.Forma, d.Normal, d.T(23), Alinhamento.Centro));
+        l.Coluna(linhas, logo?.Obter(d.P(170), d.P(110)), imagemADireita: false);
     }
 
     private static void Completa(Layout l, Dados d, LogoFicha? logo)
@@ -136,8 +145,8 @@ public static class RenderizadorFicha
         l.Espaco(d.P(4));
         l.Separador();
         l.Espaco(d.P(6));
-        Produto(l, d, 110);
-        if (d.MostrarValor) l.Texto(d.Valor, d.Negrito, d.T(46), maxLinhas: 1);
+        Produto(l, d);
+        if (d.MostrarValor) l.Texto(d.Valor, d.Negrito, d.T(50), maxLinhas: 1);
         l.Espaco(d.P(6));
         l.Separador();
         l.Par(d.Pedido, d.DataHora, d.Normal, d.T(22));
@@ -146,33 +155,33 @@ public static class RenderizadorFicha
 
     private static void Compacta(Layout l, Dados d)
     {
-        l.Texto(d.Ficha.NomeEvento, d.Negrito, d.T(22), maxLinhas: 1);
-        Produto(l, d, 96);
+        l.Texto(d.Ficha.NomeEvento, d.Negrito, d.T(24), maxLinhas: 1);
+        Produto(l, d, 104);
         var partes = new List<string>();
         if (d.MostrarValor) partes.Add(d.Valor);
         partes.Add(d.Pedido);
         partes.Add(d.Ficha.Data.ToString("dd/MM HH:mm", CultureInfo.InvariantCulture));
         partes.Add(d.Caixa);
-        l.Texto(string.Join("  •  ", partes), d.Normal, d.T(20), maxLinhas: 2);
+        l.Texto(string.Join("  •  ", partes), d.Normal, d.T(21), maxLinhas: 2);
     }
 
     private static void Destaque(Layout l, Dados d)
     {
         l.Faixa(d.Ficha.NomeEvento, d.Negrito, d.T(30), d.P(8));
         l.Espaco(d.P(8));
-        Produto(l, d, 116);
+        Produto(l, d, 124);
         if (d.MostrarValor)
         {
             l.Espaco(d.P(6));
-            l.Selo(d.Valor, d.Negrito, d.T(44));
+            l.Selo(d.Valor, d.Negrito, d.T(46));
         }
         l.Espaco(d.P(8));
-        l.Par(d.Pedido, d.DataHora, d.Normal, d.T(21));
-        l.Par(d.Forma, d.Caixa, d.Normal, d.T(21));
+        l.Par(d.Pedido, d.DataHora, d.Normal, d.T(22));
+        l.Par(d.Forma, d.Caixa, d.Normal, d.T(22));
     }
 
-    /// <summary>Nome do produto o maior possível (até 2 linhas) e o detalhe embaixo.</summary>
-    private static void Produto(Layout l, Dados d, float tamanhoMaximo)
+    /// <summary>Nome do produto o maior possível (até 2 linhas, ocupando a largura) e o detalhe embaixo.</summary>
+    private static void Produto(Layout l, Dados d, float tamanhoMaximo = 124)
     {
         l.TextoAjustado(d.Ficha.Produto, d.Produto, d.T(tamanhoMaximo), d.T(40), 2);
         l.Texto(d.Ficha.Detalhe, d.Normal, d.T(24), maxLinhas: 1);
@@ -195,12 +204,13 @@ public static class RenderizadorFicha
         if (rodape.Length > 0)
         {
             l.Espaco(d.P(6));
-            l.Texto(rodape, d.Negrito, d.T(21), maxLinhas: 2);
+            l.Texto(rodape, d.Negrito, d.T(22), maxLinhas: 2);
         }
-        // O telefone da BC Fichas sai em toda ficha, sempre por último
-        l.Espaco(d.P(rodape.Length > 0 ? 2 : 6));
-        l.Texto(Configuracao.MensagemFixa, d.Negrito, d.T(19), maxLinhas: 1);
+        // O telefone da BC Fichas sai em toda ficha, sempre por último, grande e de lado a lado.
         l.Espaco(d.P(4));
+        l.Separador(tracejado: false, espessura: 2);
+        l.TextoAjustado(Configuracao.MensagemFixa, d.Negrito, d.T(32), d.T(18), 1);
+        l.Espaco(d.P(2));
     }
 
     /// <summary>Ficha de mentira para a prévia da tela de configuração.</summary>

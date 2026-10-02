@@ -9,7 +9,7 @@ namespace BCFichas.Core.Servicos;
 public sealed class VendaServico
 {
     private const string ColunasPedido =
-        "id, numero, sessao_id, caixa, criado_em, total, forma, recebido, troco, status, autorizacao, impressoes";
+        "id, numero, sessao_id, caixa, criado_em, total, forma, recebido, troco, status, autorizacao, impressoes, teste";
 
     private readonly Banco _banco;
     private readonly Func<DateTime> _agora;
@@ -20,12 +20,15 @@ public sealed class VendaServico
         _agora = agora ?? (() => DateTime.Now);
     }
 
-    /// <summary>Estoque mudou (venda confirmada).</summary>
+    /// <summary>Estoque mudou (venda confirmada, ficha devolvida).</summary>
     public event Action? EstoqueAlterado;
+
+    internal void AvisarEstoque() => EstoqueAlterado?.Invoke();
 
     /// <summary>
     /// Grava o pedido. Em dinheiro ele já sai pago; nas outras formas fica aguardando a maquininha,
     /// assim, se o programa fechar no meio do pagamento, o pedido não se perde.
+    /// No modo teste a numeração é separada (começa do 1) e o estoque não é baixado.
     /// </summary>
     public Pedido CriarPedido(SessaoCaixa sessao, IReadOnlyList<LinhaCarrinho> linhas, FormaPagamento forma,
         long recebidoCentavos = 0)
@@ -51,7 +54,8 @@ public sealed class VendaServico
             ConferirEstoque(c, t, linhas);
 
             var numero = Banco.Escalar<long>(c, t,
-                "UPDATE contadores SET valor = valor + 1 WHERE nome = 'pedido' RETURNING valor");
+                "UPDATE contadores SET valor = valor + 1 WHERE nome = $n RETURNING valor",
+                ("$n", sessao.Teste ? "pedido_teste" : "pedido"));
             var p = new Pedido
             {
                 Numero = numero,
@@ -63,14 +67,15 @@ public sealed class VendaServico
                 RecebidoCentavos = recebidoCentavos,
                 TrocoCentavos = troco,
                 Status = forma == FormaPagamento.Dinheiro ? StatusPedido.Pago : StatusPedido.AguardandoPagamento,
+                Teste = sessao.Teste,
             };
             p.Id = Banco.Escalar<long>(c, t, """
-                INSERT INTO pedidos (numero, sessao_id, caixa, criado_em, total, forma, recebido, troco, status)
-                VALUES ($n, $s, $c, $d, $t, $f, $r, $tr, $st) RETURNING id
+                INSERT INTO pedidos (numero, sessao_id, caixa, criado_em, total, forma, recebido, troco, status, teste)
+                VALUES ($n, $s, $c, $d, $t, $f, $r, $tr, $st, $te) RETURNING id
                 """,
                 ("$n", p.Numero), ("$s", p.SessaoId), ("$c", p.Caixa), ("$d", Banco.Data(p.CriadoEm)),
                 ("$t", p.TotalCentavos), ("$f", (int)p.Forma), ("$r", p.RecebidoCentavos), ("$tr", p.TrocoCentavos),
-                ("$st", (int)p.Status));
+                ("$st", (int)p.Status), ("$te", p.Teste ? 1 : 0));
 
             foreach (var linha in linhas.Where(l => l.Quantidade > 0))
             {
@@ -93,7 +98,7 @@ public sealed class VendaServico
                 p.Itens.Add(item);
             }
 
-            if (p.Status == StatusPedido.Pago) BaixarEstoque(c, t, p.Itens);
+            if (p.Status == StatusPedido.Pago && !p.Teste) BaixarEstoque(c, t, p.Itens);
             return p;
         });
 
@@ -111,7 +116,7 @@ public sealed class VendaServico
 
             Banco.Executar(c, t, "UPDATE pedidos SET status = $st, autorizacao = $a WHERE id = $id",
                 ("$st", (int)StatusPedido.Pago), ("$a", autorizacao), ("$id", pedidoId));
-            BaixarEstoque(c, t, p.Itens);
+            if (!p.Teste) BaixarEstoque(c, t, p.Itens);
             p.Status = StatusPedido.Pago;
             p.Autorizacao = autorizacao;
             return p;
@@ -149,6 +154,19 @@ public sealed class VendaServico
         if (numero is not null) sql += " AND numero = $n";
         sql += " ORDER BY id DESC LIMIT $l";
         return _banco.Consultar(sql, LerPedido, ("$s", sessaoId), ("$n", numero), ("$l", limite));
+    }
+
+    /// <summary>
+    /// Pedido pelo número impresso na ficha ("PED: 13"), com os itens. Os números do modo teste são
+    /// separados dos de verdade.
+    /// </summary>
+    public Pedido? PedidoPorNumero(long numero, bool teste = false)
+    {
+        using var c = _banco.Abrir();
+        var id = Banco.Escalar<long?>(c, null,
+            "SELECT id FROM pedidos WHERE numero = $n AND teste = $t ORDER BY id DESC LIMIT 1",
+            ("$n", numero), ("$t", teste ? 1 : 0));
+        return id is null ? null : Ler(c, null, id.Value);
     }
 
     public List<Pedido> Pendentes() =>
@@ -218,8 +236,9 @@ public sealed class VendaServico
             .FirstOrDefault();
         if (pedido is null) return null;
         pedido.Itens = Banco.Consultar(c, t, """
-            SELECT id, pedido_id, produto_id, nome, detalhe, preco, quantidade, fichas_por_unidade
-            FROM itens_pedido WHERE pedido_id = $p ORDER BY id
+            SELECT i.id, i.pedido_id, i.produto_id, i.nome, i.detalhe, i.preco, i.quantidade, i.fichas_por_unidade,
+                   (SELECT COALESCE(SUM(d.quantidade), 0) FROM itens_devolucao d WHERE d.item_id = i.id)
+            FROM itens_pedido i WHERE i.pedido_id = $p ORDER BY i.id
             """, l => new ItemPedido
         {
             Id = l.GetInt64(0),
@@ -230,6 +249,7 @@ public sealed class VendaServico
             PrecoCentavos = l.GetInt64(5),
             Quantidade = l.GetInt32(6),
             FichasPorUnidade = l.GetInt32(7),
+            Devolvidas = l.GetInt32(8),
         }, ("$p", id));
         return pedido;
     }
@@ -248,5 +268,6 @@ public sealed class VendaServico
         Status = (StatusPedido)l.GetInt32(9),
         Autorizacao = l.IsDBNull(10) ? null : l.GetString(10),
         Impressoes = l.GetInt32(11),
+        Teste = l.GetInt64(12) != 0,
     };
 }

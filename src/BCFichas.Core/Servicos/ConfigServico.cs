@@ -32,6 +32,9 @@ public sealed class ConfigServico
         configuracao.LarguraPapelMm = configuracao.LarguraPapelMm <= 58 ? 58 : 80;
         configuracao.Zoom = Math.Clamp(configuracao.Zoom, 60, 160);
         configuracao.Rodape = Configuracao.RodapeSemMensagemFixa(configuracao.Rodape);
+        configuracao.AjusteHorizontal = Math.Clamp(configuracao.AjusteHorizontal, -Configuracao.AjusteMaximo,
+            Configuracao.AjusteMaximo);
+        configuracao.VersaoConfig = Configuracao.VersaoAtual;
 
         var json = JsonSerializer.Serialize(configuracao, Json);
         _banco.Executar(
@@ -44,16 +47,17 @@ public sealed class ConfigServico
     private Configuracao Carregar()
     {
         var json = _banco.Escalar<string>("SELECT valor FROM config WHERE chave = 'geral'");
-        if (string.IsNullOrEmpty(json)) return new Configuracao();
+        if (string.IsNullOrEmpty(json)) return new Configuracao { VersaoConfig = Configuracao.VersaoAtual };
         try
         {
             var config = JsonSerializer.Deserialize<Configuracao>(json, Json) ?? new Configuracao();
             config.Rodape = Configuracao.RodapeSemMensagemFixa(config.Rodape);
+            config.Atualizar();
             return config;
         }
         catch (JsonException)
         {
-            return new Configuracao();
+            return new Configuracao { VersaoConfig = Configuracao.VersaoAtual };
         }
     }
 }

@@ -49,23 +49,50 @@ internal sealed class Layout
         AdicionarLinhas(linhas, fonte, tamanho, alinhamento, invertido);
     }
 
-    /// <summary>Texto que diminui de tamanho até caber (nome do produto).</summary>
+    /// <summary>
+    /// Texto que diminui de tamanho até caber (nome do produto). Prefere uma linha só, ocupando a largura;
+    /// quando numa linha ficaria pequeno demais, quebra entre as palavras (nunca no meio de uma palavra).
+    /// </summary>
     public void TextoAjustado(string texto, SKTypeface fonte, float maximo, float minimo, int maxLinhas)
     {
         if (string.IsNullOrWhiteSpace(texto)) return;
-        var tamanho = maximo;
+        texto = string.Join(' ', texto.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+        // Uma linha: o tamanho que enche a largura (a largura do texto cresce junto com a letra).
+        float umaLinha;
+        using (var medida = Pincel(fonte, maximo))
+            umaLinha = Math.Min(maximo, (float)Math.Floor(maximo * LarguraUtil / Math.Max(1, medida.MeasureText(texto))));
+        if (maxLinhas <= 1 || umaLinha >= maximo * 0.6f || !texto.Contains(' '))
+        {
+            var tamanhoUnico = Math.Max(minimo, umaLinha);
+            using var medida = Pincel(fonte, tamanhoUnico);
+            AdicionarLinhas([Cortar(texto, medida, LarguraUtil)], fonte, tamanhoUnico, Alinhamento.Centro,
+                invertido: false, apertado: true);
+            return;
+        }
+
+        // Várias linhas, um pouco menores que o máximo para a ficha não ficar comprida demais.
+        var tamanho = maximo * 0.8f;
         List<string> linhas;
         while (true)
         {
             using var medida = Pincel(fonte, tamanho);
             linhas = Quebrar(texto, medida, LarguraUtil, int.MaxValue);
-            var cabe = linhas.Count <= maxLinhas && linhas.All(l => medida.MeasureText(l) <= LarguraUtil);
+            var maiorPalavra = texto.Split(' ').Max(p => medida.MeasureText(p));
+            var cabe = linhas.Count <= maxLinhas && maiorPalavra <= LarguraUtil;
             if (cabe || tamanho <= minimo)
             {
                 if (!cabe) linhas = Quebrar(texto, medida, LarguraUtil, maxLinhas);
                 break;
             }
-            tamanho = Math.Max(minimo, tamanho - 4);
+            tamanho = Math.Max(minimo, tamanho - 2);
+        }
+        // Se em duas linhas a letra não fica maior que em uma, fica em uma só.
+        if (tamanho <= umaLinha)
+        {
+            using var medida = Pincel(fonte, umaLinha);
+            linhas = [Cortar(texto, medida, LarguraUtil)];
+            tamanho = Math.Max(minimo, umaLinha);
         }
         AdicionarLinhas(linhas, fonte, tamanho, Alinhamento.Centro, invertido: false, apertado: true);
     }

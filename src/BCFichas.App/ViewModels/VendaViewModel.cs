@@ -177,6 +177,13 @@ public sealed partial class VendaViewModel : ViewModelBase
     [RelayCommand]
     private void AbrirMenu() => _principal.AbrirDialogo(new MenuViewModel(_principal));
 
+    /// <summary>Toque no logo da BC Fichas (5 toques seguidos ligam o modo teste).</summary>
+    [RelayCommand]
+    private void ToqueNaMarca() => _principal.ToqueNaMarca();
+
+    [RelayCommand]
+    private Task SairDoModoTeste() => _principal.SairDoModoTeste();
+
     public void LimparPedido()
     {
         _carrinho.Limpar();

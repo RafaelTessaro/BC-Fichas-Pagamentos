@@ -204,16 +204,55 @@ public class AmostrasDeImpressao
             ImagemUtil.SalvarPng(previa, Path.Combine(pasta, $"ficha-{modelo.ToString().ToLowerInvariant()}.png"));
         }
 
-        var sessao = t.Sistema.Caixa.Abrir(1, "MARIA", 10000);
+        // A ficha da foto do PÃO DE MEL (modelo 4, pedido com 6 fichas, PIX) e a mesma no modo teste.
+        config.Modelo = ModeloFicha.Classico4;
+        config.NomeEvento = "MINHA FESTA";
+        var paoDeMel = new Ficha
+        {
+            NomeEvento = config.NomeEvento, Produto = "PÃO DE MEL", PrecoCentavos = 800, NumeroPedido = 13, Caixa = 1,
+            Data = new DateTime(2026, 10, 2, 14, 50, 8), Sequencia = 3, TotalFichas = 6, Forma = FormaPagamento.Pix,
+        };
+        using var logoFicha = new LogoFicha(ImagemUtil.Carregar(logoPng)!);
+        void Salvar(Ficha f, string nome)
+        {
+            using var desenho = RenderizadorFicha.Renderizar(f, config, logoFicha);
+            using var mono = ImagemUtil.Monocromatico(desenho);
+            ImagemUtil.SalvarPng(mono, Path.Combine(pasta, nome));
+        }
+        Salvar(paoDeMel, "ficha-pao-de-mel.png");
+        Salvar(new Ficha
+        {
+            NomeEvento = config.NomeEvento, Produto = "ENROLADINHO PORÇÃO", PrecoCentavos = 2000, NumeroPedido = 1, Caixa = 1,
+            Data = new DateTime(2026, 10, 2, 9, 5, 0), Sequencia = 1, TotalFichas = 1, Forma = FormaPagamento.Dinheiro,
+            Teste = true,
+        }, "ficha-modo-teste.png");
+
+        var sessao = t.Sistema.Caixa.Abrir(1, "", 10000);
+        void SalvarDocumento(Documento doc, string nome)
+        {
+            using var desenho = doc.Renderizar(config.LarguraPontos);
+            using var mono = ImagemUtil.Monocromatico(desenho);
+            ImagemUtil.SalvarPng(mono, Path.Combine(pasta, nome));
+        }
+        SalvarDocumento(Relatorios.Abertura(sessao, config), "abertura-de-caixa.png");
+
         var carrinho = new Carrinho();
         carrinho.Adicionar(t.Sistema.Catalogo.Produtos().First(p => p.Nome == "PASTEL"), 3);
         carrinho.Adicionar(t.Sistema.Catalogo.Produtos().First(p => p.Nome == "CERVEJA"), 2);
-        t.Sistema.Vendas.CriarPedido(sessao, carrinho.Linhas, FormaPagamento.Dinheiro, 5000);
+        var pedido = t.Sistema.Vendas.CriarPedido(sessao, carrinho.Linhas, FormaPagamento.Dinheiro, 5000);
+        var pix = t.Sistema.Vendas.CriarPedido(sessao, carrinho.Linhas, FormaPagamento.Pix);
+        t.Sistema.Vendas.ConfirmarPagamento(pix.Id, null);
         t.Sistema.Caixa.RegistrarMovimento(sessao, TipoMovimento.Sangria, 2000, "cofre");
-        var resumo = t.Sistema.Caixa.Fechar(sessao, 15300);
-        using var fechamento = Relatorios.Fechamento(resumo, config).Renderizar(config.LarguraPontos);
-        using var mono = ImagemUtil.Monocromatico(fechamento);
-        ImagemUtil.SalvarPng(mono, Path.Combine(pasta, "fechamento-de-caixa.png"));
+        var pastel = pedido.Itens.First(i => i.Nome == "PASTEL");
+        var devolucao = t.Sistema.Devolucoes.Devolver(sessao, pedido.Id, new Dictionary<long, int> { [pastel.Id] = 1 }, "não usou");
+        SalvarDocumento(Relatorios.Devolucao(devolucao, t.Sistema.Vendas.Pedido(pedido.Id)!, config,
+            t.Sistema.Caixa.Resumo(sessao.Id).DinheiroEsperado), "devolucao-de-fichas.png");
+        var cerveja = pix.Itens.First(i => i.Nome == "CERVEJA");
+        t.Sistema.Devolucoes.Devolver(sessao, pix.Id, new Dictionary<long, int> { [cerveja.Id] = 2 }, "");
+
+        var resumo = t.Sistema.Caixa.Fechar(sessao, 13000);
+        SalvarDocumento(Relatorios.Fechamento(resumo, config), "fechamento-de-caixa.png");
+        SalvarDocumento(Relatorios.Teste(config, "ELGIN i9"), "teste-de-impressao.png");
 
         // Código só com números e tamanho par usa o conjunto C do Code 128.
         var layout = new Layout(576, 16);
@@ -221,6 +260,6 @@ public class AmostrasDeImpressao
         using var barras = layout.Renderizar();
         ImagemUtil.SalvarPng(barras, Path.Combine(pasta, "codigo-conjunto-c.png"));
 
-        Assert.Equal(Enum.GetValues<ModeloFicha>().Length + 2, Directory.GetFiles(pasta, "*.png").Length);
+        Assert.Equal(Enum.GetValues<ModeloFicha>().Length + 7, Directory.GetFiles(pasta, "*.png").Length);
     }
 }

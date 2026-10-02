@@ -18,6 +18,8 @@
     <DataTemplate DataType="vm:MenuViewModel"><v:MenuView /></DataTemplate>
     <DataTemplate DataType="vm:SenhaViewModel"><v:SenhaView /></DataTemplate>
     <DataTemplate DataType="vm:MensagemViewModel"><v:MensagemView /></DataTemplate>
+    <DataTemplate DataType="vm:DevolucaoViewModel"><v:DevolucaoView /></DataTemplate>
+    <DataTemplate DataType="vm:NovaSenhaViewModel"><v:NovaSenhaView /></DataTemplate>
   </Application.DataTemplates>
 
   <Application.Resources>
@@ -32,7 +34,7 @@
   <Application.Styles>
     <FluentTheme>
       <FluentTheme.Palettes>
-        <ColorPaletteResources x:Key="Light" Accent="#0E9F6E" RegionColor="#FFFFFF" ErrorText="#DC2626" />
+        <ColorPaletteResources x:Key="Light" Accent="#16A34A" RegionColor="#FFFFFF" ErrorText="#DC2626" />
       </FluentTheme.Palettes>
     </FluentTheme>
     <StyleInclude Source="avares://BCFichas/Estilos/Estilos.axaml" />

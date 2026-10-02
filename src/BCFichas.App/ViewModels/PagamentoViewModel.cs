@@ -49,6 +49,12 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     public EntradaValor Recebido { get; } = new();
     public bool EhSimulador => _principal.Sistema.Maquininha is MaquininhaSimulada;
 
+    /// <summary>Maquininha usada à parte: o operador cobra nela e confirma aqui.</summary>
+    public bool EhSeparada => _principal.Sistema.Maquininha is MaquininhaSeparada;
+
+    /// <summary>Esperando a resposta de uma maquininha ligada ao programa (simulador, app ponte).</summary>
+    public bool EhIntegrada => !EhSeparada;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(EmEscolher), nameof(EmDinheiro), nameof(EmMaquininha), nameof(EmConcluido),
         nameof(EmRecusado), nameof(EmErroImpressao), nameof(PodeFechar))]
@@ -187,6 +193,14 @@ public sealed partial class PagamentoViewModel : ViewModelBase
 
     [RelayCommand]
     private void SimularRecusar() => (_principal.Sistema.Maquininha as MaquininhaSimulada)?.Recusar("Cartão recusado (simulação)");
+
+    /// <summary>A maquininha separada aprovou: o operador confirma e as fichas saem.</summary>
+    [RelayCommand]
+    private void ConfirmarNaMaquininha() => (_principal.Sistema.Maquininha as MaquininhaSeparada)?.Aprovar();
+
+    [RelayCommand]
+    private void NaoAprovou() =>
+        (_principal.Sistema.Maquininha as MaquininhaSeparada)?.Recusar("A maquininha não aprovou o pagamento.");
 
     [RelayCommand]
     private void OutraForma()

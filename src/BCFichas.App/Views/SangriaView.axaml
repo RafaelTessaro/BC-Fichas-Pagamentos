@@ -14,16 +14,10 @@
           </StackPanel>
         </Button>
         <TextBlock Grid.Column="1" Text="Sangria e suprimento" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
-        <Border Grid.Column="2" Classes="selo" Padding="14,6">
-          <TextBlock FontSize="16" Foreground="{StaticResource PrimariaEscura}">
-            <Run Text="Dinheiro no caixa:" />
-            <Run Text="{Binding DinheiroEmCaixa}" FontWeight="Bold" />
-          </TextBlock>
-        </Border>
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" ColumnDefinitions="*,360" Margin="10">
+    <Grid Grid.Row="1" ColumnDefinitions="*,380" Margin="10">
       <Border Classes="cartao" Margin="5">
         <ScrollViewer>
           <Grid ColumnDefinitions="*,280" RowDefinitions="Auto,*,Auto">
@@ -49,6 +43,9 @@
               <Border Background="{StaticResource Fundo}" CornerRadius="12" Padding="16,8">
                 <TextBlock Text="{Binding Valor.Texto}" FontSize="38" FontWeight="ExtraBold" TextAlignment="Right" />
               </Border>
+              <TextBlock Text="{Binding Depois}" FontSize="15" FontWeight="SemiBold" TextAlignment="Right"
+                         Foreground="{StaticResource PrimariaEscura}" Classes.alerta="{Binding DepoisNegativo}"
+                         IsVisible="{Binding Depois, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               <ItemsControl ItemsSource="{x:Static vm:SangriaViewModel.Notas}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
@@ -80,7 +77,32 @@
         </ScrollViewer>
       </Border>
 
-      <Border Grid.Column="1" Classes="cartao" Margin="5">
+      <Grid Grid.Column="1" RowDefinitions="Auto,*">
+
+      <!-- Quanto deveria haver na gaveta agora, em destaque -->
+      <Border Background="{StaticResource FundoLateral}" CornerRadius="16" Margin="5" Padding="20,16"
+              BoxShadow="0 2 8 0 #330F172A">
+        <StackPanel Spacing="2">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeDinheiro}" Foreground="{StaticResource Marca}" Width="22" Height="22" />
+            <TextBlock Text="DINHEIRO QUE DEVE ESTAR NO CAIXA" Foreground="{StaticResource Marca}" FontWeight="Bold"
+                       FontSize="13" VerticalAlignment="Center" />
+          </StackPanel>
+          <TextBlock Text="{Binding DinheiroEmCaixa}" Foreground="White" FontSize="46" FontWeight="ExtraBold" />
+          <ItemsControl ItemsSource="{Binding Composicao}" Margin="0,6,0,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:LinhaValor">
+                <Grid ColumnDefinitions="*,Auto" Margin="0,1">
+                  <TextBlock Text="{Binding Nome}" Foreground="{StaticResource MarcaTextoSuave}" FontSize="14" />
+                  <TextBlock Grid.Column="1" Text="{Binding Valor}" Foreground="#D1FAE5" FontSize="14" FontWeight="SemiBold" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Row="1" Classes="cartao" Margin="5">
         <Grid RowDefinitions="Auto,*">
           <TextBlock Text="Movimentos deste caixa" Classes="secao" />
           <TextBlock Grid.Row="1" Text="Nenhuma sangria ou suprimento ainda." Classes="suave"
@@ -109,11 +131,15 @@
           </ScrollViewer>
         </Grid>
       </Border>
+      </Grid>
     </Grid>
   </Grid>
 
   <UserControl.Styles>
     <Style Selector="TextBlock.saida">
+      <Setter Property="Foreground" Value="{StaticResource Perigo}" />
+    </Style>
+    <Style Selector="TextBlock.alerta">
       <Setter Property="Foreground" Value="{StaticResource Perigo}" />
     </Style>
   </UserControl.Styles>

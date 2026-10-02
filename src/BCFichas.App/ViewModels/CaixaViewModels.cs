@@ -32,8 +32,20 @@ public sealed class ResumoVM
             new("+ Vendas em dinheiro", Dinheiro.Formatar(r.Total(FormaPagamento.Dinheiro))),
             new("+ Suprimentos", Dinheiro.Formatar(r.Suprimentos)),
             new("− Sangrias", Dinheiro.Formatar(r.Sangrias)),
-            new("= Dinheiro esperado", Dinheiro.Formatar(r.DinheiroEsperado), Destaque: true),
         ];
+        if (r.Devolvido(FormaPagamento.Dinheiro) > 0)
+            Gaveta.Add(new("− Fichas devolvidas", Dinheiro.Formatar(r.Devolvido(FormaPagamento.Dinheiro))));
+        Gaveta.Add(new("= Dinheiro esperado", Dinheiro.Formatar(r.DinheiroEsperado), Destaque: true));
+        TemDevolucoes = r.TemDevolucoes;
+        TotalDevolvido = "− " + Dinheiro.Formatar(r.TotalDevolvido);
+        VendaLiquida = Dinheiro.Formatar(r.VendaLiquida);
+        Devolucoes = Enum.GetValues<FormaPagamento>()
+            .Where(f => r.Devolvido(f) > 0)
+            .Select(f => new LinhaValor(Nomes.De(f), "− " + Dinheiro.Formatar(r.Devolvido(f)),
+                f == FormaPagamento.Dinheiro ? "saiu da gaveta" : "estorno na maquininha"))
+            .Concat(r.ProdutosDevolvidos.Select(p =>
+                new LinhaValor(p.Nome, "− " + Dinheiro.Formatar(p.TotalCentavos), $"{p.Quantidade} ficha(s) devolvida(s)")))
+            .ToList();
         if (r.Sessao.ValorContadoCentavos is { } contado)
         {
             var diferenca = contado - r.DinheiroEsperado;
@@ -57,6 +69,10 @@ public sealed class ResumoVM
     public List<LinhaValor> Gaveta { get; }
     public List<LinhaValor> Produtos { get; }
     public bool SemProdutos => Produtos.Count == 0;
+    public bool TemDevolucoes { get; }
+    public string TotalDevolvido { get; } = "";
+    public string VendaLiquida { get; } = "";
+    public List<LinhaValor> Devolucoes { get; } = new();
 }
 
 /// <summary>Abrir o caixa: operador e troco inicial.</summary>
@@ -75,12 +91,19 @@ public sealed partial class AberturaViewModel(PrincipalViewModel principal) : Pa
             var sessao = Sistema.Caixa.Abrir(Principal.Config.NumeroCaixa, null, Troco.Centavos);
             Principal.CaixaAberto(sessao);
             Principal.MostrarAviso($"{Caixa} aberto. Boas vendas!");
+            // Comprovante da abertura: troco inicial, data e hora (fica com o responsável pelo caixa).
+            var config = Principal.Config;
+            _ = Principal.ImprimirAsync(() => Sistema.Impressao.Documento(Relatorios.Abertura(sessao, config), "Abertura impressa"));
         }
         catch (ErroDeNegocio e)
         {
             Principal.MostrarAviso(e.Message, erro: true);
         }
     }
+
+    /// <summary>Toque no logo da BC Fichas (5 toques seguidos ligam o modo teste).</summary>
+    [RelayCommand]
+    private void ToqueNaMarca() => Principal.ToqueNaMarca();
 
     [RelayCommand]
     private void Configurar() =>
@@ -189,6 +212,10 @@ public sealed partial class SangriaViewModel(PrincipalViewModel principal) : Pag
     [ObservableProperty] private string _motivo = "";
     [ObservableProperty] private string _dinheiroEmCaixa = "";
     [ObservableProperty] private bool _imprimirComprovante = true;
+    [ObservableProperty] private string _depois = "";
+    [ObservableProperty] private bool _depoisNegativo;
+    [ObservableProperty] private List<LinhaValor> _composicao = new();
+    private long _esperado;
 
     public EntradaValor Valor { get; } = new();
     public ObservableCollection<MovimentoItem> Movimentos { get; } = new();
@@ -197,10 +224,32 @@ public sealed partial class SangriaViewModel(PrincipalViewModel principal) : Pag
 
     public static readonly string[] Notas = ["50", "100", "200", "500", "1000", "2000", "5000", "10000"];
 
-    public override void AoAbrir() => Atualizar();
+    public override void AoAbrir()
+    {
+        Valor.PropertyChanged += (_, _) => AtualizarDepois();
+        Atualizar();
+    }
+
+    partial void OnEhSangriaChanged(bool value) => AtualizarDepois();
 
     [RelayCommand]
     private void Tipo(string tipo) => EhSangria = tipo == "sangria";
+
+    /// <summary>"Depois desta sangria ficam R$ X no caixa" (muda enquanto digita).</summary>
+    private void AtualizarDepois()
+    {
+        if (Valor.Centavos == 0)
+        {
+            Depois = "";
+            DepoisNegativo = false;
+            return;
+        }
+        var depois = _esperado + (EhSangria ? -Valor.Centavos : Valor.Centavos);
+        DepoisNegativo = depois < 0;
+        Depois = depois < 0
+            ? $"Não dá: no caixa só há {Dinheiro.Formatar(_esperado)}"
+            : $"Depois {(EhSangria ? "da sangria" : "do suprimento")}: {Dinheiro.Formatar(depois)}";
+    }
 
     [RelayCommand]
     private async Task Salvar()
@@ -233,7 +282,20 @@ public sealed partial class SangriaViewModel(PrincipalViewModel principal) : Pag
         var sessao = Principal.Sessao;
         Movimentos.Clear();
         if (sessao is null) return;
-        DinheiroEmCaixa = Dinheiro.Formatar(Sistema.Caixa.Resumo(sessao.Id).DinheiroEsperado);
+        var resumo = Sistema.Caixa.Resumo(sessao.Id);
+        _esperado = resumo.DinheiroEsperado;
+        DinheiroEmCaixa = Dinheiro.Formatar(_esperado);
+        var composicao = new List<LinhaValor>
+        {
+            new("Troco inicial", Dinheiro.Formatar(resumo.Sessao.ValorAberturaCentavos)),
+            new("+ Vendas em dinheiro", Dinheiro.Formatar(resumo.Total(FormaPagamento.Dinheiro))),
+            new("+ Suprimentos", Dinheiro.Formatar(resumo.Suprimentos)),
+            new("− Sangrias", Dinheiro.Formatar(resumo.Sangrias)),
+        };
+        if (resumo.Devolvido(FormaPagamento.Dinheiro) > 0)
+            composicao.Add(new("− Fichas devolvidas", Dinheiro.Formatar(resumo.Devolvido(FormaPagamento.Dinheiro))));
+        Composicao = composicao;
+        AtualizarDepois();
         foreach (var m in Sistema.Caixa.Movimentos(sessao.Id))
         {
             Movimentos.Add(new MovimentoItem(m.CriadoEm.ToString("HH:mm", CultureInfo.InvariantCulture),

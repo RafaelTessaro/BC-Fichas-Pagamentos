@@ -17,6 +17,7 @@ public sealed class PedidoItem(Pedido p)
     public string Status { get; } = p.Status == StatusPedido.Pago
         ? p.Impressoes == 0 ? "Pago • não impresso" : $"Pago • impresso {p.Impressoes}x"
         : Nomes.De(p.Status);
+    public bool Teste { get; } = p.Teste;
     public bool Pago { get; } = p.Status == StatusPedido.Pago;
     public bool NaoImpresso { get; } = p.Status == StatusPedido.Pago && p.Impressoes == 0;
 }
@@ -27,7 +28,13 @@ public sealed class ItemReimpressao(ItemPedido item)
     public string Nome { get; } = item.Nome;
     public string Detalhe { get; } = item.Detalhe;
     public string Quantidade { get; } = $"{item.Quantidade} x {Dinheiro.Formatar(item.PrecoCentavos)}";
-    public string Fichas { get; } = $"{item.Quantidade * item.FichasPorUnidade} ficha(s)";
+
+    /// <summary>Fichas que ainda valem (as devolvidas não são reimpressas).</summary>
+    public string Fichas { get; } = item.Devolvidas == 0
+        ? $"{item.Quantidade * item.FichasPorUnidade} ficha(s)"
+        : $"{item.PodeDevolver * item.FichasPorUnidade} ficha(s) • {item.Devolvidas} devolvida(s)";
+
+    public bool TemFichas { get; } = item.PodeDevolver > 0;
 }
 
 /// <summary>Segunda via das fichas de um pedido (inteiro ou de um item).</summary>
@@ -94,6 +101,11 @@ public sealed partial class ReimpressaoViewModel(PrincipalViewModel principal) :
             // Pedido que nunca saiu na impressora é impressão normal, não reimpressão.
             var reimpressao = pedido.Impressoes > 0;
             var fichas = GeradorFichas.Gerar(pedido, Principal.Config, reimpressao, itemId);
+            if (fichas.Count == 0)
+            {
+                Principal.MostrarAviso("As fichas deste pedido foram devolvidas: não há o que reimprimir.", erro: true);
+                return;
+            }
             var resultado = await Principal.ImprimirAsync(() => Sistema.Impressao.Fichas(fichas));
             if (resultado.Ok)
             {

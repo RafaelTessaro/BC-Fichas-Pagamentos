@@ -87,6 +87,8 @@ public sealed class SessaoCaixa
     public long ValorAberturaCentavos { get; set; }
     public DateTime? FechadaEm { get; set; }
     public long? ValorContadoCentavos { get; set; }
+    /// <summary>Caixa do modo teste (vendas de quem está programando a máquina): não entra nos relatórios.</summary>
+    public bool Teste { get; set; }
 
     public bool Aberta => FechadaEm is null;
 }
@@ -105,10 +107,13 @@ public sealed class Pedido
     public StatusPedido Status { get; set; }
     public string? Autorizacao { get; set; }
     public int Impressoes { get; set; }
+    public bool Teste { get; set; }
     public List<ItemPedido> Itens { get; set; } = new();
 
     public int QuantidadeItens => Itens.Sum(i => i.Quantidade);
     public int QuantidadeFichas => Itens.Sum(i => i.Quantidade * i.FichasPorUnidade);
+    public int QuantidadeDevolvida => Itens.Sum(i => i.Devolvidas);
+    public long TotalDevolvidoCentavos => Itens.Sum(i => i.Devolvidas * i.PrecoCentavos);
 }
 
 public sealed class ItemPedido
@@ -121,6 +126,41 @@ public sealed class ItemPedido
     public long PrecoCentavos { get; set; }
     public int Quantidade { get; set; }
     public int FichasPorUnidade { get; set; } = 1;
+    /// <summary>Unidades que o cliente devolveu (ficha não usada).</summary>
+    public int Devolvidas { get; set; }
+
+    public long TotalCentavos => PrecoCentavos * Quantidade;
+    public int PodeDevolver => Quantidade - Devolvidas;
+}
+
+/// <summary>
+/// Fichas que o cliente devolveu sem usar. A venda continua valendo; só a parte devolvida sai do total.
+/// Em dinheiro, o valor sai da gaveta; no cartão e no PIX, o estorno é feito na maquininha.
+/// </summary>
+public sealed class Devolucao
+{
+    public long Id { get; set; }
+    /// <summary>Caixa em que a devolução foi feita (pode ser outro, não o da venda).</summary>
+    public long SessaoId { get; set; }
+    public long PedidoId { get; set; }
+    public long NumeroPedido { get; set; }
+    public int Caixa { get; set; }
+    public FormaPagamento Forma { get; set; }
+    public long ValorCentavos { get; set; }
+    public string Motivo { get; set; } = "";
+    public DateTime CriadoEm { get; set; }
+    public List<ItemDevolvido> Itens { get; set; } = new();
+
+    public bool EmDinheiro => Forma == FormaPagamento.Dinheiro;
+    public int QuantidadeItens => Itens.Sum(i => i.Quantidade);
+}
+
+public sealed class ItemDevolvido
+{
+    public long ItemId { get; set; }
+    public string Nome { get; set; } = "";
+    public long PrecoCentavos { get; set; }
+    public int Quantidade { get; set; }
 
     public long TotalCentavos => PrecoCentavos * Quantidade;
 }
@@ -150,12 +190,28 @@ public sealed class ResumoCaixa
     public long Suprimentos { get; init; }
     public List<ProdutoVendido> Produtos { get; init; } = new();
 
+    /// <summary>Devoluções feitas neste caixa, por forma de pagamento da venda original.</summary>
+    public Dictionary<FormaPagamento, long> DevolucoesPorForma { get; init; } = new();
+    public int QuantidadeDevolucoes { get; init; }
+    public List<ProdutoVendido> ProdutosDevolvidos { get; init; } = new();
+
     public long TotalVendas => PorForma.Values.Sum();
     public long Total(FormaPagamento forma) => PorForma.GetValueOrDefault(forma);
+    public long TotalDevolvido => DevolucoesPorForma.Values.Sum();
+    public long Devolvido(FormaPagamento forma) => DevolucoesPorForma.GetValueOrDefault(forma);
+    public bool TemDevolucoes => QuantidadeDevolucoes > 0;
 
-    /// <summary>Dinheiro que deveria estar na gaveta: abertura + vendas em dinheiro + suprimentos - sangrias.</summary>
+    /// <summary>O que ficou de venda depois de tirar as fichas devolvidas.</summary>
+    public long VendaLiquida => TotalVendas - TotalDevolvido;
+    public long Liquido(FormaPagamento forma) => Total(forma) - Devolvido(forma);
+
+    /// <summary>
+    /// Dinheiro que deveria estar na gaveta: abertura + vendas em dinheiro + suprimentos - sangrias
+    /// - fichas devolvidas em dinheiro.
+    /// </summary>
     public long DinheiroEsperado =>
-        Sessao.ValorAberturaCentavos + Total(FormaPagamento.Dinheiro) + Suprimentos - Sangrias;
+        Sessao.ValorAberturaCentavos + Total(FormaPagamento.Dinheiro) + Suprimentos - Sangrias
+        - Devolvido(FormaPagamento.Dinheiro);
 
     public long TicketMedio => QuantidadePedidos == 0 ? 0 : TotalVendas / QuantidadePedidos;
 }
@@ -175,6 +231,8 @@ public sealed class Ficha
     public string Rodape { get; init; } = "";
     public bool Reimpressao { get; init; }
     public FormaPagamento Forma { get; init; }
+    /// <summary>Ficha do modo teste: sai marcada "TESTE - SEM VALOR".</summary>
+    public bool Teste { get; init; }
 
     /// <summary>Código único da ficha (usado no código de barras).</summary>
     public string Codigo => $"{Caixa:00}{NumeroPedido:000000}{Sequencia:000}";
