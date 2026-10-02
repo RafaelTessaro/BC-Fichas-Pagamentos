@@ -90,6 +90,10 @@ public sealed class Configuracao
     public int NumeroCaixa { get; set; } = 1;
     public bool DesligarAoFechar { get; set; }
     public bool TelaCheia { get; set; } = true;
+    /// <summary>Enquanto o programa está aberto, o Windows não apaga a tela nem entra em suspensão.</summary>
+    public bool ManterTelaLigada { get; set; } = true;
+    /// <summary>Abre o BC Fichas sozinho quando o Windows liga (entrada "Executar" do usuário).</summary>
+    public bool IniciarComWindows { get; set; } = true;
     public bool TecladoNaTela { get; set; } = true;
     /// <summary>Tamanho da tela em %, para tablets pequenos ou com escala alta no Windows.</summary>
     public int Zoom { get; set; } = 100;

@@ -89,6 +89,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     [ObservableProperty] private string _rodape = "";
     [ObservableProperty] private int _numeroCaixa = 1;
     [ObservableProperty] private bool _desligarAoFechar;
+    [ObservableProperty] private bool _manterTelaLigada;
+    [ObservableProperty] private bool _iniciarComWindows;
     [ObservableProperty] private bool _telaCheia;
     [ObservableProperty] private bool _tecladoNaTela;
     [ObservableProperty] private int _zoom = 100;
@@ -153,6 +155,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         Rodape = c.Rodape;
         NumeroCaixa = c.NumeroCaixa;
         DesligarAoFechar = c.DesligarAoFechar;
+        ManterTelaLigada = c.ManterTelaLigada;
+        IniciarComWindows = c.IniciarComWindows;
         TelaCheia = c.TelaCheia;
         TecladoNaTela = c.TecladoNaTela;
         Zoom = Zooms.Contains(c.Zoom) ? c.Zoom : 100;
@@ -419,6 +423,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         c.Rodape = Configuracao.RodapeSemMensagemFixa(Rodape);
         c.NumeroCaixa = NumeroCaixa;
         c.DesligarAoFechar = DesligarAoFechar;
+        c.ManterTelaLigada = ManterTelaLigada;
+        c.IniciarComWindows = IniciarComWindows;
         c.TelaCheia = TelaCheia;
         c.TecladoNaTela = TecladoNaTela;
         c.Zoom = Zoom;

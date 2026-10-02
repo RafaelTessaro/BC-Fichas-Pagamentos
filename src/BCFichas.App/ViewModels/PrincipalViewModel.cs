@@ -84,6 +84,12 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
     /// </summary>
     public Func<string?, bool, Task<string?>>? EscolherImagem { get; set; }
 
+    /// <summary>
+    /// Aplica no Windows o que depende dele (tela sempre ligada, abrir junto com o Windows). Preenchido pelo
+    /// programa de verdade; nos testes fica vazio para não mexer no computador.
+    /// </summary>
+    public Action<Configuracao>? AplicarNoWindows { get; set; }
+
     /// <summary>Fecha o programa (preenchido pela janela; nos testes não faz nada).</summary>
     public Action? FecharPrograma { get; set; }
 
@@ -343,6 +349,7 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
         CaixaTexto = $"CAIXA {c.NumeroCaixa:00}";
         Zoom = c.Zoom / 100.0;
         TelaCheia = c.TelaCheia;
+        AplicarNoWindows?.Invoke(c);
         TecladoHabilitado = c.TecladoNaTela;
         if (!c.TecladoNaTela) TecladoVisivel = false;
         StatusMaquininha = "Maquininha " + Sistema.Maquininha.Nome;

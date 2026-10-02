@@ -100,7 +100,7 @@
             <StackPanel Classes="form">
               <TextBlock Text="Nome do evento / festa" Classes="rotulo" />
               <TextBox Text="{Binding NomeEvento}" MaxLength="40" Watermark="Ex.: FESTA JUNINA SÃO JOÃO" />
-              <TextBlock Text="Sai no topo da tela e de cada ficha." Classes="dica" />
+              <TextBlock Text="Sai em cada ficha e nos relatórios." Classes="dica" />
 
               <TextBlock Text="Rodapé da ficha (opcional)" Classes="rotulo" />
               <TextBox Text="{Binding Rodape}" MaxLength="80" Watermark="Ex.: OBRIGADO E VOLTE SEMPRE!" />
@@ -139,6 +139,20 @@
                   <TextBlock Text="Mostra um teclado ao tocar num campo de texto." Classes="dica" />
                 </StackPanel>
                 <ToggleSwitch Grid.Column="1" IsChecked="{Binding TecladoNaTela}" />
+              </Grid>
+              <Grid Classes="linha" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="Manter a tela sempre ligada" FontWeight="SemiBold" FontSize="16" />
+                  <TextBlock Text="Com o programa aberto, o Windows não apaga a tela nem suspende o tablet." Classes="dica" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ManterTelaLigada}" />
+              </Grid>
+              <Grid Classes="linha" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Text="Abrir o BC Fichas quando o Windows ligar" FontWeight="SemiBold" FontSize="16" />
+                  <TextBlock Text="O programa abre sozinho depois que o Windows entra." Classes="dica" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding IniciarComWindows}" />
               </Grid>
               <Grid Classes="linha" ColumnDefinitions="*,Auto">
                 <StackPanel>

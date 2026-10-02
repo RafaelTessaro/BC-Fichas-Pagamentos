@@ -132,7 +132,17 @@ tablet, e digite a senha master.
 1. Baixe o pacote `BCFichas-win-x86` (tablets de 1–2 GB normalmente usam Windows 32 bits; se o seu for 64 bits,
    use `BCFichas-win-x64`). O pacote é gerado automaticamente pelo GitHub em **Actions → Build → Artifacts**.
 2. Descompacte numa pasta, por exemplo `C:\BCFichas`, e abra o `BCFichas.exe`. Não precisa instalar o .NET.
-3. Para abrir sozinho ao ligar o tablet: crie um atalho do `BCFichas.exe` na pasta `shell:startup`.
+3. Pronto: a partir daí o BC Fichas **abre sozinho quando o Windows liga** e, enquanto está aberto, **a tela não
+   apaga e o tablet não suspende** (as duas opções ficam em Configurações → Geral e já vêm ligadas). Se antes
+   você tinha posto um atalho em `shell:startup`, pode apagar (não tem problema deixar: o programa não abre duas
+   vezes).
+
+Dicas para o tablet ficar como um "caixa" de verdade:
+
+- Para o programa abrir sem ninguém tocar, o Windows precisa entrar sozinho: aperte Windows + R, digite
+  `netplwiz`, desmarque "Os usuários devem digitar um nome de usuário e uma senha" e confirme a senha.
+- Deixe o tablet na tomada: com a bateria muito fraca o Windows ainda desliga para se proteger, e o botão de
+  ligar continua funcionando normalmente.
 
 Na primeira vez o sistema já vem com os produtos do cardápio padrão (pastel, massinha, porções, cervejas…),
 sem fotos. Para pôr a foto de um produto: **Menu → Produtos → escolha o produto → Imagem**. O seletor abre sempre

@@ -19,7 +19,8 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var principal = new PrincipalViewModel(Sistema);
+            var principal = new PrincipalViewModel(Sistema) { AplicarNoWindows = IntegracaoWindows.Aplicar };
+            IntegracaoWindows.Aplicar(Sistema.Config.Atual);
             desktop.MainWindow = new JanelaPrincipal { DataContext = principal };
             desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
             principal.Iniciar();
