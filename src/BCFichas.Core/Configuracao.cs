@@ -23,6 +23,26 @@ public enum ModeloFicha
     Compacta = 2,
     /// <summary>Produto e valor em destaque, com faixa preta no topo.</summary>
     Destaque = 3,
+
+    // Os quatro modelos do sistema antigo (fotos das fichas impressas).
+    /// <summary>Modelo 1: evento, produto, valor numa tarja preta e logo ao lado dos dados.</summary>
+    Classico1 = 11,
+    /// <summary>Modelo 2: logo no topo ao lado do evento e da data, produto e valor embaixo.</summary>
+    Classico2 = 12,
+    /// <summary>Modelo 3: valor grande no topo com logo, produto e evento embaixo.</summary>
+    Classico3 = 13,
+    /// <summary>Modelo 4: evento e dados no topo, produto, logo e valor grande embaixo.</summary>
+    Classico4 = 14,
+}
+
+/// <summary>O que a guilhotina faz depois de cada ficha.</summary>
+public enum TipoCorte
+{
+    /// <summary>Corta deixando um ponto preso: a ficha não cai, o operador destaca.</summary>
+    Parcial = 0,
+    Total = 1,
+    /// <summary>Sem guilhotina: só avança o papel para rasgar.</summary>
+    Nenhum = 2,
 }
 
 /// <summary>Telas que podem ser travadas com a senha master.</summary>
@@ -43,7 +63,7 @@ public sealed class Configuracao
 {
     // Geral
     public string NomeEvento { get; set; } = "MINHA FESTA";
-    public string Rodape { get; set; } = "Obrigado e volte sempre!";
+    public string Rodape { get; set; } = "BC-FICHAS FONE: (19) 3023-9050";
     public int NumeroCaixa { get; set; } = 1;
     public bool DesligarAoFechar { get; set; }
     public bool TelaCheia { get; set; } = true;
@@ -56,11 +76,13 @@ public sealed class Configuracao
     public int Linhas { get; set; } = 3;
 
     // Ficha
-    public ModeloFicha Modelo { get; set; } = ModeloFicha.Completa;
+    public ModeloFicha Modelo { get; set; } = ModeloFicha.Classico2;
     public string Fonte { get; set; } = "Impact";
     public bool CodigoDeBarras { get; set; }
     public bool MostrarValorNaFicha { get; set; } = true;
     public string? Logo { get; set; }
+    /// <summary>Borda em volta da ficha, como nas fichas antigas.</summary>
+    public bool Moldura { get; set; } = true;
 
     // Impressora
     public TipoImpressora Impressora { get; set; } = TipoImpressora.Windows;
@@ -68,7 +90,7 @@ public sealed class Configuracao
     public string PortaSerial { get; set; } = "COM3";
     public int BaudRate { get; set; } = 115200;
     public int LarguraPapelMm { get; set; } = 80;
-    public bool CortarPapel { get; set; } = true;
+    public TipoCorte Corte { get; set; } = TipoCorte.Parcial;
     public string PastaArquivo { get; set; } = "";
 
     // Maquininha

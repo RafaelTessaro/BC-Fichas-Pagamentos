@@ -18,9 +18,12 @@ public sealed class TelaDeTeste : IDisposable
 
     private readonly SistemaTemporario _temporario;
 
-    public TelaDeTeste(int largura = 1280, int altura = 800, Action<Configuracao>? configurar = null)
+    /// <param name="catalogoPadrao">Usa os produtos de exemplo do programa em vez do catálogo dos testes.</param>
+    public TelaDeTeste(int largura = 1280, int altura = 800, Action<Configuracao>? configurar = null,
+        bool catalogoPadrao = false)
     {
-        _temporario = new SistemaTemporario();
+        _temporario = new SistemaTemporario(exemplos: !catalogoPadrao);
+        if (catalogoPadrao) Sistema.Catalogo.CriarExemplos();
         var config = Sistema.Config.Atual.Clonar();
         config.NomeEvento = "FESTA DE SÃO JOÃO";
         config.TelaCheia = false;

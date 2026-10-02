@@ -42,6 +42,13 @@ public sealed class BotaoProduto
     public bool Esgotado => Produto?.Esgotado == true;
     public bool MostrarEstoque => Produto is { ControlaEstoque: true, Esgotado: false };
     public string Estoque => Produto is null ? "" : $"{Produto.Estoque} rest.";
+
+    /// <summary>Letras menores quando o nome tem palavra comprida, para não quebrar no meio da palavra.</summary>
+    public double TamanhoNome => MaiorPalavra switch { <= 8 => 21, <= 10 => 19, <= 12 => 17, _ => 15 };
+    public double TamanhoNomeFoto => MaiorPalavra switch { <= 8 => 17, <= 10 => 15, <= 12 => 14, _ => 13 };
+
+    private int MaiorPalavra =>
+        Nome.Split([' ', '-'], StringSplitOptions.RemoveEmptyEntries).Select(p => p.Length).DefaultIfEmpty(0).Max();
 }
 
 public sealed class LinhaItem(LinhaCarrinho linha)
@@ -199,7 +206,7 @@ public sealed partial class VendaViewModel : ViewModelBase
 
         Botoes.Clear();
         foreach (var p in grade)
-            Botoes.Add(new BotaoProduto(p, CacheImagens.Obter(_principal.Sistema.Impressao.CaminhoImagem(p?.Imagem), 200)));
+            Botoes.Add(new BotaoProduto(p, CacheImagens.Obter(_principal.Sistema.Impressao.CaminhoImagem(p?.Imagem), 240)));
     }
 
     /// <summary>O estoque dos produtos no pedido pode ter mudado (venda, edição).</summary>

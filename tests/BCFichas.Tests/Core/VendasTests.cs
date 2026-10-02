@@ -15,11 +15,26 @@ public class VendasTests : IDisposable
     private Produto Produto(string nome) => S.Catalogo.Produtos().First(p => p.Nome == nome);
 
     [Fact]
-    public void Banco_novo_vem_com_exemplos()
+    public void Banco_novo_vem_com_os_produtos_de_exemplo()
     {
-        Assert.Equal(["COMIDAS", "BEBIDAS", "DOCES"], S.Catalogo.Abas().Select(a => a.Nome));
-        Assert.Equal(15, S.Catalogo.Produtos().Count);
-        Assert.Equal(TipoImpressora.Arquivo, S.Config.Atual.Impressora);
+        var pasta = Path.Combine(Path.GetTempPath(), "bcfichas-exemplos-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var novo = Sistema.Iniciar(pasta);
+            Assert.Equal(["ITENS"], novo.Catalogo.Abas().Select(a => a.Nome));
+            var produtos = novo.Catalogo.Produtos();
+            Assert.Equal(12, produtos.Count);
+            Assert.Equal(Enumerable.Range(1, 12), produtos.Select(p => p.Posicao));
+            Assert.Contains(produtos, p => p.Nome == "ENROLADINHO PORÇÃO" && p.PrecoCentavos == 2000);
+            Assert.Equal(ModeloFicha.Classico2, novo.Config.Atual.Modelo);
+            Assert.Equal(TipoCorte.Parcial, novo.Config.Atual.Corte);
+            if (!OperatingSystem.IsWindows()) Assert.Equal(TipoImpressora.Arquivo, novo.Config.Atual.Impressora);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            Directory.Delete(pasta, recursive: true);
+        }
     }
 
     [Fact]

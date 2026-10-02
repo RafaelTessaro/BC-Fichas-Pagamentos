@@ -106,6 +106,10 @@
                 <ComboBox ItemsSource="{Binding Fontes}" SelectedItem="{Binding Fonte}" MaxDropDownHeight="360" />
 
                 <Grid Classes="linha" ColumnDefinitions="*,Auto">
+                  <TextBlock Text="Borda em volta da ficha" FontWeight="SemiBold" FontSize="16" VerticalAlignment="Center" />
+                  <ToggleSwitch Grid.Column="1" IsChecked="{Binding Moldura}" />
+                </Grid>
+                <Grid Classes="linha" ColumnDefinitions="*,Auto">
                   <TextBlock Text="Mostrar o valor na ficha" FontWeight="SemiBold" FontSize="16" VerticalAlignment="Center" />
                   <ToggleSwitch Grid.Column="1" IsChecked="{Binding MostrarValor}" />
                 </Grid>
@@ -117,7 +121,7 @@
                   <ToggleSwitch Grid.Column="1" IsChecked="{Binding CodigoDeBarras}" />
                 </Grid>
 
-                <TextBlock Text="Logotipo (sai no modelo Completa)" Classes="rotulo" Margin="2,16,0,4" />
+                <TextBlock Text="Logotipo do evento (ideal: desenho preto e branco)" Classes="rotulo" Margin="2,16,0,4" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
                   <Button Classes="suave" Command="{Binding EscolherLogoCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
@@ -133,12 +137,12 @@
             </ScrollViewer>
 
             <Border Grid.Column="1" Background="{StaticResource Fundo}" CornerRadius="12" Padding="14" Margin="8,6,4,6"
-                    Width="330">
+                    Width="420">
               <Grid RowDefinitions="Auto,*">
                 <TextBlock Text="Prévia (como sai no papel)" Classes="rotulo" Margin="2,0,0,8" />
                 <ScrollViewer Grid.Row="1">
                   <Border Background="White" BoxShadow="0 2 8 0 #330F172A" HorizontalAlignment="Center" VerticalAlignment="Top">
-                    <Image Source="{Binding Previa}" Width="288" Stretch="Uniform" />
+                    <Image Source="{Binding Previa}" Width="384" Stretch="Uniform" />
                   </Border>
                 </ScrollViewer>
               </Grid>
@@ -252,11 +256,9 @@
                     </ComboBox.ItemTemplate>
                   </ComboBox>
                 </StackPanel>
-                <StackPanel Grid.Column="2">
-                  <TextBlock Text="Cortar o papel (guilhotina)" Classes="rotulo" />
-                  <ToggleSwitch IsChecked="{Binding CortarPapel}" />
-                </StackPanel>
               </Grid>
+              <TextBlock Text="Guilhotina depois de cada ficha" Classes="rotulo" />
+              <ComboBox ItemsSource="{Binding Cortes}" SelectedItem="{Binding Corte}" />
 
               <Button Classes="primario" Command="{Binding ImprimirTesteCommand}" Height="56" Margin="0,22,0,0"
                       HorizontalAlignment="Left" Padding="28,0" IsEnabled="{Binding !ImprimindoTeste}">

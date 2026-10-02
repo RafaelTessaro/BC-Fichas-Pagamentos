@@ -70,33 +70,52 @@
                 <Button Classes="produto" IsVisible="{Binding !Vazio}"
                         Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).AdicionarCommand}"
                         CommandParameter="{Binding}">
-                  <Border Background="{Binding Fundo}" CornerRadius="14" BoxShadow="0 2 4 0 #260F172A"
-                          ClipToBounds="True">
-                    <Grid RowDefinitions="*,Auto">
-                      <Image Source="{Binding Imagem}" IsVisible="{Binding TemImagem}" Stretch="UniformToFill"
-                             Opacity="0.35" Grid.RowSpan="2" />
-                      <StackPanel VerticalAlignment="Center" Margin="10,8" Spacing="2">
-                        <TextBlock Text="{Binding Nome}" Foreground="{Binding Texto}" FontSize="21" FontWeight="Bold"
-                                   TextAlignment="Center" TextWrapping="Wrap" MaxLines="3"
-                                   TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding Detalhe}" IsVisible="{Binding TemDetalhe}" Foreground="{Binding Texto}"
-                                   Opacity="0.85" FontSize="13" TextAlignment="Center" TextTrimming="CharacterEllipsis" />
-                      </StackPanel>
-                      <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="8,0,8,8">
-                        <Border Background="#33000000" CornerRadius="8" Padding="8,3" HorizontalAlignment="Left">
-                          <TextBlock Text="{Binding Preco}" Foreground="White" FontWeight="Bold" FontSize="16" />
-                        </Border>
-                        <TextBlock Grid.Column="1" Text="{Binding Estoque}" IsVisible="{Binding MostrarEstoque}"
-                                   Foreground="{Binding Texto}" FontSize="12" Opacity="0.9" VerticalAlignment="Center" />
+                  <Panel>
+                    <!-- Sem foto: botão todo na cor do produto -->
+                    <Border IsVisible="{Binding !TemImagem}" Background="{Binding Fundo}" CornerRadius="14"
+                            BoxShadow="0 2 4 0 #260F172A">
+                      <Grid RowDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center" Margin="10,8" Spacing="2">
+                          <TextBlock Text="{Binding Nome}" Foreground="{Binding Texto}" FontSize="{Binding TamanhoNome}" FontWeight="Bold"
+                                     TextAlignment="Center" TextWrapping="Wrap" MaxLines="3"
+                                     TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding Detalhe}" IsVisible="{Binding TemDetalhe}" Foreground="{Binding Texto}"
+                                     Opacity="0.85" FontSize="13" TextAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="8,0,8,8">
+                          <Border Background="#33000000" CornerRadius="8" Padding="8,3" HorizontalAlignment="Left">
+                            <TextBlock Text="{Binding Preco}" Foreground="White" FontWeight="Bold" FontSize="16" />
+                          </Border>
+                          <TextBlock Grid.Column="1" Text="{Binding Estoque}" IsVisible="{Binding MostrarEstoque}"
+                                     Foreground="{Binding Texto}" FontSize="12" Opacity="0.9" VerticalAlignment="Center" />
+                        </Grid>
                       </Grid>
-                      <Border Grid.RowSpan="2" IsVisible="{Binding Esgotado}" Background="#B3FFFFFF">
-                        <Border Background="{StaticResource Perigo}" CornerRadius="8" Padding="10,4"
-                                HorizontalAlignment="Center" VerticalAlignment="Center">
-                          <TextBlock Text="ESGOTADO" Foreground="White" FontWeight="Bold" />
-                        </Border>
+                    </Border>
+
+                    <!-- Com foto: cartão branco com a foto em cima, como no sistema antigo -->
+                    <Border IsVisible="{Binding TemImagem}" Background="White" CornerRadius="14" ClipToBounds="True"
+                            BoxShadow="0 2 4 0 #260F172A" BorderBrush="{Binding Fundo}" BorderThickness="0,0,0,6">
+                      <Grid RowDefinitions="*,Auto,Auto" Margin="8,8,8,6">
+                        <Image Source="{Binding Imagem}" Stretch="Uniform" />
+                        <TextBlock Grid.Row="1" Text="{Binding Nome}" FontSize="{Binding TamanhoNomeFoto}" FontWeight="Bold" Margin="0,4,0,3"
+                                   TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,*">
+                          <Border Grid.Column="1" Background="{Binding Fundo}" CornerRadius="8" Padding="10,2">
+                            <TextBlock Text="{Binding Preco}" Foreground="{Binding Texto}" FontWeight="Bold" FontSize="16" />
+                          </Border>
+                          <TextBlock Grid.Column="2" Text="{Binding Estoque}" IsVisible="{Binding MostrarEstoque}"
+                                     FontSize="11" Classes="suave" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                      </Grid>
+                    </Border>
+
+                    <Border IsVisible="{Binding Esgotado}" Background="#B3FFFFFF" CornerRadius="14">
+                      <Border Background="{StaticResource Perigo}" CornerRadius="8" Padding="10,4"
+                              HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="ESGOTADO" Foreground="White" FontWeight="Bold" />
                       </Border>
-                    </Grid>
-                  </Border>
+                    </Border>
+                  </Panel>
                 </Button>
               </Panel>
             </DataTemplate>

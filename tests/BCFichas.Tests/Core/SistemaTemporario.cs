@@ -8,7 +8,8 @@ public sealed class SistemaTemporario : IDisposable
     public SistemaTemporario(bool exemplos = true)
     {
         Pasta = Path.Combine(Path.GetTempPath(), "bcfichas-teste-" + Guid.NewGuid().ToString("N"));
-        Sistema = Sistema.Iniciar(Pasta, exemplos);
+        Sistema = Sistema.Iniciar(Pasta, criarExemplos: false);
+        if (exemplos) CatalogoDeTeste.Criar(Sistema.Catalogo);
         var config = Sistema.Config.Atual.Clonar();
         config.Impressora = TipoImpressora.Arquivo;
         config.PastaArquivo = Path.Combine(Pasta, "impressoes");

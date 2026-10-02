@@ -12,8 +12,14 @@ public static class EscPos
 
     public static byte[] Avancar(int linhas) => [0x1B, 0x64, (byte)Math.Clamp(linhas, 0, 255)];
 
-    /// <summary>GS V 66 0: avança até a guilhotina e faz corte parcial.</summary>
-    public static byte[] Cortar() => [0x1D, 0x56, 0x42, 0x00];
+    /// <summary>ESC J n: avança n pontos (1/203 pol.).</summary>
+    public static byte[] AvancarPontos(int pontos) => [0x1B, 0x4A, (byte)Math.Clamp(pontos, 0, 255)];
+
+    /// <summary>
+    /// GS V 66 0: avança até a guilhotina e faz corte parcial (a ficha fica presa por um ponto).
+    /// GS V 65 0: o mesmo com corte total.
+    /// </summary>
+    public static byte[] Cortar(bool parcial = true) => [0x1D, 0x56, (byte)(parcial ? 0x42 : 0x41), 0x00];
 
     /// <summary>Imagem em preto e branco (GS v 0), linha por linha, 1 bit por ponto.</summary>
     public static byte[] Imagem(SKBitmap bitmap)
@@ -47,23 +53,22 @@ public static class EscPos
         return saida.ToArray();
     }
 
-    /// <summary>Monta o trabalho completo: cada página é impressa e cortada.</summary>
-    public static byte[] Trabalho(IReadOnlyList<SKBitmap> paginas, bool cortar)
+    /// <summary>Monta o trabalho completo: cada página (ficha) é impressa e a guilhotina é acionada.</summary>
+    public static byte[] Trabalho(IReadOnlyList<SKBitmap> paginas, TipoCorte corte)
     {
         using var saida = new MemoryStream();
         saida.Write(Inicializar());
         foreach (var pagina in paginas)
         {
             saida.Write(Imagem(pagina));
-            if (cortar)
-            {
-                saida.Write(Avancar(1));
-                saida.Write(Cortar());
-            }
-            else
+            if (corte == TipoCorte.Nenhum)
             {
                 saida.Write(Avancar(5));
+                continue;
             }
+            // Um pouco de folga depois da última linha e o corte (parcial deixa a ficha presa).
+            saida.Write(AvancarPontos(12));
+            saida.Write(Cortar(parcial: corte == TipoCorte.Parcial));
         }
         return saida.ToArray();
     }

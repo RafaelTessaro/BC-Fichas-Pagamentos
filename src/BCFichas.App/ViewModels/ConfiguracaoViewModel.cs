@@ -44,10 +44,13 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     }
 
     public List<Opcao<ModeloFicha>> Modelos { get; } =
+        RenderizadorFicha.Modelos.Select(m => new Opcao<ModeloFicha>(m.Modelo, m.Nome)).ToList();
+
+    public List<Opcao<TipoCorte>> Cortes { get; } =
     [
-        new(ModeloFicha.Completa, "Completa (logo, evento, produto, valor)"),
-        new(ModeloFicha.Compacta, "Compacta (gasta menos papel)"),
-        new(ModeloFicha.Destaque, "Destaque (faixa preta e valor em evidência)"),
+        new(TipoCorte.Parcial, "Corte parcial (a ficha fica presa por um ponto)"),
+        new(TipoCorte.Total, "Corte total (a ficha cai solta)"),
+        new(TipoCorte.Nenhum, "Sem guilhotina (rasgar na serrilha)"),
     ];
 
     public List<Opcao<TipoImpressora>> TiposImpressora { get; } =
@@ -85,6 +88,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     [ObservableProperty] private string? _fonte;
     [ObservableProperty] private bool _codigoDeBarras;
     [ObservableProperty] private bool _mostrarValor;
+    [ObservableProperty] private bool _moldura;
     [ObservableProperty] private string? _logo;
     [ObservableProperty] private Bitmap? _previa;
 
@@ -98,7 +102,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     [ObservableProperty] private string? _portaSerial;
     [ObservableProperty] private int _baudRate = 115200;
     [ObservableProperty] private int _larguraPapel = 80;
-    [ObservableProperty] private bool _cortarPapel = true;
+    [ObservableProperty] private Opcao<TipoCorte>? _corte;
     [ObservableProperty] private bool _imprimindoTeste;
 
     // Maquininha
@@ -131,7 +135,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         Fontes.Clear();
         foreach (var f in Core.Impressao.Fontes.Disponiveis()) Fontes.Add(f);
         if (!Fontes.Contains(c.Fonte)) Fontes.Insert(0, c.Fonte);
-        Modelo = Modelos.First(m => m.Valor == c.Modelo);
+        Modelo = Modelos.FirstOrDefault(m => m.Valor == c.Modelo) ?? Modelos[0];
+        Moldura = c.Moldura;
         Fonte = c.Fonte;
         CodigoDeBarras = c.CodigoDeBarras;
         MostrarValor = c.MostrarValorNaFicha;
@@ -156,7 +161,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         PortaSerial = c.PortaSerial;
         BaudRate = c.BaudRate;
         LarguraPapel = c.LarguraPapelMm <= 58 ? 58 : 80;
-        CortarPapel = c.CortarPapel;
+        Corte = Cortes.First(x => x.Valor == c.Corte);
 
         SimuladorSegundos = SegundosSimulador.Contains(c.SimuladorAprovarEmSegundos) ? c.SimuladorAprovarEmSegundos : 0;
 
@@ -334,7 +339,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         c.TelaCheia = TelaCheia;
         c.TecladoNaTela = TecladoNaTela;
         c.Zoom = Zoom;
-        c.Modelo = Modelo?.Valor ?? ModeloFicha.Completa;
+        c.Modelo = Modelo?.Valor ?? ModeloFicha.Classico2;
+        c.Moldura = Moldura;
         c.Fonte = Fonte ?? "Impact";
         c.CodigoDeBarras = CodigoDeBarras;
         c.MostrarValorNaFicha = MostrarValor;
@@ -346,7 +352,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         c.PortaSerial = PortaSerial ?? "COM3";
         c.BaudRate = BaudRate;
         c.LarguraPapelMm = LarguraPapel;
-        c.CortarPapel = CortarPapel;
+        c.Corte = Corte?.Valor ?? TipoCorte.Parcial;
         c.SimuladorAprovarEmSegundos = SimuladorSegundos;
         c.SenhaMaster = SenhaMaster.Trim();
         c.TelasProtegidas = Protecoes.Where(p => p.Marcada).Aggregate(TelaProtegida.Nenhuma, (t, p) => t | p.Tela);
@@ -369,7 +375,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
 
         if (_carregando) return;
         if (e.PropertyName is nameof(NomeEvento) or nameof(Rodape) or nameof(NumeroCaixa) or nameof(Modelo)
-            or nameof(Fonte) or nameof(CodigoDeBarras) or nameof(MostrarValor) or nameof(Logo) or nameof(LarguraPapel))
+            or nameof(Fonte) or nameof(CodigoDeBarras) or nameof(MostrarValor) or nameof(Logo) or nameof(LarguraPapel)
+            or nameof(Moldura))
         {
             _timerPrevia.Stop();
             _timerPrevia.Start();

@@ -204,6 +204,50 @@ public class FluxoDeVendaTests
         t.Foto("14-pagamento-1024x600");
     }
 
+    [AvaloniaFact]
+    public void Catalogo_padrao_com_fotos_em_tela_de_960x600()
+    {
+        using var t = new TelaDeTeste(960, 600, catalogoPadrao: true);
+        // Fotos de mentira (emoji) só para ver o botão com imagem.
+        var fotos = new Dictionary<string, string>
+        {
+            ["PASTEL"] = "🥟", ["MASSINHA"] = "🍝", ["BATATA PORÇÃO"] = "🍟", ["ENROLADINHO PORÇÃO"] = "🥐",
+            ["PÃO DE MEL"] = "🍫", ["HEINEKEN"] = "🍺", ["ORIGINAL"] = "🍺", ["BRAHMA"] = "🍺",
+            ["IMPÉRIO"] = "🍺", ["REFRIGERANTE"] = "🥤", ["ÁGUA"] = "💧", ["SUCO"] = "🧃",
+        };
+        foreach (var produto in t.Sistema.Catalogo.Produtos())
+        {
+            if (!fotos.TryGetValue(produto.Nome, out var emoji)) continue;
+            var origem = Path.Combine(t.Sistema.PastaDados, produto.Id + "-origem.png");
+            using (var bmp = new SkiaSharp.SKBitmap(256, 256))
+            using (var c = new SkiaSharp.SKCanvas(bmp))
+            using (var p = new SkiaSharp.SKPaint
+                   {
+                       Typeface = SkiaSharp.SKTypeface.FromFamilyName("Noto Color Emoji"), TextSize = 190,
+                       IsAntialias = true,
+                   })
+            {
+                c.Clear(SkiaSharp.SKColors.Transparent);
+                c.DrawText(emoji, 18, 205, p);
+                BCFichas.Core.Impressao.ImagemUtil.SalvarPng(bmp, origem);
+            }
+            var relativo = Path.Combine("imagens", "produtos", produto.Id + ".png");
+            BCFichas.Core.Impressao.ImagemUtil.Importar(origem, Path.Combine(t.Sistema.PastaDados, relativo), 256);
+            produto.Imagem = relativo;
+            t.Sistema.Catalogo.SalvarProduto(produto, 12);
+        }
+        TelaDeTeste.Atualizar();
+        t.AbrirCaixa();
+
+        Assert.False(t.Venda.MostrarAbas);
+        Assert.Equal(12, t.Venda.Botoes.Count(b => !b.Vazio));
+        Assert.All(t.Venda.Botoes, b => Assert.True(b.TemImagem));
+        t.Tocar("PASTEL");
+        t.Tocar("HEINEKEN");
+        t.Tocar("HEINEKEN");
+        t.Foto("15-catalogo-com-fotos-960x600");
+    }
+
     private static void Clicar(TecladoVirtual teclado, string tecla)
     {
         var botao = teclado.GetLogicalDescendantsOfType<Button>().First(b => Equals(b.Tag, tecla));

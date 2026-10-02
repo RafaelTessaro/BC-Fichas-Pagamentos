@@ -12,14 +12,14 @@ public interface IDestinoImpressao
 }
 
 /// <summary>Converte as páginas em ESC/POS e manda para a impressora.</summary>
-public sealed class DestinoEscPos(string descricao, Action<byte[]> enviar, bool cortar) : IDestinoImpressao
+public sealed class DestinoEscPos(string descricao, Action<byte[]> enviar, TipoCorte corte) : IDestinoImpressao
 {
     public string Descricao { get; } = descricao;
 
     public void Imprimir(IReadOnlyList<SKBitmap> paginas)
     {
         if (paginas.Count == 0) return;
-        enviar(EscPos.Trabalho(paginas, cortar));
+        enviar(EscPos.Trabalho(paginas, corte));
     }
 }
 

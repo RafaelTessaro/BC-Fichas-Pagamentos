@@ -9,6 +9,12 @@ public enum Alinhamento
     Direita,
 }
 
+/// <summary>Uma linha de texto dentro de <see cref="Layout.Coluna"/>.</summary>
+/// <param name="Direita">Texto opcional encostado à direita na mesma linha.</param>
+/// <param name="Tarja">Texto branco numa tarja preta (valor em destaque).</param>
+internal sealed record Trecho(string Texto, SKTypeface Fonte, float Tamanho,
+    Alinhamento Alinhamento = Alinhamento.Esquerda, string? Direita = null, bool Tarja = false);
+
 /// <summary>
 /// Monta uma tira de papel de cima para baixo (blocos de texto, linhas, imagens) e desenha num bitmap.
 /// </summary>
@@ -155,7 +161,53 @@ internal sealed class Layout
         }));
     }
 
-    public SKBitmap Renderizar()
+    /// <summary>
+    /// Linhas de texto com uma imagem (logo) ao lado. O bloco fica com a altura do maior dos dois
+    /// e ambos ficam centralizados na vertical.
+    /// </summary>
+    public void Coluna(IReadOnlyList<Trecho> trechos, SKBitmap? imagem = null, bool imagemADireita = true, int espaco = 14)
+    {
+        if (trechos.Count == 0 && imagem is null) return;
+        var larguraImagem = imagem?.Width ?? 0;
+        var xTexto = Margem + (imagem is not null && !imagemADireita ? larguraImagem + espaco : 0);
+        var larguraTexto = LarguraUtil - (imagem is null ? 0 : larguraImagem + espaco);
+        var alturas = trechos.Select(AlturaTrecho).ToList();
+        var alturaTexto = alturas.Sum();
+        var altura = (int)Math.Ceiling(Math.Max(alturaTexto, imagem?.Height ?? 0));
+
+        _blocos.Add((altura, (canvas, y) =>
+        {
+            if (imagem is not null)
+            {
+                var xi = imagemADireita ? Largura - Margem - larguraImagem : Margem;
+                canvas.DrawBitmap(imagem, xi, y + (altura - imagem.Height) / 2f);
+            }
+            var linhaY = y + (altura - alturaTexto) / 2f;
+            for (var i = 0; i < trechos.Count; i++)
+            {
+                DesenharTrecho(canvas, trechos[i], xTexto, larguraTexto, linhaY);
+                linhaY += alturas[i];
+            }
+        }));
+    }
+
+    /// <summary>Três textos na mesma linha: esquerda, centro e direita.</summary>
+    public void Tres(string esquerda, string centro, string direita, SKTypeface fonte, float tamanho)
+    {
+        using var medida = Pincel(fonte, tamanho);
+        var altura = (int)Math.Ceiling(medida.FontMetrics.Descent - medida.FontMetrics.Ascent + 4);
+        _blocos.Add((altura, (canvas, y) =>
+        {
+            using var p = Pincel(fonte, tamanho);
+            var baseline = y + 2 - p.FontMetrics.Ascent;
+            canvas.DrawText(esquerda, Margem, baseline, p);
+            canvas.DrawText(centro, (Largura - p.MeasureText(centro)) / 2, baseline, p);
+            canvas.DrawText(direita, Largura - Margem - p.MeasureText(direita), baseline, p);
+        }));
+    }
+
+    /// <summary>Desenha a tira. Com <paramref name="moldura"/>, passa uma borda em volta, como nas fichas antigas.</summary>
+    public SKBitmap Renderizar(bool moldura = false)
     {
         var altura = Math.Max(1, _blocos.Sum(b => b.Altura));
         var bitmap = new SKBitmap(new SKImageInfo(Largura, altura, SKColorType.Rgba8888, SKAlphaType.Premul));
@@ -167,8 +219,50 @@ internal sealed class Layout
             desenhar(canvas, y);
             y += h;
         }
+        if (moldura)
+        {
+            using var borda = new SKPaint { Color = SKColors.Black, Style = SKPaintStyle.Stroke, StrokeWidth = 3 };
+            canvas.DrawRect(new SKRect(4.5f, 4.5f, Largura - 4.5f, altura - 4.5f), borda);
+        }
         canvas.Flush();
         return bitmap;
+    }
+
+    private static float AlturaTrecho(Trecho t)
+    {
+        using var p = Pincel(t.Fonte, t.Tamanho);
+        return (p.FontMetrics.Descent - p.FontMetrics.Ascent) * 1.1f + (t.Tarja ? 12 : 0);
+    }
+
+    private static void DesenharTrecho(SKCanvas canvas, Trecho t, float x, float largura, float topo)
+    {
+        if (string.IsNullOrEmpty(t.Texto) && string.IsNullOrEmpty(t.Direita)) return;
+        using var p = Pincel(t.Fonte, t.Tamanho, t.Tarja ? SKColors.White : SKColors.Black);
+        var larguraDireita = string.IsNullOrEmpty(t.Direita) ? 0 : p.MeasureText(t.Direita) + 12;
+        const float folga = 16;
+        var texto = Cortar(t.Texto, p, largura - larguraDireita - (t.Tarja ? 2 * folga : 0));
+        var larguraTexto = p.MeasureText(texto) + (t.Tarja ? 2 * folga : 0);
+        var xTexto = t.Alinhamento switch
+        {
+            Alinhamento.Centro => x + (largura - larguraTexto) / 2,
+            Alinhamento.Direita => x + largura - larguraTexto,
+            _ => x,
+        };
+        var baseline = topo + (t.Tarja ? 6 : 0) - p.FontMetrics.Ascent;
+        if (t.Tarja)
+        {
+            using var fundo = new SKPaint { Color = SKColors.Black, IsAntialias = true };
+            var alturaTarja = p.FontMetrics.Descent - p.FontMetrics.Ascent + 12;
+            canvas.DrawRoundRect(new SKRect(xTexto, topo, xTexto + larguraTexto, topo + alturaTarja), 6, 6, fundo);
+            xTexto += folga;
+        }
+        canvas.DrawText(texto, xTexto, baseline, p);
+
+        if (!string.IsNullOrEmpty(t.Direita))
+        {
+            using var pd = Pincel(t.Fonte, t.Tamanho);
+            canvas.DrawText(t.Direita, x + largura - pd.MeasureText(t.Direita), baseline, pd);
+        }
     }
 
     private void AdicionarLinhas(List<string> linhas, SKTypeface fonte, float tamanho, Alinhamento alinhamento,

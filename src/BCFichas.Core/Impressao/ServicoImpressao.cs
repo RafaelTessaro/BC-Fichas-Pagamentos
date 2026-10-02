@@ -10,8 +10,8 @@ public sealed class ServicoImpressao
     private readonly Func<Configuracao> _config;
     private readonly string _pastaDados;
     private readonly object _trava = new();
-    private (string Caminho, DateTime Data, int Largura)? _chaveLogo;
-    private SKBitmap? _logo;
+    private (string Caminho, DateTime Data)? _chaveLogo;
+    private LogoFicha? _logo;
 
     public ServicoImpressao(Func<Configuracao> config, string pastaDados)
     {
@@ -29,10 +29,10 @@ public sealed class ServicoImpressao
     public IDestinoImpressao CriarDestino(Configuracao c) => c.Impressora switch
     {
         TipoImpressora.Serial => new DestinoEscPos($"Porta {c.PortaSerial}",
-            dados => TransporteSerial.Enviar(c.PortaSerial, c.BaudRate, dados), c.CortarPapel),
+            dados => TransporteSerial.Enviar(c.PortaSerial, c.BaudRate, dados), c.Corte),
         TipoImpressora.Arquivo => new DestinoArquivo(string.IsNullOrWhiteSpace(c.PastaArquivo) ? PastaPadraoArquivo : c.PastaArquivo),
         _ => new DestinoEscPos(string.IsNullOrWhiteSpace(c.NomeImpressora) ? "Impressora não escolhida" : c.NomeImpressora,
-            dados => TransporteWindows.Enviar(c.NomeImpressora, dados), c.CortarPapel),
+            dados => TransporteWindows.Enviar(c.NomeImpressora, dados), c.Corte),
     };
 
     public string Descricao() => CriarDestino(_config()).Descricao;
@@ -116,23 +116,21 @@ public sealed class ServicoImpressao
         return resultado;
     }
 
-    /// <summary>Logo já reduzido e pontilhado. Chamar sempre dentro de <see cref="_trava"/>.</summary>
-    private SKBitmap? Logo(Configuracao config)
+    /// <summary>Logo do evento (carregado uma vez só). Chamar sempre dentro de <see cref="_trava"/>.</summary>
+    private LogoFicha? Logo(Configuracao config)
     {
         var caminho = CaminhoImagem(config.Logo);
         if (caminho is null || !File.Exists(caminho)) return null;
 
-        var chave = (caminho, File.GetLastWriteTimeUtc(caminho), config.LarguraPontos);
+        var chave = (caminho, File.GetLastWriteTimeUtc(caminho));
         if (_chaveLogo == chave) return _logo;
 
         _logo?.Dispose();
         _logo = null;
         _chaveLogo = chave;
-        using var original = ImagemUtil.Carregar(caminho);
+        var original = ImagemUtil.Carregar(caminho);
         if (original is null) return null;
-        var s = config.LarguraPontos / 576f;
-        using var ajustada = ImagemUtil.Ajustar(original, (int)(300 * s), (int)(150 * s), podeAumentar: true);
-        _logo = ImagemUtil.Pontilhar(ajustada);
+        _logo = new LogoFicha(original);
         return _logo;
     }
 }

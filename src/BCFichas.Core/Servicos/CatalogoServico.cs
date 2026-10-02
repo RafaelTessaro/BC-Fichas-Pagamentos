@@ -158,42 +158,39 @@ public sealed class CatalogoServico
         Alterado?.Invoke();
     }
 
-    /// <summary>Cria abas e produtos de exemplo num banco novo, para o sistema não abrir vazio.</summary>
+    /// <summary>
+    /// Banco novo: cria a aba ITENS com os produtos de exemplo (os mesmos do sistema antigo),
+    /// para o programa não abrir vazio.
+    /// </summary>
     public void CriarExemplos()
     {
-        var comidas = SalvarAba(new Aba { Nome = "Comidas" });
-        var bebidas = SalvarAba(new Aba { Nome = "Bebidas" });
-        var doces = SalvarAba(new Aba { Nome = "Doces" });
+        var abas = Abas();
+        var itens = abas.Count > 0 ? abas[0] : SalvarAba(new Aba { Nome = "ITENS" });
 
-        (Aba aba, string nome, string detalhe, long preco, string cor)[] exemplos =
+        (string nome, long preco, string cor)[] exemplos =
         [
-            (comidas, "Pastel", "Carne ou queijo", 1000, "#E8590C"),
-            (comidas, "Espetinho", "", 1200, "#C92A2A"),
-            (comidas, "Cachorro-quente", "", 1000, "#D9480F"),
-            (comidas, "Porção de batata", "", 2000, "#F08C00"),
-            (comidas, "Pizza (fatia)", "", 800, "#E67700"),
-            (comidas, "Caldo", "Feijão ou mandioca", 1200, "#A61E4D"),
-            (bebidas, "Refrigerante", "Lata", 600, "#1971C2"),
-            (bebidas, "Água", "Com ou sem gás", 400, "#1098AD"),
-            (bebidas, "Suco", "", 700, "#2B8A3E"),
-            (bebidas, "Cerveja", "Lata", 800, "#E8B200"),
-            (bebidas, "Quentão", "", 700, "#862E9C"),
-            (doces, "Bolo", "Fatia", 500, "#9C36B5"),
-            (doces, "Pipoca", "", 500, "#F59F00"),
-            (doces, "Algodão doce", "", 600, "#D6336C"),
-            (doces, "Paçoca", "", 200, "#A0522D"),
+            ("Pastel", 1000, "#E8590C"),
+            ("Massinha", 1000, "#C92A2A"),
+            ("Batata porção", 2000, "#F08C00"),
+            ("Enroladinho porção", 2000, "#D9480F"),
+            ("Pão de mel", 800, "#A0522D"),
+            ("Heineken", 1000, "#2B8A3E"),
+            ("Original", 1000, "#E8B200"),
+            ("Brahma", 800, "#A61E4D"),
+            ("Império", 800, "#475569"),
+            ("Refrigerante", 600, "#1971C2"),
+            ("Água", 400, "#1098AD"),
+            ("Suco", 600, "#7C3AED"),
         ];
 
-        var posicoes = new Dictionary<long, int>();
-        foreach (var (aba, nome, detalhe, preco, cor) in exemplos)
+        for (var i = 0; i < exemplos.Length; i++)
         {
-            posicoes[aba.Id] = posicoes.GetValueOrDefault(aba.Id) + 1;
+            var (nome, preco, cor) = exemplos[i];
             SalvarProduto(new Produto
             {
                 Nome = nome,
-                Detalhe = detalhe,
-                AbaId = aba.Id,
-                Posicao = posicoes[aba.Id],
+                AbaId = itens.Id,
+                Posicao = i + 1,
                 PrecoCentavos = preco,
                 Cor = cor,
             }, 36);

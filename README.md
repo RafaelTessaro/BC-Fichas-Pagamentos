@@ -2,24 +2,25 @@
 
 Sistema de emissão de fichas para festas, quermesses e eventos. O operador monta o pedido no balcão tocando nos
 produtos, escolhe a forma de pagamento (dinheiro, débito, crédito ou PIX) e as fichas saem na impressora térmica,
-uma por item, já cortadas.
+uma por item, com corte parcial da guilhotina entre uma e outra.
 
-Feito para rodar leve num **tablet Windows 10 com 1 ou 2 GB de RAM** e imprimir na **Elgin i9**.
+Feito para rodar leve num **tablet Windows 10 de 32 bits com 1 GB de RAM** (Haier W895A, Atom Z3735G) e imprimir
+na **Elgin i9** em papel de 80 mm.
 
-![Tela de venda](docs/telas/03-venda-com-pedido.png)
+![Tela de venda com fotos dos produtos](docs/telas/15-catalogo-com-fotos-960x600.png)
 
 ## O que tem
 
 | Tela | O que faz |
 | --- | --- |
-| **Venda** | Abas (Comidas, Bebidas…) com botões coloridos; pedido com + e −; total e botão de pagamento. |
+| **Venda** | Botões com foto do produto (ou só cor); abas opcionais (Comidas, Bebidas…); pedido com + e −; total e botão de pagamento. |
 | **Pagamento** | Dinheiro com troco calculado e notas rápidas; débito, crédito e PIX pela maquininha. |
 | **Produtos** | Nome, detalhe, preço, custo, aba, posição na tela, cor, imagem, estoque e fichas por unidade (combo). |
 | **Reimprimir fichas** | Segunda via do pedido inteiro ou de um item só (sai marcado "REIMPRESSÃO"). |
 | **Sangria / Suprimento** | Tira ou põe dinheiro no caixa, com comprovante impresso. |
 | **Relatórios** | Caixa atual, caixas anteriores e sangrias: totais por forma de pagamento e produtos vendidos. |
 | **Abrir / Fechar caixa** | Operador e troco inicial; no fechamento confere o dinheiro da gaveta (falta/sobra) e imprime o relatório. |
-| **Configurações** | Nome do evento, rodapé, modelo da ficha (3 modelos com prévia), fonte, logotipo, código de barras, grade de botões, impressora, senha master por tela. |
+| **Configurações** | Nome do evento, rodapé, modelo da ficha (7 modelos com prévia), borda, fonte, logotipo, código de barras, grade de botões, impressora, corte da guilhotina, senha master por tela. |
 
 Também tem teclado na tela (para tablet sem teclado físico), ajuste de tamanho da tela e modo tela cheia.
 
@@ -27,9 +28,18 @@ Também tem teclado na tela (para tablet sem teclado físico), ajuste de tamanho
 | --- | --- | --- |
 | ![](docs/telas/05-pagamento-dinheiro.png) | ![](docs/telas/07-pagamento-pix-aguardando.png) | ![](docs/telas/22-config-ficha.png) |
 
-| Ficha completa | Ficha destaque | Ficha compacta |
-| --- | --- | --- |
-| ![](docs/telas/ficha-completa.png) | ![](docs/telas/ficha-destaque.png) | ![](docs/telas/ficha-compacta.png) |
+### Modelos de ficha (papel de 80 mm)
+
+Modelos 1 a 4: os mesmos do sistema antigo, redesenhados.
+
+![Modelos 1 a 4](docs/telas/modelos-1-a-4.png)
+
+Modelos 5 a 7: novos.
+
+![Modelos 5 a 7](docs/telas/modelos-5-a-7.png)
+
+Depois de cada ficha a guilhotina faz **corte parcial** (a ficha fica presa por um ponto e o operador destaca).
+Em Configurações → Impressora dá para trocar para corte total ou sem corte.
 
 Mais telas em [`docs/telas`](docs/telas).
 
@@ -49,7 +59,15 @@ já conversa com a maquininha por uma interface única (`IMaquininha`), então e
 2. Descompacte numa pasta, por exemplo `C:\BCFichas`, e abra o `BCFichas.exe`. Não precisa instalar o .NET.
 3. Para abrir sozinho ao ligar o tablet: crie um atalho do `BCFichas.exe` na pasta `shell:startup`.
 
-Na primeira vez o sistema já vem com produtos de exemplo, para testar.
+Na primeira vez o sistema já vem com os produtos do cardápio padrão (pastel, massinha, porções, cervejas…),
+sem fotos. Para pôr a foto de um produto: **Menu → Produtos → escolha o produto → Imagem**.
+
+### Tablet com Windows 10 antigo (versão 1511)
+
+O programa usa o .NET 10, que oficialmente pede Windows 10 1607 ou mais novo, mas também roda no Windows Server
+2012 — então deve rodar no 1511, que é mais novo que ele. Se não abrir, atualize o Windows ou veja o arquivo
+`dados\erros.log`. Dicas para 1 GB de RAM: deixe só o BC Fichas aberto e desligue programas que iniciam com o
+Windows.
 
 ### Impressora Elgin i9
 

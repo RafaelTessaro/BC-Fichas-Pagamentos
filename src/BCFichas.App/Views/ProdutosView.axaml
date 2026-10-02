@@ -142,18 +142,25 @@
               <!-- Prévia do botão e imagem -->
               <StackPanel Grid.Row="1" Grid.RowSpan="6" Grid.Column="4" Spacing="8" Margin="0,0,12,0">
                 <TextBlock Text="Como fica o botão" Classes="rotulo" />
-                <Border Height="140" CornerRadius="14" Background="{Binding PreviaFundo}" ClipToBounds="True"
-                        BoxShadow="0 2 4 0 #260F172A">
-                  <Panel>
-                    <Image Source="{Binding ImagemPrevia}" Stretch="UniformToFill" Opacity="0.35" />
+                <Panel Height="150">
+                  <Border IsVisible="{Binding !TemImagem}" CornerRadius="14" Background="{Binding PreviaFundo}"
+                          BoxShadow="0 2 4 0 #260F172A">
                     <StackPanel VerticalAlignment="Center" Margin="10">
                       <TextBlock Text="{Binding Nome}" Foreground="{Binding PreviaTexto}" FontSize="20" FontWeight="Bold"
                                  TextAlignment="Center" TextWrapping="Wrap" />
                       <TextBlock Text="{Binding Detalhe}" Foreground="{Binding PreviaTexto}" FontSize="12"
                                  TextAlignment="Center" Opacity="0.85" />
                     </StackPanel>
-                  </Panel>
-                </Border>
+                  </Border>
+                  <Border IsVisible="{Binding TemImagem}" CornerRadius="14" Background="White" ClipToBounds="True"
+                          BoxShadow="0 2 4 0 #260F172A" BorderBrush="{Binding PreviaFundo}" BorderThickness="0,0,0,6">
+                    <Grid RowDefinitions="*,Auto" Margin="8,8,8,6">
+                      <Image Source="{Binding ImagemPrevia}" Stretch="Uniform" />
+                      <TextBlock Grid.Row="1" Text="{Binding Nome}" FontSize="15" FontWeight="Bold" Margin="0,4,0,0"
+                                 TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" />
+                    </Grid>
+                  </Border>
+                </Panel>
                 <Button Classes="suave" Command="{Binding EscolherImagemCommand}" HorizontalAlignment="Stretch">
                   <StackPanel Orientation="Horizontal" Spacing="8">
                     <PathIcon Data="{StaticResource IconeImagem}" />

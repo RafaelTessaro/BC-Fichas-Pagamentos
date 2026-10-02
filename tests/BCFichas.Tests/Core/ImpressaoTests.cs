@@ -87,11 +87,20 @@ public class ImpressaoTests : IDisposable
         using var b = new SKBitmap(8, 1);
         a.Erase(SKColors.White);
         b.Erase(SKColors.White);
-        var dados = EscPos.Trabalho([a, b], cortar: true);
+        var dados = EscPos.Trabalho([a, b], TipoCorte.Parcial);
         Assert.Equal(new byte[] { 0x1B, 0x40 }, dados[..2]);
-        var cortes = Enumerable.Range(0, dados.Length - 3)
-            .Count(i => dados[i] == 0x1D && dados[i + 1] == 0x56 && dados[i + 2] == 0x42);
-        Assert.Equal(2, cortes);
+        int Contar(byte[] d, byte m) => Enumerable.Range(0, d.Length - 3)
+            .Count(i => d[i] == 0x1D && d[i + 1] == 0x56 && d[i + 2] == m);
+        // GS V 66 = corte parcial (a ficha fica presa), um depois de cada ficha.
+        Assert.Equal(2, Contar(dados, 0x42));
+        Assert.Equal(0, Contar(dados, 0x41));
+
+        var total = EscPos.Trabalho([a, b], TipoCorte.Total);
+        Assert.Equal(2, Contar(total, 0x41));
+        Assert.Equal(0, Contar(total, 0x42));
+
+        var semCorte = EscPos.Trabalho([a, b], TipoCorte.Nenhum);
+        Assert.Equal(0, Contar(semCorte, 0x41) + Contar(semCorte, 0x42));
     }
 
     [Fact]
@@ -163,23 +172,26 @@ public class AmostrasDeImpressao
     public void Gera_amostras_das_fichas_e_do_fechamento()
     {
         var pasta = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "saida", "fichas"));
+        if (Directory.Exists(pasta)) Directory.Delete(pasta, recursive: true);
         Directory.CreateDirectory(pasta);
 
         using var t = new SistemaTemporario();
         var config = t.Sistema.Config.Atual.Clonar();
-        config.NomeEvento = "FESTA DE SÃO JOÃO";
-        config.CodigoDeBarras = true;
+        config.NomeEvento = "BASTA TER FÉ";
 
-        // Logo de exemplo: círculo com uma cruz, parecido com logos de paróquia.
-        using var logo = new SKBitmap(200, 200);
+        // Logo de exemplo parecido com o das fotos: "BASTA TER FÉ" com uma cruz.
+        using var logo = new SKBitmap(240, 150);
         using (var c = new SKCanvas(logo))
         {
             c.Clear(SKColors.White);
-            using var p = new SKPaint { Color = SKColors.Black, IsAntialias = true, StrokeWidth = 14, Style = SKPaintStyle.Stroke };
-            c.DrawCircle(100, 100, 85, p);
-            p.Style = SKPaintStyle.Fill;
-            c.DrawRect(88, 35, 24, 130, p);
-            c.DrawRect(50, 70, 100, 24, p);
+            using var p = new SKPaint { Color = SKColors.Black, IsAntialias = true, Typeface = Fontes.Negrito, TextSize = 64 };
+            c.DrawText("BASTA", 10, 80, p);
+            p.TextSize = 54;
+            c.DrawText("FÉ", 150, 138, p);
+            p.TextSize = 26;
+            c.DrawText("TER", 92, 132, p);
+            c.DrawRect(132, 10, 12, 130, p);
+            c.DrawRect(116, 30, 44, 10, p);
         }
         var logoPng = Path.Combine(t.Pasta, "logo.png");
         ImagemUtil.SalvarPng(logo, logoPng);
@@ -209,6 +221,6 @@ public class AmostrasDeImpressao
         using var barras = layout.Renderizar();
         ImagemUtil.SalvarPng(barras, Path.Combine(pasta, "codigo-conjunto-c.png"));
 
-        Assert.Equal(5, Directory.GetFiles(pasta, "*.png").Length);
+        Assert.Equal(Enum.GetValues<ModeloFicha>().Length + 2, Directory.GetFiles(pasta, "*.png").Length);
     }
 }
