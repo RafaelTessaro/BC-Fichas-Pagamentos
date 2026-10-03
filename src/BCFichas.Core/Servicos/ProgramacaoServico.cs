@@ -430,19 +430,26 @@ public sealed class ProgramacaoServico
     /// </summary>
     private void LimparArquivosSemUso()
     {
-        LimparImagensSemUso();
-        var impressoes = Path.Combine(_pastaDados, Impressao.ServicoImpressao.PastaArquivoPadrao);
-        if (!Directory.Exists(impressoes)) return;
-        foreach (var arquivo in Directory.GetFiles(impressoes))
+        try
         {
-            try
+            LimparImagensSemUso();
+            var impressoes = Path.Combine(_pastaDados, Impressao.ServicoImpressao.PastaArquivoPadrao);
+            if (!Directory.Exists(impressoes)) return;
+            foreach (var arquivo in Directory.GetFiles(impressoes))
             {
-                File.Delete(arquivo);
+                try
+                {
+                    File.Delete(arquivo);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    // Em uso agora: sai da próxima vez.
+                }
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-            {
-                // Em uso agora: sai da próxima vez.
-            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Pasta sem permissão: a operação (que já foi feita) não pode parecer que falhou por causa da limpeza.
         }
     }
 

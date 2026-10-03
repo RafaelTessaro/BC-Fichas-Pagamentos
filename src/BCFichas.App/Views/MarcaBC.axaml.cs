@@ -50,7 +50,10 @@ public partial class MarcaBC : UserControl
         try
         {
             var caminho = Path.Combine(AppContext.BaseDirectory, "marca.png");
-            return File.Exists(caminho) ? new Bitmap(caminho) : null;
+            if (!File.Exists(caminho)) return null;
+            // Já no tamanho da tela (um logo grande ficaria inteiro na memória o dia todo)
+            using var arquivo = File.OpenRead(caminho);
+            return Bitmap.DecodeToWidth(arquivo, 256, BitmapInterpolationMode.HighQuality);
         }
         catch (Exception)
         {

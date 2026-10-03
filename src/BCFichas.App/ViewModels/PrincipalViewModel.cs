@@ -125,21 +125,32 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
         if (Sessao is null)
             Pagina = new AberturaViewModel(this);
         else
-            IrParaVenda();
+            IrParaVenda(recarregar: true);
         _timerRelogio.Start();
         _ = ResolverPendentesAsync();
     }
 
-    public void IrParaVenda()
+    /// <param name="recarregar">
+    /// Lê de novo abas e produtos mesmo sem aviso de mudança (ao iniciar). Voltar de uma tela que não mexeu no
+    /// cardápio (sangria, relatórios) não refaz os botões.
+    /// </param>
+    public void IrParaVenda(bool recarregar = false)
     {
         if (Sessao is null)
         {
             Pagina = new AberturaViewModel(this);
             return;
         }
-        Venda.Recarregar();
+        if (recarregar || _cardapioMudou)
+        {
+            _cardapioMudou = false;
+            Venda.Recarregar();
+        }
         Pagina = Venda;
     }
+
+    /// <summary>O cardápio mudou com a venda fora da tela: ela é refeita ao voltar (uma vez, não a cada mudança).</summary>
+    private bool _cardapioMudou = true;
 
     /// <summary>Volta de uma tela aberta pelo menu: a venda com o menu aberto por cima.</summary>
     public void VoltarParaMenu()
@@ -362,7 +373,11 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
 
     // Os eventos podem vir de outra thread: repassa para a tela.
     private void AoMudarConfig(Configuracao c) => NaTela(() => AplicarConfig(c));
-    private void AoMudarCatalogo() => NaTela(Venda.Recarregar);
+    private void AoMudarCatalogo() => NaTela(() =>
+    {
+        if (Pagina == Venda) Venda.Recarregar();
+        else _cardapioMudou = true;
+    });
     private void AoMudarEstoque() => NaTela(Venda.AtualizarEstoque);
 
     private void NaTela(Action acao) => Dispatcher.UIThread.Post(() =>
@@ -419,9 +434,8 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
             var pagos = await Sistema.Vendas.ResolverPendentesAsync(Sistema.Maquininha, CancellationToken.None);
             if (pagos.Count > 0)
                 await Mensagem("Pedidos recuperados",
-                    $"{pagos.Count} pedido(s) foram pagos antes do programa fechar. " + (Config.LiberarReimpressao
-                        ? "Reimprima as fichas em Menu > Reimprimir fichas."
-                        : $"Para reimprimir as fichas, ligue para o suporte: {Configuracao.Suporte}."));
+                    $"{pagos.Count} pedido(s) foram pagos antes do programa fechar. Imprima as fichas em Menu > " +
+                    (Config.LiberarReimpressao ? "Reimprimir fichas." : "Fichas não impressas."));
         }
         catch (Exception e)
         {

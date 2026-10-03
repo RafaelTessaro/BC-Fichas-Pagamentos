@@ -48,9 +48,18 @@ public sealed class ItemReimpressao(ItemPedido item)
     }
 }
 
-/// <summary>Segunda via das fichas de um pedido (inteiro ou de um item).</summary>
-public sealed partial class ReimpressaoViewModel(PrincipalViewModel principal) : PaginaViewModel(principal)
+/// <summary>
+/// Segunda via das fichas de um pedido (inteiro ou de um item). Com <paramref name="soNaoImpressos"/>: só os pedidos
+/// pagos cujas fichas não saíram (a impressora falhou) e só o pedido inteiro, uma vez — é o que aparece no menu
+/// quando a reimpressão não está liberada para o cliente.
+/// </summary>
+public sealed partial class ReimpressaoViewModel(PrincipalViewModel principal, bool soNaoImpressos = false)
+    : PaginaViewModel(principal)
 {
+    public bool SoNaoImpressos { get; } = soNaoImpressos;
+    public string Titulo => SoNaoImpressos ? "Fichas não impressas" : "Reimprimir fichas";
+    public string TextoImprimirTudo => SoNaoImpressos ? "Imprimir as fichas do pedido" : "Reimprimir todas as fichas do pedido";
+
     public ObservableCollection<PedidoItem> Pedidos { get; } = new();
     public ObservableCollection<ItemReimpressao> Itens { get; } = new();
 
@@ -60,13 +69,18 @@ public sealed partial class ReimpressaoViewModel(PrincipalViewModel principal) :
 
     public bool TemSelecionado => Selecionado is not null;
     public bool PodeReimprimir => Selecionado?.Pago == true && !Ocupado;
+    public bool PodeReimprimirItem => PodeReimprimir && !SoNaoImpressos;
     public bool Vazio => Pedidos.Count == 0;
 
     public override void AoAbrir() => Atualizar();
 
     partial void OnBuscaChanged(string value) => Atualizar();
 
-    partial void OnOcupadoChanged(bool value) => OnPropertyChanged(nameof(PodeReimprimir));
+    partial void OnOcupadoChanged(bool value)
+    {
+        OnPropertyChanged(nameof(PodeReimprimir));
+        OnPropertyChanged(nameof(PodeReimprimirItem));
+    }
 
     partial void OnSelecionadoChanged(PedidoItem? value)
     {
@@ -79,6 +93,7 @@ public sealed partial class ReimpressaoViewModel(PrincipalViewModel principal) :
         }
         OnPropertyChanged(nameof(TemSelecionado));
         OnPropertyChanged(nameof(PodeReimprimir));
+        OnPropertyChanged(nameof(PodeReimprimirItem));
     }
 
     [RelayCommand]
@@ -89,7 +104,8 @@ public sealed partial class ReimpressaoViewModel(PrincipalViewModel principal) :
         Pedidos.Clear();
         if (sessao is null) return;
         long? numero = long.TryParse(Busca.Trim().TrimStart('#'), out var n) ? n : null;
-        foreach (var p in Sistema.Vendas.Pedidos(sessao.Id, numero)) Pedidos.Add(new PedidoItem(p));
+        foreach (var p in Sistema.Vendas.Pedidos(sessao.Id, numero, soNaoImpressos: SoNaoImpressos))
+            Pedidos.Add(new PedidoItem(p));
         Selecionado = Pedidos.FirstOrDefault(p => p.Pedido.Id == id) ?? Pedidos.FirstOrDefault();
         OnPropertyChanged(nameof(Vazio));
     }
@@ -98,13 +114,13 @@ public sealed partial class ReimpressaoViewModel(PrincipalViewModel principal) :
     private Task ReimprimirTudo() => Reimprimir(null);
 
     [RelayCommand]
-    private Task ReimprimirItem(ItemReimpressao item) => Reimprimir(item.Item.Id);
+    private Task ReimprimirItem(ItemReimpressao item) => SoNaoImpressos ? Task.CompletedTask : Reimprimir(item.Item.Id);
 
     private async Task Reimprimir(long? itemId)
     {
         if (Selecionado is not { Pago: true } || Ocupado) return;
         var pedido = Sistema.Vendas.Pedido(Selecionado.Pedido.Id);
-        if (pedido is null) return;
+        if (pedido is null || (SoNaoImpressos && pedido.Impressoes > 0)) return;
 
         Ocupado = true;
         try
@@ -186,8 +202,10 @@ public sealed partial class RelatoriosViewModel(PrincipalViewModel principal) : 
         var de = Dias == 0 ? new DateTime(2000, 1, 1) : ate.AddDays(-(Dias - 1));
         var id = SessaoSelecionada?.Sessao.Id;
         Sessoes.Clear();
+        // O total de cada caixa numa consulta só (antes era o resumo inteiro de cada caixa, um por um)
+        var totais = Sistema.Caixa.TotaisVendidos(de, ate);
         foreach (var sessao in Sistema.Caixa.Sessoes(de, ate))
-            Sessoes.Add(new SessaoItem(sessao, Sistema.Caixa.Resumo(sessao.Id).TotalVendas));
+            Sessoes.Add(new SessaoItem(sessao, totais.GetValueOrDefault(sessao.Id)));
         SessaoSelecionada = Sessoes.FirstOrDefault(x => x.Sessao.Id == id) ?? Sessoes.FirstOrDefault();
 
         Movimentos.Clear();

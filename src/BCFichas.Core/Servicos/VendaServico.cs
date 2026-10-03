@@ -49,6 +49,7 @@ public sealed class VendaServico
             recebidoCentavos = total;
         }
 
+        var baixou = false;
         var pedido = _banco.Transacao((c, t) =>
         {
             var combos = ConferirEstoque(c, t, linhas);
@@ -121,16 +122,18 @@ public sealed class VendaServico
                 p.Itens.Add(item);
             }
 
-            if (p.Status == StatusPedido.Pago && !p.Teste) BaixarEstoque(c, t, p.Itens);
+            if (p.Status == StatusPedido.Pago && !p.Teste) baixou = BaixarEstoque(c, t, p.Itens);
             return p;
         });
 
-        if (pedido.Status == StatusPedido.Pago) EstoqueAlterado?.Invoke();
+        // Só avisa a tela de venda quando algum estoque mudou de verdade (ela atualiza o "restam X" dos botões)
+        if (baixou) EstoqueAlterado?.Invoke();
         return pedido;
     }
 
     public Pedido ConfirmarPagamento(long pedidoId, string? autorizacao)
     {
+        var baixou = false;
         var pedido = _banco.Transacao((c, t) =>
         {
             var p = Ler(c, t, pedidoId) ?? throw new ErroDeNegocio("Pedido não encontrado.");
@@ -139,12 +142,12 @@ public sealed class VendaServico
 
             Banco.Executar(c, t, "UPDATE pedidos SET status = $st, autorizacao = $a WHERE id = $id",
                 ("$st", (int)StatusPedido.Pago), ("$a", autorizacao), ("$id", pedidoId));
-            if (!p.Teste) BaixarEstoque(c, t, p.Itens);
+            if (!p.Teste) baixou = BaixarEstoque(c, t, p.Itens);
             p.Status = StatusPedido.Pago;
             p.Autorizacao = autorizacao;
             return p;
         });
-        EstoqueAlterado?.Invoke();
+        if (baixou) EstoqueAlterado?.Invoke();
         return pedido;
     }
 
@@ -171,13 +174,21 @@ public sealed class VendaServico
     }
 
     /// <summary>Pedidos de um caixa, do mais recente para o mais antigo (sem os itens).</summary>
-    public List<Pedido> Pedidos(long sessaoId, long? numero = null, int limite = 300)
+    /// <param name="soNaoImpressos">Só os pagos cujas fichas ainda não saíram (a impressora falhou).</param>
+    public List<Pedido> Pedidos(long sessaoId, long? numero = null, int limite = 300, bool soNaoImpressos = false)
     {
         var sql = $"SELECT {ColunasPedido} FROM pedidos WHERE sessao_id = $s";
         if (numero is not null) sql += " AND numero = $n";
+        if (soNaoImpressos) sql += " AND status = $pago AND impressoes = 0";
         sql += " ORDER BY id DESC LIMIT $l";
-        return _banco.Consultar(sql, LerPedido, ("$s", sessaoId), ("$n", numero), ("$l", limite));
+        return _banco.Consultar(sql, LerPedido, ("$s", sessaoId), ("$n", numero), ("$l", limite),
+            ("$pago", (int)StatusPedido.Pago));
     }
+
+    /// <summary>Pedidos pagos deste caixa cujas fichas ainda não saíram (a impressora falhou na hora).</summary>
+    public int NaoImpressos(long sessaoId) => (int)_banco.Escalar<long>(
+        "SELECT COUNT(*) FROM pedidos WHERE sessao_id = $s AND status = $pago AND impressoes = 0",
+        ("$s", sessaoId), ("$pago", (int)StatusPedido.Pago));
 
     /// <summary>
     /// Pedido pelo número impresso na ficha ("PED: 13"), com os itens. Os números do modo teste são
@@ -271,18 +282,27 @@ public sealed class VendaServico
     /// verdade (o estoque não fica negativo e produto sem controle de estoque não baixa), para "Apagar as vendas"
     /// devolver exatamente isso.
     /// </summary>
-    private static void BaixarEstoque(SqliteConnection c, SqliteTransaction t, IEnumerable<ItemPedido> itens)
+    /// <returns>Se algum estoque mudou (produto sem controle de estoque não muda nada).</returns>
+    private static bool BaixarEstoque(SqliteConnection c, SqliteTransaction t, IEnumerable<ItemPedido> itens)
     {
+        var baixou = false;
         foreach (var item in itens)
         {
-            if (item.ProdutoId is not null)
-                Banco.Executar(c, t, "UPDATE itens_pedido SET baixado = $b WHERE id = $id",
-                    ("$b", Baixar(c, t, item.ProdutoId.Value, item.Quantidade)), ("$id", item.Id));
+            if (item.ProdutoId is not null && Baixar(c, t, item.ProdutoId.Value, item.Quantidade) is var sai and > 0)
+            {
+                Banco.Executar(c, t, "UPDATE itens_pedido SET baixado = $b WHERE id = $id", ("$b", sai), ("$id", item.Id));
+                baixou = true;
+            }
             foreach (var componente in item.Componentes.Where(x => x.ProdutoId is not null))
+            {
+                if (Baixar(c, t, componente.ProdutoId!.Value, item.Quantidade * componente.Quantidade) is not (var saiu and > 0))
+                    continue;
                 Banco.Executar(c, t, "UPDATE componentes_item SET baixado = $b WHERE id = $id",
-                    ("$b", Baixar(c, t, componente.ProdutoId!.Value, item.Quantidade * componente.Quantidade)),
-                    ("$id", componente.Id));
+                    ("$b", saiu), ("$id", componente.Id));
+                baixou = true;
+            }
         }
+        return baixou;
 
         static long Baixar(SqliteConnection c, SqliteTransaction t, long produtoId, int quantidade)
         {

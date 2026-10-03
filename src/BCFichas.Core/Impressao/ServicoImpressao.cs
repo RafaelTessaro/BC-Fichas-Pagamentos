@@ -47,7 +47,7 @@ public sealed class ServicoImpressao
         return Executar(config, () =>
         {
             var logo = Logo(config);
-            return fichas.Select(f => RenderizadorFicha.Renderizar(f, config, logo)).ToList();
+            return fichas.Select(f => RenderizadorFicha.Renderizar(f, config, logo));
         }, fichas.Count == 1 ? "1 ficha impressa" : $"{fichas.Count} fichas impressas");
     }
 
@@ -87,22 +87,18 @@ public sealed class ServicoImpressao
         : Path.IsPathRooted(relativo) ? relativo
         : Path.Combine(_pastaDados, relativo);
 
-    private ResultadoImpressao Executar(Configuracao config, Func<List<SKBitmap>> paginas, string sucesso)
+    /// <param name="paginas">
+    /// Desenha as páginas sob demanda: cada ficha é desenhada, mandada e solta antes da próxima (um pedido com 50
+    /// fichas não junta 50 imagens de ~1 MB na memória do tablet).
+    /// </param>
+    private ResultadoImpressao Executar(Configuracao config, Func<IEnumerable<SKBitmap>> paginas, string sucesso)
     {
         ResultadoImpressao resultado;
         lock (_trava)
         {
-            List<SKBitmap>? lista = null;
             try
             {
-                lista = paginas();
-                if (config.AjusteHorizontal != 0)
-                {
-                    var desenhos = lista;
-                    lista = desenhos.Select(p => Posicionar(p, config)).ToList();
-                    foreach (var d in desenhos) d.Dispose();
-                }
-                CriarDestino(config).Imprimir(lista);
+                CriarDestino(config).Imprimir(UmaDeCadaVez(paginas(), config));
                 resultado = new ResultadoImpressao(true, sucesso);
             }
             catch (ErroDeNegocio e)
@@ -113,16 +109,39 @@ public sealed class ServicoImpressao
             {
                 resultado = new ResultadoImpressao(false, "Erro na impressora: " + e.Message);
             }
-            finally
-            {
-                if (lista is not null)
-                    foreach (var p in lista) p.Dispose();
-            }
         }
 
         Ultimo = resultado;
         Impresso?.Invoke(resultado);
         return resultado;
+    }
+
+    /// <summary>Entrega uma página por vez, já na posição do papel, e solta cada uma quando o destino passa adiante.</summary>
+    private static IEnumerable<SKBitmap> UmaDeCadaVez(IEnumerable<SKBitmap> desenhos, Configuracao config)
+    {
+        foreach (var desenho in desenhos)
+        {
+            var pagina = desenho;
+            if (config.AjusteHorizontal != 0)
+            {
+                try
+                {
+                    pagina = Posicionar(desenho, config);
+                }
+                finally
+                {
+                    desenho.Dispose();
+                }
+            }
+            try
+            {
+                yield return pagina;
+            }
+            finally
+            {
+                pagina.Dispose();
+            }
+        }
     }
 
     /// <summary>Põe o desenho na linha da impressora, puxado para o lado do ajuste horizontal.</summary>

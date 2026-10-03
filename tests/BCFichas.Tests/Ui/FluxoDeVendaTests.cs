@@ -95,6 +95,13 @@ public class FluxoDeVendaTests
         Assert.Equal("Passe R$ 22,00 no DÉBITO na maquininha", pagamento.Andamento);
         t.Foto("07-pagamento-maquininha-separada");
 
+        // Toque duplo em Débito: o segundo toque cai no botão de aprovar, que ainda não vale
+        pagamento.ConfirmarNaMaquininhaCommand.Execute(null);
+        TelaDeTeste.Atualizar();
+        Assert.True(pagamento.EmMaquininha);
+        Assert.True(((MaquininhaSeparada)t.Sistema.Maquininha).AguardandoDecisao);
+
+        await Task.Delay(700);
         pagamento.ConfirmarNaMaquininhaCommand.Execute(null);
         await cobranca;
 

@@ -200,7 +200,7 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
 
     partial void OnImagemChanged(string? value)
     {
-        ImagemPrevia = CacheImagens.Obter(Sistema.Impressao.CaminhoImagem(value), 200);
+        ImagemPrevia = CacheImagens.Obter(Sistema.Impressao.CaminhoImagem(value));
         OnPropertyChanged(nameof(TemImagem));
     }
     partial void OnNomeChanged(string value) => OnPropertyChanged(nameof(NomeDoCombo));

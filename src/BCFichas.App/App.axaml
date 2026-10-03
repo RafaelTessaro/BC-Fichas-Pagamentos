@@ -6,7 +6,8 @@
              RequestedThemeVariant="Light">
 
   <Application.DataTemplates>
-    <DataTemplate DataType="vm:VendaViewModel"><v:VendaView /></DataTemplate>
+    <!-- Venda e pagamento: a mesma tela é usada de novo (montar do zero pesa no tablet) -->
+    <v:TelaDeVenda />
     <DataTemplate DataType="vm:AberturaViewModel"><v:AberturaView /></DataTemplate>
     <DataTemplate DataType="vm:FechamentoViewModel"><v:FechamentoView /></DataTemplate>
     <DataTemplate DataType="vm:ConfiguracaoViewModel"><v:ConfiguracaoView /></DataTemplate>
@@ -14,7 +15,7 @@
     <DataTemplate DataType="vm:ReimpressaoViewModel"><v:ReimpressaoView /></DataTemplate>
     <DataTemplate DataType="vm:SangriaViewModel"><v:SangriaView /></DataTemplate>
     <DataTemplate DataType="vm:RelatoriosViewModel"><v:RelatoriosView /></DataTemplate>
-    <DataTemplate DataType="vm:PagamentoViewModel"><v:PagamentoView /></DataTemplate>
+    <v:TelaDePagamento />
     <DataTemplate DataType="vm:MenuViewModel"><v:MenuView /></DataTemplate>
     <DataTemplate DataType="vm:SenhaViewModel"><v:SenhaView /></DataTemplate>
     <DataTemplate DataType="vm:MensagemViewModel"><v:MensagemView /></DataTemplate>

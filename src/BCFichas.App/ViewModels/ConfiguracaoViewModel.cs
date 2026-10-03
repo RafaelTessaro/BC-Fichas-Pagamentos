@@ -489,7 +489,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         ConferindoSenha = false;
         SenhaTecnicaDigitada = "";
         ErroSenhaTecnica = certa ? "" : "Senha técnica errada.";
-        MaquinaLiberada = certa;
+        // Trocou de aba enquanto conferia: não deixa a aba Máquina aberta para a próxima vez
+        MaquinaLiberada = certa && AbaSelecionada == AbaMaquina;
         if (certa) Principal.TecladoVisivel = false; // o campo da senha some; o teclado da tela também
     }
 
@@ -816,6 +817,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
 
             Ocupado = true;
             await Task.Run(() => Sistema.Programacao.Carregar(arquivo, caixa));
+            CacheImagens.Limpar();
             Principal.Venda.LimparPedido();
             Principal.MostrarAviso($"Backup restaurado: {resumo.Evento}, Caixa {caixa:00}.");
             Principal.Iniciar();
@@ -892,6 +894,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         try
         {
             await Task.Run(acao);
+            CacheImagens.Limpar();
             Principal.Venda.LimparPedido();
             Principal.MostrarAviso(aviso);
             Principal.Iniciar();
@@ -1073,9 +1076,13 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     {
         try
         {
+            // Direto dos pontos da imagem (sem gravar e ler um PNG a cada letra digitada) e soltando a prévia anterior.
             using var bitmap = Sistema.Impressao.Previa(Montar());
-            using var png = new MemoryStream(ImagemUtil.Png(bitmap));
-            Previa = new Bitmap(png);
+            var antiga = Previa;
+            Previa = new Bitmap(Avalonia.Platform.PixelFormat.Rgba8888, Avalonia.Platform.AlphaFormat.Premul,
+                bitmap.GetPixels(), new Avalonia.PixelSize(bitmap.Width, bitmap.Height), new Avalonia.Vector(96, 96),
+                bitmap.RowBytes);
+            antiga?.Dispose();
         }
         catch (Exception e)
         {

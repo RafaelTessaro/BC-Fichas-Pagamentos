@@ -44,7 +44,8 @@ public static class ImagemUtil
     /// </summary>
     public static string Importar(string origem, string pasta, string prefixo, int tamanhoMaximo)
     {
-        using var imagem = SKBitmap.Decode(origem) ?? throw new ErroDeNegocio("Não consegui abrir esta imagem.");
+        using var imagem = DecodificarReduzida(origem, tamanhoMaximo)
+                           ?? throw new ErroDeNegocio("Não consegui abrir esta imagem.");
         using var menor = Ajustar(imagem, tamanhoMaximo, tamanhoMaximo);
         var png = Png(menor);
         var nome = prefixo + Convert.ToHexString(SHA256.HashData(png))[..16].ToLowerInvariant() + ".png";
@@ -52,6 +53,25 @@ public static class ImagemUtil
         var destino = Path.Combine(pasta, nome);
         if (!File.Exists(destino)) File.WriteAllBytes(destino, png);
         return nome;
+    }
+
+    /// <summary>
+    /// Abre a imagem já perto do tamanho que vai ser usado: JPEG grande (foto de celular) é decodificado em 1/2,
+    /// 1/4 ou 1/8 do tamanho, sem passar pela imagem inteira na memória.
+    /// </summary>
+    private static SKBitmap? DecodificarReduzida(string caminho, int tamanhoMaximo)
+    {
+        using var codec = SKCodec.Create(caminho);
+        if (codec is null) return null;
+        var lado = Math.Max(codec.Info.Width, codec.Info.Height);
+        var escala = lado <= tamanhoMaximo ? 1f : Math.Max((float)tamanhoMaximo / lado, 1f / 8);
+        var tamanho = codec.GetScaledDimensions(escala);
+        var info = new SKImageInfo(tamanho.Width, tamanho.Height, SKColorType.Rgba8888, SKAlphaType.Premul);
+        var bitmap = new SKBitmap(info);
+        var resultado = codec.GetPixels(info, bitmap.GetPixels());
+        if (resultado is SKCodecResult.Success or SKCodecResult.IncompleteInput) return bitmap;
+        bitmap.Dispose();
+        return SKBitmap.Decode(caminho); // formato que não reduz na leitura: abre inteiro
     }
 
     public static void SalvarPng(SKBitmap bitmap, string caminho)

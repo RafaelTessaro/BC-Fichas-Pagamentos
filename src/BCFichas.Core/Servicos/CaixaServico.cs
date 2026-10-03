@@ -210,6 +210,16 @@ public sealed class CaixaServico
             $"SELECT {ColunasSessao} FROM sessoes WHERE aberta_em >= $de AND aberta_em < $ate AND teste = 0 ORDER BY id DESC",
             LerSessao, ("$de", Banco.Data(de.Date)), ("$ate", Banco.Data(ate.Date.AddDays(1))));
 
+    /// <summary>Total vendido de cada caixa do período (os mesmos de <see cref="Sessoes"/>), numa consulta só.</summary>
+    public Dictionary<long, long> TotaisVendidos(DateTime de, DateTime ate) =>
+        _banco.Consultar("""
+            SELECT p.sessao_id, SUM(p.total) FROM pedidos p JOIN sessoes s ON s.id = p.sessao_id
+            WHERE s.aberta_em >= $de AND s.aberta_em < $ate AND s.teste = 0 AND p.status = $pago
+            GROUP BY p.sessao_id
+            """, l => (Id: l.GetInt64(0), Total: l.GetInt64(1)),
+            ("$de", Banco.Data(de.Date)), ("$ate", Banco.Data(ate.Date.AddDays(1))), ("$pago", (int)StatusPedido.Pago))
+            .ToDictionary(x => x.Id, x => x.Total);
+
     private static SessaoCaixa LerSessao(SqliteDataReader l) => new()
     {
         Id = l.GetInt64(0),

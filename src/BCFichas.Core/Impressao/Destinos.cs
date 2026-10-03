@@ -8,7 +8,12 @@ namespace BCFichas.Core.Impressao;
 public interface IDestinoImpressao
 {
     string Descricao { get; }
-    void Imprimir(IReadOnlyList<SKBitmap> paginas);
+
+    /// <summary>
+    /// Imprime as páginas na ordem. Cada página só existe enquanto é usada: quem chama a desenha na hora e a solta
+    /// assim que o destino passa para a próxima (não guarde a página depois).
+    /// </summary>
+    void Imprimir(IEnumerable<SKBitmap> paginas);
 }
 
 /// <summary>Converte as páginas em ESC/POS e manda para a impressora.</summary>
@@ -16,10 +21,10 @@ public sealed class DestinoEscPos(string descricao, Action<byte[]> enviar, TipoC
 {
     public string Descricao { get; } = descricao;
 
-    public void Imprimir(IReadOnlyList<SKBitmap> paginas)
+    public void Imprimir(IEnumerable<SKBitmap> paginas)
     {
-        if (paginas.Count == 0) return;
-        enviar(EscPos.Trabalho(paginas, corte));
+        var trabalho = EscPos.Trabalho(paginas, corte, out var quantidade);
+        if (quantidade > 0) enviar(trabalho);
     }
 }
 
@@ -31,7 +36,7 @@ public sealed class DestinoArquivo(string pasta) : IDestinoImpressao
     public string Descricao => "Arquivo: " + Pasta;
     public string Pasta { get; } = pasta;
 
-    public void Imprimir(IReadOnlyList<SKBitmap> paginas)
+    public void Imprimir(IEnumerable<SKBitmap> paginas)
     {
         Directory.CreateDirectory(Pasta);
         var lote = DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);

@@ -17,7 +17,7 @@ public sealed partial class AbaItem(Aba aba) : ObservableObject
 }
 
 /// <summary>Um quadrado da grade de produtos (pode estar vazio).</summary>
-public sealed class BotaoProduto
+public sealed class BotaoProduto : ObservableObject
 {
     public BotaoProduto(Produto? produto, Bitmap? imagem)
     {
@@ -29,7 +29,7 @@ public sealed class BotaoProduto
         Texto = Recursos.TextoSobre(cor);
     }
 
-    public Produto? Produto { get; }
+    public Produto? Produto { get; private set; }
     public bool Vazio => Produto is null;
     public bool Disponivel => Produto is { Esgotado: false };
     public string Nome => Produto?.Nome ?? "";
@@ -53,15 +53,40 @@ public sealed class BotaoProduto
 
     private int MaiorPalavra =>
         Nome.Split([' ', '-'], StringSplitOptions.RemoveEmptyEntries).Select(p => p.Length).DefaultIfEmpty(0).Max();
+
+    /// <summary>Depois de uma venda: só o estoque muda, o botão continua o mesmo na tela (nada é refeito).</summary>
+    public void AtualizarEstoque(Produto atual)
+    {
+        Produto = atual;
+        OnPropertyChanged(nameof(Disponivel));
+        OnPropertyChanged(nameof(Esgotado));
+        OnPropertyChanged(nameof(MostrarEstoque));
+        OnPropertyChanged(nameof(Estoque));
+    }
 }
 
-public sealed class LinhaItem(LinhaCarrinho linha)
+/// <summary>Uma linha do pedido. Tocar em + ou − muda só os números dela (a linha não é refeita).</summary>
+public sealed partial class LinhaItem : ObservableObject
 {
-    public long ProdutoId { get; } = linha.Produto.Id;
-    public string Nome { get; } = linha.Produto.Nome;
-    public string Unitario { get; } = Dinheiro.Formatar(linha.Produto.PrecoCentavos);
-    public int Quantidade { get; } = linha.Quantidade;
-    public string Total { get; } = Dinheiro.Formatar(linha.TotalCentavos);
+    public LinhaItem(LinhaCarrinho linha)
+    {
+        ProdutoId = linha.Produto.Id;
+        Atualizar(linha);
+    }
+
+    public long ProdutoId { get; }
+    [ObservableProperty] private string _nome = "";
+    [ObservableProperty] private string _unitario = "";
+    [ObservableProperty] private int _quantidade;
+    [ObservableProperty] private string _total = "";
+
+    public void Atualizar(LinhaCarrinho linha)
+    {
+        Nome = linha.Produto.Nome;
+        Unitario = Dinheiro.Formatar(linha.Produto.PrecoCentavos);
+        Quantidade = linha.Quantidade;
+        Total = Dinheiro.Formatar(linha.TotalCentavos);
+    }
 }
 
 /// <summary>Tela principal: abas, botões de produto, pedido e botão de pagamento.</summary>
@@ -143,11 +168,19 @@ public sealed partial class VendaViewModel : ViewModelBase
         AtualizarProdutosDoCarrinho();
     }
 
-    /// <summary>Depois de uma venda: atualiza o "restam X" dos botões.</summary>
+    /// <summary>
+    /// Depois de uma venda: atualiza o "restam X" e o "esgotado" nos botões que já estão na tela (refazer a grade
+    /// inteira travava o tablet quase 1 segundo a cada venda).
+    /// </summary>
     public void AtualizarEstoque()
     {
         var aba = Abas.FirstOrDefault(a => a.Ativa);
-        if (aba is not null) MontarBotoes(aba.Aba);
+        if (aba is null) return;
+        var produtos = ProdutosDaTela(aba.Aba);
+        if (produtos.Count == Botoes.Count && produtos.Select(p => p.Id).SequenceEqual(Botoes.Select(b => b.Produto?.Id ?? 0)))
+            for (var i = 0; i < produtos.Count; i++) Botoes[i].AtualizarEstoque(produtos[i]);
+        else
+            MontarBotoes(aba.Aba);
     }
 
     [RelayCommand]
@@ -207,23 +240,31 @@ public sealed partial class VendaViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(TemItens))]
     private void Pagar()
     {
-        if (_principal.Sessao is null) return;
+        // Com uma janela aberta (ex.: Enter no teclado com o botão ainda selecionado) não abre outra por baixo
+        if (_principal.Sessao is null || _principal.TemDialogo) return;
         _principal.AbrirDialogo(new PagamentoViewModel(_principal, _principal.Sessao, _carrinho.Linhas.ToList(),
             aoConcluir: LimparPedido));
     }
 
     [RelayCommand]
-    private void AbrirMenu() => _principal.AbrirDialogo(new MenuViewModel(_principal));
+    private void AbrirMenu()
+    {
+        if (!_principal.TemDialogo) _principal.AbrirDialogo(new MenuViewModel(_principal));
+    }
 
     /// <summary>Barra lateral: sangria e suprimento (antes ficava no menu).</summary>
     [RelayCommand]
-    private void AbrirSangria() =>
-        _principal.AbrirProtegido(TelaProtegida.Sangria, () => new SangriaViewModel(_principal));
+    private void AbrirSangria()
+    {
+        if (!_principal.TemDialogo)
+            _principal.AbrirProtegido(TelaProtegida.Sangria, () => new SangriaViewModel(_principal));
+    }
 
     /// <summary>Barra lateral: fechar o caixa (no modo teste, sair do teste).</summary>
     [RelayCommand]
     private void FecharCaixa()
     {
+        if (_principal.TemDialogo) return;
         if (_principal.ModoTeste) _ = _principal.SairDoModoTeste();
         else _principal.AbrirProtegido(TelaProtegida.FecharCaixa, () => new FechamentoViewModel(_principal));
     }
@@ -251,14 +292,18 @@ public sealed partial class VendaViewModel : ViewModelBase
     {
         Colunas = aba.Colunas;
         LinhasGrade = aba.Linhas;
-        var produtos = _principal.Sistema.Catalogo.ProdutosDaAba(aba.Id)
-            .OrderBy(p => p.Posicao).ThenBy(p => p.Nome)
-            .Take(aba.Capacidade);
+        var produtos = ProdutosDaTela(aba);
         Botoes.Clear();
         foreach (var p in produtos)
-            Botoes.Add(new BotaoProduto(p, CacheImagens.Obter(_principal.Sistema.Impressao.CaminhoImagem(p.Imagem), 240)));
+            Botoes.Add(new BotaoProduto(p, CacheImagens.Obter(_principal.Sistema.Impressao.CaminhoImagem(p.Imagem))));
         SemProdutos = Botoes.Count == 0;
     }
+
+    private List<Produto> ProdutosDaTela(Aba aba) =>
+        _principal.Sistema.Catalogo.ProdutosDaAba(aba.Id)
+            .OrderBy(p => p.Posicao).ThenBy(p => p.Nome)
+            .Take(aba.Capacidade)
+            .ToList();
 
     /// <summary>O estoque dos produtos no pedido pode ter mudado (venda, edição).</summary>
     private void AtualizarProdutosDoCarrinho()
@@ -278,8 +323,23 @@ public sealed partial class VendaViewModel : ViewModelBase
 
     private void AtualizarPedido()
     {
-        Linhas.Clear();
-        foreach (var linha in _carrinho.Linhas.Where(l => l.Quantidade > 0)) Linhas.Add(new LinhaItem(linha));
+        // Só a linha que mudou muda na tela (refazer todas a cada toque pesava no tablet)
+        var atuais = _carrinho.Linhas.Where(l => l.Quantidade > 0).ToList();
+        for (var i = Linhas.Count - 1; i >= 0; i--)
+            if (atuais.All(l => l.Produto.Id != Linhas[i].ProdutoId)) Linhas.RemoveAt(i);
+        for (var i = 0; i < atuais.Count; i++)
+        {
+            var existente = -1;
+            for (var j = 0; j < Linhas.Count; j++)
+                if (Linhas[j].ProdutoId == atuais[i].Produto.Id) existente = j;
+            if (existente < 0)
+            {
+                Linhas.Insert(i, new LinhaItem(atuais[i]));
+                continue;
+            }
+            Linhas[existente].Atualizar(atuais[i]);
+            if (existente != i) Linhas.Move(existente, i);
+        }
         Total = Dinheiro.Formatar(_carrinho.TotalCentavos);
         var qtd = _carrinho.QuantidadeItens;
         QuantidadeTexto = qtd == 0 ? "" : qtd == 1 ? "1 item" : $"{qtd} itens";

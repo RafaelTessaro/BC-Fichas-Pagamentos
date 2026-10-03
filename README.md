@@ -17,7 +17,7 @@ na **Elgin i9** em papel de 80 mm.
 | **Pagamento** | Cartões grandes para Dinheiro, PIX (com o símbolo oficial do Pix), Débito e Crédito. Dinheiro: o valor recebido **já vem com o valor da venda** (pagou certinho, é só confirmar); se o cliente deu mais, é só digitar (a primeira tecla apaga e começa do zero) ou tocar nas notas, e o troco (ou quanto falta) aparece embaixo; o **Limpar** fica no teclado, no lugar do 00. Débito, crédito e PIX registrados para o relatório (veja "Maquininha de cartão"). |
 | **Menu** | Produtos, Relatórios, Configurações e Sair (Sangria e Fechar caixa ficam na barra lateral). **Reimprimir** e **Devolver fichas** só aparecem quando a BC Fichas libera para o cliente (Configurações → Máquina). Ao voltar de uma tela aberta pelo menu, o menu continua aberto; ele só fecha no X. |
 | **Produtos** | Nome, detalhe, preço, custo, aba, posição na tela, cor, imagem (o botão Imagem abre sempre em `C:\Sistema_New\produtos`), estoque, fichas por unidade e **combos** (veja "Combos"). Produto pode ficar fora da tela de venda. |
-| **Reimprimir fichas** | Segunda via do pedido inteiro ou de um item só (sai marcado "REIMPRESSÃO"); fichas devolvidas não são reimpressas. |
+| **Reimprimir fichas** | Segunda via do pedido inteiro ou de um item só (sai marcado "REIMPRESSÃO"); fichas devolvidas não são reimpressas. Sem a reimpressão liberada, um pedido pago cujas fichas não saíram (impressora falhou) aparece em **Menu → Fichas não impressas** e sai uma vez. |
 | **Devolver fichas** | Só em dinheiro: digita o valor das fichas que o cliente devolveu e ele sai do caixa como uma sangria, no total de devoluções. Veja "Devolução de fichas". |
 | **Sangria / Suprimento** | Na barra lateral da venda. Tira ou põe dinheiro no caixa, com comprovante impresso; mostra em destaque quanto deve haver na gaveta e quanto fica depois. |
 | **Relatórios** | Caixa atual, caixas anteriores e sangrias: totais por forma de pagamento, fichas devolvidas, venda líquida e produtos vendidos. |
@@ -255,6 +255,18 @@ As telas leem do banco só o que mostram, então a memória não cresce com o n�
 programa aberto na tela de venda: banco vazio ≈ 43 MB de memória própria; banco com **302 mil pedidos** (300
 dias de festa com 1000 pedidos, 56 MB de arquivo) ≈ 48 MB. Com 100 mil pedidos, relatórios ("Tudo", 101
 caixas), reimpressão, devolução e fechamento abrem em menos de 0,2 s (teste `MemoriaComMuitasVendasTests`).
+
+### Leve no tablet
+
+- **Venda:** depois de cada venda só o "restam X" dos botões muda (a grade não é refeita); tocar num produto muda
+  só a linha dele no pedido; a tela de venda e a de pagamento são montadas uma vez e usadas de novo. Gravar o
+  pedido e imprimir acontecem fora da tela, que não trava enquanto o disco trabalha.
+- **Memória:** as fotos ficam guardadas já reduzidas (no máximo 64 de cada vez); a impressão desenha, manda e
+  solta uma ficha de cada vez (pedido com 50 fichas não junta 50 imagens); a foto escolhida no cadastro é lida
+  já reduzida; a prévia da ficha nas Configurações solta a anterior.
+- **Disco:** depois de apagar as vendas, restaurar ou zerar, o banco devolve o espaço vazio (VACUUM) e o arquivo
+  `-wal` volta a zero (e nunca passa de 4 MB parado); fotos sem uso e fichas salvas em arquivo não acumulam
+  (ficam só as 300 últimas); as cópias de segurança são as 15 últimas.
 
 ## Para quem for mexer no código
 

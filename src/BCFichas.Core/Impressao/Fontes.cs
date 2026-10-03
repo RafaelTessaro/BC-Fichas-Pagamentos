@@ -19,8 +19,12 @@ public static class Fontes
         return Existe(nome) ? fonte : Negrito;
     }
 
+    private static readonly ConcurrentDictionary<string, bool> Existentes = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Se a fonte está instalada (guardado: antes listava as fontes do Windows a cada ficha impressa).</summary>
     public static bool Existe(string nome) =>
-        SKFontManager.Default.FontFamilies.Any(f => string.Equals(f, nome, StringComparison.OrdinalIgnoreCase));
+        Existentes.GetOrAdd(nome, n =>
+            SKFontManager.Default.FontFamilies.Any(f => string.Equals(f, n, StringComparison.OrdinalIgnoreCase)));
 
     /// <summary>Fontes instaladas, com as boas para ficha primeiro.</summary>
     public static List<string> Disponiveis()

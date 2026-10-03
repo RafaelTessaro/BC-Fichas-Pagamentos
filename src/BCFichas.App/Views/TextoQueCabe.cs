@@ -45,6 +45,10 @@ public class TextoQueCabe : TextBlock
         set => SetValue(TamanhoMinimoProperty, value);
     }
 
+    // Última conta feita: a mesma largura e o mesmo texto não medem de novo (o layout chama várias vezes).
+    private (string Texto, double Largura, double Maximo, double Minimo, bool LinhaUnica, Typeface Fonte) _ultima;
+    private double _ultimoTamanho;
+
     protected override Size MeasureOverride(Size availableSize)
     {
         var tamanho = TamanhoMaximo;
@@ -52,15 +56,38 @@ public class TextoQueCabe : TextBlock
         var texto = Text ?? "";
         if (!double.IsInfinity(largura) && largura > 0 && texto.Length > 0)
         {
-            var maiorPalavra = LinhaUnica
-                ? texto
-                : texto.Split([' ', '-'], StringSplitOptions.RemoveEmptyEntries)
-                    .OrderByDescending(p => p.Length).FirstOrDefault() ?? texto;
             var fonte = new Typeface(FontFamily, FontStyle, FontWeight);
-            while (tamanho > TamanhoMinimo && Largura(maiorPalavra, fonte, tamanho) > largura) tamanho -= 0.5;
+            var chave = (texto, largura, TamanhoMaximo, TamanhoMinimo, LinhaUnica, fonte);
+            if (chave == _ultima)
+            {
+                tamanho = _ultimoTamanho;
+            }
+            else
+            {
+                tamanho = Calcular(texto, largura, fonte);
+                _ultima = chave;
+                _ultimoTamanho = tamanho;
+            }
         }
         if (Math.Abs(FontSize - tamanho) > 0.01) SetCurrentValue(FontSizeProperty, tamanho);
         return base.MeasureOverride(availableSize);
+    }
+
+    /// <summary>
+    /// A largura do texto cresce junto com a letra: mede uma vez no tamanho máximo, calcula o tamanho que cabe e
+    /// confere (antes diminuía meio ponto por vez, medindo até 20 vezes cada botão).
+    /// </summary>
+    private double Calcular(string texto, double largura, Typeface fonte)
+    {
+        var maiorPalavra = LinhaUnica
+            ? texto
+            : texto.Split([' ', '-'], StringSplitOptions.RemoveEmptyEntries)
+                .OrderByDescending(p => p.Length).FirstOrDefault() ?? texto;
+        var noMaximo = Largura(maiorPalavra, fonte, TamanhoMaximo);
+        if (noMaximo <= largura) return TamanhoMaximo;
+        var tamanho = Math.Max(TamanhoMinimo, Math.Floor(TamanhoMaximo * largura / noMaximo * 2) / 2);
+        while (tamanho > TamanhoMinimo && Largura(maiorPalavra, fonte, tamanho) > largura) tamanho -= 0.5;
+        return Math.Max(TamanhoMinimo, tamanho);
     }
 
     private double Largura(string palavra, Typeface fonte, double tamanho) =>

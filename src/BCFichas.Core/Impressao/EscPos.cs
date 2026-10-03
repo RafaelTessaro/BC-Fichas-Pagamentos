@@ -54,12 +54,17 @@ public static class EscPos
     }
 
     /// <summary>Monta o trabalho completo: cada página (ficha) é impressa e a guilhotina é acionada.</summary>
-    public static byte[] Trabalho(IReadOnlyList<SKBitmap> paginas, TipoCorte corte)
+    public static byte[] Trabalho(IEnumerable<SKBitmap> paginas, TipoCorte corte) => Trabalho(paginas, corte, out _);
+
+    /// <summary>Todas as páginas num trabalho só (cada uma vira ESC/POS e pode ser solta logo em seguida).</summary>
+    public static byte[] Trabalho(IEnumerable<SKBitmap> paginas, TipoCorte corte, out int quantidade)
     {
+        quantidade = 0;
         using var saida = new MemoryStream();
         saida.Write(Inicializar());
         foreach (var pagina in paginas)
         {
+            quantidade++;
             saida.Write(Imagem(pagina));
             if (corte == TipoCorte.Nenhum)
             {

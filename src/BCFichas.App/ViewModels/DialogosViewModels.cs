@@ -35,6 +35,11 @@ public sealed partial class MenuViewModel : ViewModelBase
             itens.Add(new("Reimprimir fichas", "Segunda via de um pedido", "IconeImpressora", "#7C3AED",
                 c.Protegida(TelaProtegida.Reimpressao),
                 () => AbrirPeloMenu(TelaProtegida.Reimpressao, () => new ReimpressaoViewModel(_p))));
+        // Sem a reimpressão liberada: um pedido pago cujas fichas não saíram (a impressora falhou) ainda pode ser
+        // impresso, uma vez, por aqui.
+        else if (principal.Sessao is { } sessao && principal.Sistema.Vendas.NaoImpressos(sessao.Id) > 0)
+            itens.Add(new("Fichas não impressas", "Pagos que não saíram", "IconeImpressora", "#DC2626", false,
+                () => AbrirPeloMenu(TelaProtegida.Nenhuma, () => new ReimpressaoViewModel(_p, soNaoImpressos: true))));
         if (c.LiberarDevolucao)
             itens.Add(new("Devolver fichas", "Devolve o valor em dinheiro", "IconeTroca", "#DB2777",
                 c.Protegida(TelaProtegida.Devolucao),

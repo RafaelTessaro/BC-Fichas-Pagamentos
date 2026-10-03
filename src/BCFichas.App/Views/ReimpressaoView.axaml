@@ -12,7 +12,7 @@
             <TextBlock Text="Voltar" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
-        <TextBlock Grid.Column="1" Text="Reimprimir fichas" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
+        <TextBlock Grid.Column="1" Text="{Binding Titulo}" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
         <TextBox Grid.Column="2" Classes="numero" Text="{Binding Busca}" Watermark="Nº do pedido" MinHeight="46"
                  VerticalAlignment="Center">
           <TextBox.InnerLeftContent>
@@ -87,15 +87,19 @@
                             <Run Text="{Binding Fichas}" />
                           </TextBlock>
                         </StackPanel>
-                        <Button Grid.Column="1" Classes="suave" Height="48"
-                                Command="{Binding $parent[UserControl].((vm:ReimpressaoViewModel)DataContext).ReimprimirItemCommand}"
-                                CommandParameter="{Binding}" IsVisible="{Binding TemFichas}"
-                                IsEnabled="{Binding $parent[UserControl].((vm:ReimpressaoViewModel)DataContext).PodeReimprimir}">
-                          <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconeImpressora}" Width="18" Height="18" />
-                            <TextBlock Text="Só este item" VerticalAlignment="Center" />
-                          </StackPanel>
-                        </Button>
+                        <!-- Fichas não impressas: só o pedido inteiro, sem "só este item" -->
+                        <Panel Grid.Column="1"
+                               IsVisible="{Binding !$parent[UserControl].((vm:ReimpressaoViewModel)DataContext).SoNaoImpressos}">
+                          <Button Classes="suave" Height="48"
+                                  Command="{Binding $parent[UserControl].((vm:ReimpressaoViewModel)DataContext).ReimprimirItemCommand}"
+                                  CommandParameter="{Binding}" IsVisible="{Binding TemFichas}"
+                                  IsEnabled="{Binding $parent[UserControl].((vm:ReimpressaoViewModel)DataContext).PodeReimprimir}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <PathIcon Data="{StaticResource IconeImpressora}" Width="18" Height="18" />
+                              <TextBlock Text="Só este item" VerticalAlignment="Center" />
+                            </StackPanel>
+                          </Button>
+                        </Panel>
                       </Grid>
                     </Border>
                   </DataTemplate>
@@ -106,7 +110,7 @@
                     Height="62" IsEnabled="{Binding PodeReimprimir}">
               <StackPanel Orientation="Horizontal" Spacing="10">
                 <PathIcon Data="{StaticResource IconeImpressora}" Foreground="White" Width="24" Height="24" />
-                <TextBlock Text="Reimprimir todas as fichas do pedido" Foreground="White" FontSize="19" FontWeight="Bold" />
+                <TextBlock Text="{Binding TextoImprimirTudo}" Foreground="White" FontSize="19" FontWeight="Bold" />
               </StackPanel>
             </Button>
           </Grid>

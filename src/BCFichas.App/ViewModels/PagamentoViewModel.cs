@@ -30,6 +30,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     private Pedido? _pedido;
     private FormaPagamento _forma;
     private bool _fechada;
+    private DateTime? _cobrandoDesde;
 
     public PagamentoViewModel(PrincipalViewModel principal, SessaoCaixa sessao, IReadOnlyList<LinhaCarrinho> linhas,
         Action aoConcluir)
@@ -82,8 +83,11 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     public bool EmErroImpressao => Etapa == EtapaPagamento.ErroImpressao;
     public bool PodeFechar => Etapa is EtapaPagamento.Escolher or EtapaPagamento.Dinheiro or EtapaPagamento.Recusado;
 
-    /// <summary>A impressora falhou: "Reimprimir depois" só quando a reimpressão está liberada no menu.</summary>
-    public string TextoFecharSemImprimir => _principal.Config.LiberarReimpressao ? "Reimprimir depois" : "Fechar";
+    /// <summary>
+    /// A impressora falhou: dá para fechar e imprimir depois pelo menu (Reimprimir fichas ou, sem a reimpressão
+    /// liberada, Fichas não impressas).
+    /// </summary>
+    public string TextoFecharSemImprimir => _principal.Config.LiberarReimpressao ? "Reimprimir depois" : "Imprimir depois";
 
     [RelayCommand]
     private void EscolherDinheiro()
@@ -107,7 +111,10 @@ public sealed partial class PagamentoViewModel : ViewModelBase
         }
         try
         {
-            _pedido = _principal.Sistema.Vendas.CriarPedido(_sessao, _linhas, FormaPagamento.Dinheiro, Recebido.Centavos);
+            // Gravar no banco fora da tela: no tablet o disco é lento e a tela não pode travar
+            var recebido = Recebido.Centavos;
+            _pedido = await Task.Run(() =>
+                _principal.Sistema.Vendas.CriarPedido(_sessao, _linhas, FormaPagamento.Dinheiro, recebido));
         }
         catch (ErroDeNegocio e)
         {
@@ -144,7 +151,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
 
         try
         {
-            _pedido = _principal.Sistema.Vendas.CriarPedido(_sessao, _linhas, forma);
+            _pedido = await Task.Run(() => _principal.Sistema.Vendas.CriarPedido(_sessao, _linhas, forma));
         }
         catch (ErroDeNegocio e)
         {
@@ -155,6 +162,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
 
         _cancelar = new CancellationTokenSource();
         var andamento = new Progress<string>(texto => Andamento = texto);
+        _cobrandoDesde = DateTime.UtcNow;
         ResultadoCobranca resultado;
         try
         {
@@ -183,6 +191,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
         {
             _cancelar?.Dispose();
             _cancelar = null;
+            _cobrandoDesde = null;
         }
 
         if (!resultado.Aprovado)
@@ -194,7 +203,8 @@ public sealed partial class PagamentoViewModel : ViewModelBase
             return;
         }
 
-        _pedido = _principal.Sistema.Vendas.ConfirmarPagamento(_pedido.Id, resultado.Autorizacao);
+        var pedidoId = _pedido.Id;
+        _pedido = await Task.Run(() => _principal.Sistema.Vendas.ConfirmarPagamento(pedidoId, resultado.Autorizacao));
         await Concluir();
     }
 
@@ -207,9 +217,16 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     [RelayCommand]
     private void SimularRecusar() => (_principal.Sistema.Maquininha as MaquininhaSimulada)?.Recusar("Cartão recusado (simulação)");
 
-    /// <summary>A maquininha separada aprovou: o operador confirma e as fichas saem.</summary>
+    /// <summary>
+    /// A maquininha separada aprovou: o operador confirma e as fichas saem. O botão aparece no lugar de Débito e
+    /// Crédito: um toque duplo nessas formas não pode aprovar sem o cartão passar (ignora o primeiro meio segundo).
+    /// </summary>
     [RelayCommand]
-    private void ConfirmarNaMaquininha() => (_principal.Sistema.Maquininha as MaquininhaSeparada)?.Aprovar();
+    private void ConfirmarNaMaquininha()
+    {
+        if (_cobrandoDesde is not { } desde || DateTime.UtcNow - desde < TimeSpan.FromMilliseconds(600)) return;
+        (_principal.Sistema.Maquininha as MaquininhaSeparada)?.Aprovar();
+    }
 
     [RelayCommand]
     private void NaoAprovou() =>
@@ -260,12 +277,16 @@ public sealed partial class PagamentoViewModel : ViewModelBase
 
         var pedido = _pedido;
         var fichas = GeradorFichas.Gerar(pedido, _principal.Config);
-        var resultado = await Task.Run(() => _principal.Sistema.Impressao.Fichas(fichas));
+        var resultado = await Task.Run(() =>
+        {
+            var r = _principal.Sistema.Impressao.Fichas(fichas);
+            if (r.Ok) _principal.Sistema.Vendas.RegistrarImpressao(pedido.Id);
+            return r;
+        });
         Imprimindo = false;
 
         if (resultado.Ok)
         {
-            _principal.Sistema.Vendas.RegistrarImpressao(pedido.Id);
             ResultadoImpressao = resultado.Mensagem;
             // Com troco também fecha sozinho: o troco fica em cima do pedido, sem travar a próxima venda.
             _ = FecharSozinho();
