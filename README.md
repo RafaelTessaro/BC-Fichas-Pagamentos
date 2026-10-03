@@ -13,7 +13,7 @@ na **Elgin i9** em papel de 80 mm.
 
 | Tela | O que faz |
 | --- | --- |
-| **Venda** | Barra lateral preta e verde com a marca da BC Fichas, menu, caixa, as **abas do cardápio** (Comidas, Bebidas… até umas 6, uma embaixo da outra), os botões **Sangria** e **Fechar caixa** e o relógio; botões com foto do produto (ou só cor) que **ocupam a tela toda, sem espaço vazio** (cada aba tem a sua grade, veja "Grade de botões"); pedido com + e − (o valor de cada linha fica sempre à vista, mesmo com nome comprido); total e botão de pagamento. Depois de uma venda em dinheiro com troco, o **troco** fica uns 5 segundos em cima do pedido (sem tapar os produtos). |
+| **Venda** | Barra lateral preta e verde com a marca da BC Fichas, menu, caixa, as **abas do cardápio** (Comidas, Bebidas… até umas 6, uma embaixo da outra), os botões **Sangria** e **Fechar caixa** (grandes, um embaixo do outro) e o relógio; o telefone do suporte fica no Menu e na abertura do caixa; botões com foto do produto (ou só cor) que **ocupam a tela toda, sem espaço vazio** (cada aba tem a sua grade, veja "Grade de botões"); pedido com + e − (o valor de cada linha fica sempre à vista, mesmo com nome comprido); total e botão de pagamento. Depois de uma venda em dinheiro com troco, o **troco** fica uns 5 segundos em cima do pedido (sem tapar os produtos). |
 | **Pagamento** | Cartões grandes para Dinheiro, PIX (com o símbolo oficial do Pix), Débito e Crédito. Dinheiro: o valor recebido **já vem com o valor da venda** (pagou certinho, é só confirmar); se o cliente deu mais, é só digitar (a primeira tecla apaga e começa do zero) ou tocar nas notas, e o troco (ou quanto falta) aparece embaixo; o **Limpar** fica no teclado, no lugar do 00. Débito, crédito e PIX registrados para o relatório (veja "Maquininha de cartão"). |
 | **Menu** | Produtos, Relatórios, Configurações e Sair (Sangria e Fechar caixa ficam na barra lateral). **Reimprimir** e **Devolver fichas** só aparecem quando a BC Fichas libera para o cliente (Configurações → Máquina). Ao voltar de uma tela aberta pelo menu, o menu continua aberto; ele só fecha no X. |
 | **Produtos** | Nome, detalhe, preço, custo, aba, posição na tela, cor, imagem (o botão Imagem abre sempre em `C:\Sistema_New\produtos`), estoque, fichas por unidade e **combos** (veja "Combos"). Produto pode ficar fora da tela de venda. |
@@ -184,14 +184,21 @@ ninguém apagar um evento em andamento com um toque.
 
 **Reprogramação para novo evento → Zerar programação:** é o "banco vazio" de antes, para cadastrar um evento
 diferente. Apaga vendas, produtos, combos, abas, evento e o jeito da ficha. Ficam só o número do caixa, a impressora, as opções de tela, as pastas e a senha
-master; Devolução e Reimpressão voltam a ficar desligadas no menu.
+master; Devolução e Reimpressão voltam a ficar desligadas no menu. As fotos dos produtos, os logotipos e as fichas
+salvas pela impressora "Salvar em arquivo" (pasta `dados\impressoes`) também são apagados.
+
+**Fotos e logotipos não acumulam:** ao escolher uma foto ou um logotipo, o programa guarda uma cópia reduzida em
+`dados\imagens` com o nome tirado da própria imagem, então a mesma foto escolhida de novo (no mesmo produto ou em
+outro) não vira outro arquivo. As imagens que nenhum produto nem o logotipo usam mais (foto trocada, produto
+excluído, logotipo antigo, programação de outro evento) são apagadas ao abrir o programa, ao restaurar um backup,
+ao apagar as vendas e ao zerar a programação.
 
 | Aba Máquina | Qual backup restaurar | Número do caixa |
 | --- | --- | --- |
 | ![](docs/telas/60-config-maquina-liberar.png) | ![](docs/telas/47-restaurar-lista.png) | ![](docs/telas/44-numero-do-caixa.png) |
 
 Antes de apagar ou restaurar, o programa sempre guarda uma **cópia de segurança** do banco em `dados\backups`
-(as 15 últimas). Para voltar uma cópia: feche o BC Fichas, copie o arquivo `.db` da cópia para
+(as 15 últimas; a cópia é só do banco, sem as fotos — para guardar um evento inteiro, use o **Fazer backup**). Para voltar uma cópia: feche o BC Fichas, copie o arquivo `.db` da cópia para
 `dados\bcfichas.db` (substituindo) e abra de novo.
 
 ## Instalar no tablet

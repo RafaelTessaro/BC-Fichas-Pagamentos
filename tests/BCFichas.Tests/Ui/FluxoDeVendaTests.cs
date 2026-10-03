@@ -300,9 +300,9 @@ public class FluxoDeVendaTests
                 c.DrawText(emoji, 18, 205, p);
                 BCFichas.Core.Impressao.ImagemUtil.SalvarPng(bmp, origem);
             }
-            var relativo = Path.Combine("imagens", "produtos", produto.Id + ".png");
-            BCFichas.Core.Impressao.ImagemUtil.Importar(origem, Path.Combine(t.Sistema.PastaDados, relativo), 256);
-            produto.Imagem = relativo;
+            var nome = BCFichas.Core.Impressao.ImagemUtil.Importar(origem,
+                Path.Combine(t.Sistema.PastaImagens, "produtos"), "", 256);
+            produto.Imagem = Path.Combine("imagens", "produtos", nome);
             t.Sistema.Catalogo.SalvarProduto(produto, 12);
         }
         TelaDeTeste.Atualizar();

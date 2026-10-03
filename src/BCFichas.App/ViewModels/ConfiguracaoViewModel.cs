@@ -928,9 +928,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         if (arquivo is null) return;
         try
         {
-            var relativo = Path.Combine("imagens", "logo-" + DateTime.Now.Ticks + ".png");
-            ImagemUtil.Importar(arquivo, Path.Combine(Sistema.PastaDados, relativo), 600);
-            Logo = relativo;
+            Logo = Path.Combine("imagens", ImagemUtil.Importar(arquivo, Sistema.PastaImagens, "logo-", 600));
         }
         catch (Exception e)
         {

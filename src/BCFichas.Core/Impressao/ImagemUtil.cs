@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using SkiaSharp;
 
 namespace BCFichas.Core.Impressao;
@@ -37,14 +38,20 @@ public static class ImagemUtil
     }
 
     /// <summary>
-    /// Copia uma imagem escolhida pelo usuário para a pasta do sistema, já reduzida (economiza memória do tablet).
+    /// Copia uma imagem escolhida pelo usuário para <paramref name="pasta"/>, já reduzida (economiza memória do
+    /// tablet). O nome do arquivo vem do conteúdo da imagem: escolher a mesma foto de novo (em outro produto ou no
+    /// mesmo) usa o arquivo que já existe, sem fazer outra cópia. Devolve o nome do arquivo.
     /// </summary>
-    public static void Importar(string origem, string destino, int tamanhoMaximo)
+    public static string Importar(string origem, string pasta, string prefixo, int tamanhoMaximo)
     {
         using var imagem = SKBitmap.Decode(origem) ?? throw new ErroDeNegocio("Não consegui abrir esta imagem.");
         using var menor = Ajustar(imagem, tamanhoMaximo, tamanhoMaximo);
-        Directory.CreateDirectory(Path.GetDirectoryName(destino)!);
-        SalvarPng(menor, destino);
+        var png = Png(menor);
+        var nome = prefixo + Convert.ToHexString(SHA256.HashData(png))[..16].ToLowerInvariant() + ".png";
+        Directory.CreateDirectory(pasta);
+        var destino = Path.Combine(pasta, nome);
+        if (!File.Exists(destino)) File.WriteAllBytes(destino, png);
+        return nome;
     }
 
     public static void SalvarPng(SKBitmap bitmap, string caminho)

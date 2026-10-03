@@ -106,6 +106,11 @@ public class TelasDaVersao311Tests
         var sangria = Assert.Single(Visiveis(t, b => b.Command == t.Venda.AbrirSangriaCommand));
         var fechar = Assert.Single(Visiveis(t, b => b.Command == t.Venda.FecharCaixaCommand));
         Assert.True(TemTexto(fechar, "Fechar caixa"));
+        // Um embaixo do outro, na largura toda da barra: botões grandes para o dedo
+        Assert.All(new[] { sangria, fechar }, b => Assert.True(b.Bounds.Width >= 110 && b.Bounds.Height >= 56,
+            $"{b.Bounds.Width:0} × {b.Bounds.Height:0}"));
+        Assert.True(fechar.TranslatePoint(new Point(0, 0), t.Janela)!.Value.Y >
+                    sangria.TranslatePoint(new Point(0, sangria.Bounds.Height), t.Janela)!.Value.Y);
         // Na lateral esquerda, embaixo das abas e em cima do relógio
         Assert.True(sangria.TranslatePoint(new Point(0, 0), t.Janela)!.Value.X < 136);
         var relogio = t.Achar<TextBlock>(x => x.Text == t.Principal.Relogio && x.IsEffectivelyVisible);
@@ -117,6 +122,8 @@ public class TelasDaVersao311Tests
         Assert.DoesNotContain(textos, x => x.Contains("Maquininha", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(textos, x => x.Contains(t.Sistema.Impressao.Descricao(), StringComparison.Ordinal));
         Assert.Contains(textos, x => x == t.Principal.Versao);
+        // O telefone do suporte saiu da lateral e foi para o menu
+        Assert.DoesNotContain(textos, x => x.Contains(Configuracao.Suporte, StringComparison.Ordinal));
 
         // Sangria abre direto (o Voltar volta para a venda, sem o menu)
         sangria.Command!.Execute(null);
@@ -133,6 +140,8 @@ public class TelasDaVersao311Tests
         t.Venda.AbrirMenuCommand.Execute(null);
         var menu = Assert.IsType<MenuViewModel>(t.Principal.Dialogo);
         Assert.DoesNotContain(menu.Itens, i => i.Titulo is "Sangria / Suprimento" or "Fechar caixa");
+        TelaDeTeste.Atualizar();
+        t.Achar<TextBlock>(x => x.Text == "Suporte BC Fichas: " + Configuracao.Suporte);
     }
 
     [AvaloniaFact]

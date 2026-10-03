@@ -63,40 +63,35 @@
           </ScrollViewer>
         </Grid>
 
-        <!-- Sangria e fechar o caixa à mão, sem abrir o menu (no modo teste, o "fechar" sai do teste) -->
-        <Grid Grid.Row="4" ColumnDefinitions="*,6,*" Margin="0,0,0,12">
+        <!-- Sangria e fechar o caixa à mão, sem abrir o menu (no modo teste, o "fechar" sai do teste).
+             Um embaixo do outro, na largura toda da barra: fáceis de acertar com o dedo. -->
+        <StackPanel Grid.Row="4" Spacing="6" Margin="0,0,0,10">
           <Button Classes="lateral acao" Command="{Binding AbrirSangriaCommand}" ToolTip.Tip="Sangria e suprimento">
-            <StackPanel Spacing="3">
+            <StackPanel Spacing="2">
               <PathIcon Data="{StaticResource IconeDinheiro}" />
               <TextBlock Text="Sangria" />
             </StackPanel>
           </Button>
-          <Button Grid.Column="2" Classes="lateral acao" Command="{Binding FecharCaixaCommand}"
-                  ToolTip.Tip="Fechar o caixa">
-            <StackPanel Spacing="3">
+          <Button Classes="lateral acao" Command="{Binding FecharCaixaCommand}" ToolTip.Tip="Fechar o caixa">
+            <StackPanel Spacing="2">
               <PathIcon Data="{StaticResource IconeCadeado}" />
               <TextBlock Text="Fechar caixa" IsVisible="{Binding !Principal.ModoTeste}" />
               <TextBlock Text="Sair do teste" IsVisible="{Binding Principal.ModoTeste}" />
             </StackPanel>
           </Button>
-        </Grid>
+        </StackPanel>
 
-        <StackPanel Grid.Row="5" Spacing="0" Margin="0,0,0,12">
+        <StackPanel Grid.Row="5" Spacing="0" Margin="0,0,0,8">
           <TextBlock Text="{Binding Principal.Relogio}" Foreground="White" FontSize="34" FontWeight="Bold"
                      HorizontalAlignment="Center" />
           <TextBlock Text="{Binding Principal.Data}" Foreground="{StaticResource MarcaTextoSuave}" FontSize="14"
                      HorizontalAlignment="Center" />
         </StackPanel>
 
-        <!-- Suporte e versão -->
-        <Border Grid.Row="6" BorderBrush="{StaticResource MarcaBorda}" BorderThickness="0,1,0,0" Padding="0,8,0,0">
-          <StackPanel Spacing="4">
-            <TextBlock Text="{Binding Principal.Suporte}" FontSize="11" Foreground="{StaticResource Marca}"
-                       FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center"
-                       IsVisible="{Binding $parent[Window].Bounds.Height, Converter={x:Static v:Conversores.TelaAlta}}" />
-            <TextBlock Text="{Binding Principal.Versao}" FontSize="11" Foreground="{StaticResource MarcaTextoSuave}"
-                       HorizontalAlignment="Center" />
-          </StackPanel>
+        <!-- Versão (o telefone do suporte fica no menu e na abertura do caixa) -->
+        <Border Grid.Row="6" BorderBrush="{StaticResource MarcaBorda}" BorderThickness="0,1,0,0" Padding="0,6,0,0">
+          <TextBlock Text="{Binding Principal.Versao}" FontSize="11" Foreground="{StaticResource MarcaTextoSuave}"
+                     HorizontalAlignment="Center" />
         </Border>
       </Grid>
     </Border>
@@ -300,22 +295,20 @@
   <UserControl.Styles>
     <!-- Sangria e Fechar caixa na barra lateral -->
     <Style Selector="Button.lateral.acao">
-      <Setter Property="MinHeight" Value="62" />
-      <Setter Property="Padding" Value="2,6" />
-      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="Height" Value="58" />
+      <Setter Property="Padding" Value="4,4" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="Button.lateral.acao PathIcon">
-      <Setter Property="Width" Value="22" />
-      <Setter Property="Height" Value="22" />
+      <Setter Property="Width" Value="24" />
+      <Setter Property="Height" Value="24" />
       <Setter Property="Foreground" Value="{StaticResource Marca}" />
       <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
     <Style Selector="Button.lateral.acao TextBlock">
       <Setter Property="Foreground" Value="White" />
-      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontSize" Value="14" />
       <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="TextWrapping" Value="Wrap" />
-      <Setter Property="TextAlignment" Value="Center" />
       <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
     <Style Selector="Border.troco">

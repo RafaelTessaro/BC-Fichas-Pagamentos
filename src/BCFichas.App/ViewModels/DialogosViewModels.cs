@@ -52,6 +52,7 @@ public sealed partial class MenuViewModel : ViewModelBase
     }
 
     public List<ItemMenu> Itens { get; }
+    public string Suporte => "Suporte BC Fichas: " + Configuracao.Suporte;
 
     /// <summary>Tela aberta pelo menu: o Voltar dela traz o menu de volta.</summary>
     private void AbrirPeloMenu(TelaProtegida tela, Func<PaginaViewModel> criar) =>

@@ -64,6 +64,7 @@ public sealed class ProgramacaoServico
     }
 
     public string PastaBackups => Path.Combine(_pastaDados, "backups");
+    public string PastaImagens => Path.Combine(_pastaDados, "imagens");
 
     /// <summary>
     /// Caminho completo da pasta do backup. Aceita %USERPROFILE% e afins; um caminho sem a letra do disco vale a
@@ -298,6 +299,7 @@ public sealed class ProgramacaoServico
 
         _config.Salvar(config);
         _catalogo.AvisarAlteracao();
+        LimparArquivosSemUso();
     }
 
     // ---------- Começar de novo ----------
@@ -320,6 +322,7 @@ public sealed class ProgramacaoServico
             ApagarVendas(c, t);
         });
         _catalogo.AvisarAlteracao();
+        LimparArquivosSemUso();
     }
 
     /// <summary>
@@ -342,6 +345,59 @@ public sealed class ProgramacaoServico
         nova.TelasProtegidas = atual.TelasProtegidas;
         _config.Salvar(nova);
         _catalogo.AvisarAlteracao();
+        LimparArquivosSemUso(); // sem produtos e sem logotipo: as fotos e os logos do evento anterior saem todos
+    }
+
+    /// <summary>
+    /// Apaga da pasta de dados as imagens que nenhum produto nem o logotipo usam: foto trocada, produto excluído,
+    /// logotipo antigo, programação de outro evento. Feito ao abrir o programa, ao restaurar e ao zerar a
+    /// programação (com uma tela de produtos aberta, uma foto escolhida e ainda não salva sumiria). Devolve
+    /// quantas apagou.
+    /// </summary>
+    public int LimparImagensSemUso()
+    {
+        if (!Directory.Exists(PastaImagens)) return 0;
+        var usadas = _catalogo.Produtos().Select(p => p.Imagem).Append(_config.Atual.Logo)
+            .Where(i => !string.IsNullOrWhiteSpace(i))
+            .Select(i => Path.GetFullPath(Path.Combine(_pastaDados, i!)))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var apagadas = 0;
+        foreach (var arquivo in Directory.GetFiles(PastaImagens, "*", SearchOption.AllDirectories))
+        {
+            if (usadas.Contains(Path.GetFullPath(arquivo))) continue;
+            try
+            {
+                File.Delete(arquivo);
+                apagadas++;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Em uso agora: sai da próxima vez.
+            }
+        }
+        return apagadas;
+    }
+
+    /// <summary>
+    /// Depois de apagar vendas, restaurar ou zerar: tira as imagens sem uso e as fichas que a impressora "Salvar
+    /// em arquivo" (teste sem impressora) guardou na pasta padrão.
+    /// </summary>
+    private void LimparArquivosSemUso()
+    {
+        LimparImagensSemUso();
+        var impressoes = Path.Combine(_pastaDados, Impressao.ServicoImpressao.PastaArquivoPadrao);
+        if (!Directory.Exists(impressoes)) return;
+        foreach (var arquivo in Directory.GetFiles(impressoes))
+        {
+            try
+            {
+                File.Delete(arquivo);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Em uso agora: sai da próxima vez.
+            }
+        }
     }
 
     /// <summary>

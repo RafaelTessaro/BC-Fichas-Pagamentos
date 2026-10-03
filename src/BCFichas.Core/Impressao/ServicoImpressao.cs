@@ -24,7 +24,10 @@ public sealed class ServicoImpressao
 
     public ResultadoImpressao? Ultimo { get; private set; }
 
-    public string PastaPadraoArquivo => Path.Combine(_pastaDados, "impressoes");
+    /// <summary>Pasta (dentro da pasta de dados) onde "Salvar em arquivo" guarda as fichas, se não escolher outra.</summary>
+    public const string PastaArquivoPadrao = "impressoes";
+
+    public string PastaPadraoArquivo => Path.Combine(_pastaDados, PastaArquivoPadrao);
 
     public IDestinoImpressao CriarDestino(Configuracao c) => c.Impressora switch
     {

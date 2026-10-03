@@ -471,9 +471,8 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
         if (arquivo is null) return;
         try
         {
-            var relativo = Path.Combine("imagens", "produtos", Guid.NewGuid().ToString("N")[..12] + ".png");
-            ImagemUtil.Importar(arquivo, Path.Combine(Sistema.PastaDados, relativo), 256);
-            Imagem = relativo;
+            var nome = ImagemUtil.Importar(arquivo, Path.Combine(Sistema.PastaImagens, "produtos"), "", 256);
+            Imagem = Path.Combine("imagens", "produtos", nome);
         }
         catch (Exception e)
         {

@@ -5,7 +5,7 @@
              x:Class="BCFichas.App.Views.MenuView"
              x:DataType="vm:MenuViewModel">
   <Border Classes="cartao" Width="900" Padding="18">
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,*,Auto">
       <Grid ColumnDefinitions="*,Auto" Margin="6,0,0,10">
         <TextBlock Text="Menu" Classes="titulo" VerticalAlignment="Center" />
         <Button Grid.Column="1" Classes="fantasma" Command="{Binding FecharCommand}" Width="52" Height="52" Padding="0">
@@ -41,6 +41,11 @@
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
+      <!-- O telefone do suporte saiu da barra lateral (mais espaço para Sangria e Fechar caixa) -->
+      <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center" Margin="0,12,0,0">
+        <PathIcon Data="{StaticResource IconeTelefone}" Width="16" Height="16" Foreground="{StaticResource TextoSuave}" />
+        <TextBlock Text="{Binding Suporte}" Classes="suave" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+      </StackPanel>
     </Grid>
   </Border>
 </UserControl>
