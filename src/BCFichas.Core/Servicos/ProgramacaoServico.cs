@@ -80,15 +80,19 @@ public sealed class ProgramacaoServico
         return $"BCFichas - {(evento.Length == 0 ? "programacao" : evento)}{Extensao}";
     }
 
-    public SituacaoMaquina Situacao()
+    public SituacaoMaquina Situacao() => _banco.Transacao((c, t) =>
     {
-        int Contar(string sql) => (int)_banco.Escalar<long>(sql);
+        // Tudo numa conexão só (no tablet, abrir a aba Máquina não pode demorar com muitas vendas guardadas)
+        int Contar(string sql) => (int)Banco.Escalar<long>(c, t, sql);
+        var pedidos = Banco.Consultar(c, t,
+            "SELECT COALESCE(SUM(teste = 0), 0), COALESCE(SUM(teste = 1), 0) FROM pedidos",
+            l => (Reais: (int)l.GetInt64(0), Teste: (int)l.GetInt64(1))).Single();
         return new SituacaoMaquina(
             Produtos: Contar("SELECT COUNT(*) FROM produtos"),
             Abas: Contar("SELECT COUNT(*) FROM abas"),
             Combos: Contar("SELECT COUNT(DISTINCT combo_id) FROM componentes_combo"),
-            Pedidos: Contar("SELECT COUNT(*) FROM pedidos WHERE teste = 0"),
-            PedidosTeste: Contar("SELECT COUNT(*) FROM pedidos WHERE teste = 1"),
+            Pedidos: pedidos.Reais,
+            PedidosTeste: pedidos.Teste,
             Caixas: Contar("SELECT COUNT(*) FROM sessoes"),
             CaixaAberto: Contar("SELECT COUNT(*) FROM sessoes WHERE fechada_em IS NULL AND teste = 0") > 0,
             PedidosNoCaixaAberto: Contar("""
@@ -96,8 +100,8 @@ public sealed class ProgramacaoServico
                 WHERE s.fechada_em IS NULL AND s.teste = 0
                 """),
             ModoTeste: Contar("SELECT COUNT(*) FROM sessoes WHERE fechada_em IS NULL AND teste = 1") > 0,
-            EstoqueAVoltar: _banco.Transacao((c, t) => EstoqueVendido(c, t).Values.Sum()));
-    }
+            EstoqueAVoltar: EstoqueVendido(c, t).Values.Sum());
+    });
 
     /// <summary>
     /// Backups (.bcf) achados direto nas pastas (pasta do backup, pendrives), do mais novo para o mais velho. Os
@@ -300,6 +304,7 @@ public sealed class ProgramacaoServico
         _config.Salvar(config);
         _catalogo.AvisarAlteracao();
         LimparArquivosSemUso();
+        Compactar();
     }
 
     // ---------- Começar de novo ----------
@@ -315,7 +320,8 @@ public sealed class ProgramacaoServico
     /// </param>
     public void ApagarVendas(bool devolverEstoque = true)
     {
-        CopiaDeSeguranca("antes-de-apagar-vendas");
+        // Máquina já pura: nada a perder, e a cópia empurraria para fora uma cópia que ainda tem vendas.
+        if (!Situacao().Pura) CopiaDeSeguranca("antes-de-apagar-vendas");
         _banco.Transacao((c, t) =>
         {
             if (devolverEstoque) DevolverAoEstoque(c, t);
@@ -323,6 +329,7 @@ public sealed class ProgramacaoServico
         });
         _catalogo.AvisarAlteracao();
         LimparArquivosSemUso();
+        Compactar();
     }
 
     /// <summary>
@@ -346,6 +353,24 @@ public sealed class ProgramacaoServico
         _config.Salvar(nova);
         _catalogo.AvisarAlteracao();
         LimparArquivosSemUso(); // sem produtos e sem logotipo: as fotos e os logos do evento anterior saem todos
+        Compactar();
+    }
+
+    /// <summary>
+    /// Depois de apagar muita coisa: o banco devolve o espaço vazio ao disco (sem isso, o arquivo continua do
+    /// tamanho do maior evento que já guardou) e o arquivo -wal volta a zero.
+    /// </summary>
+    private void Compactar()
+    {
+        try
+        {
+            _banco.Executar("VACUUM");
+            _banco.Executar("PRAGMA wal_checkpoint(TRUNCATE)");
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException)
+        {
+            // Banco ocupado agora (outra leitura aberta): fica para a próxima vez.
+        }
     }
 
     /// <summary>
@@ -356,7 +381,7 @@ public sealed class ProgramacaoServico
     /// </summary>
     public int LimparImagensSemUso()
     {
-        if (!Directory.Exists(PastaImagens)) return 0;
+        if (!Directory.Exists(PastaImagens) || _config.ComDefeito) return 0;
         var usadas = _catalogo.Produtos().Select(p => p.Imagem).Append(_config.Atual.Logo)
             .Where(i => !string.IsNullOrWhiteSpace(i))
             .Select(i => Path.GetFullPath(Path.Combine(_pastaDados, i!)))
@@ -376,6 +401,27 @@ public sealed class ProgramacaoServico
             }
         }
         return apagadas;
+    }
+
+    /// <summary>
+    /// Ao abrir o programa: a impressora "Salvar em arquivo" (teste sem impressora) grava uma imagem por ficha na
+    /// pasta padrão; ficam só as últimas, para uma máquina esquecida nesse modo não encher o disco.
+    /// </summary>
+    public void LimparFichasSalvasAntigas(int manter = 300)
+    {
+        var impressoes = Path.Combine(_pastaDados, Impressao.ServicoImpressao.PastaArquivoPadrao);
+        if (!Directory.Exists(impressoes)) return;
+        foreach (var arquivo in new DirectoryInfo(impressoes).GetFiles().OrderByDescending(f => f.LastWriteTimeUtc).Skip(manter))
+        {
+            try
+            {
+                arquivo.Delete();
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Em uso agora: sai da próxima vez.
+            }
+        }
     }
 
     /// <summary>
@@ -412,7 +458,10 @@ public sealed class ProgramacaoServico
         if (File.Exists(destino)) File.Delete(destino);
         // VACUUM INTO faz uma cópia completa e consistente mesmo com o programa aberto (WAL)
         _banco.Executar("VACUUM INTO $d", ("$d", destino));
-        foreach (var velho in Directory.GetFiles(PastaBackups, "bcfichas-*.db").OrderByDescending(f => f).Skip(CopiasGuardadas))
+        // A que acabou de ser feita fica sempre, mesmo se o relógio do tablet voltou no tempo e o nome dela é "velho"
+        foreach (var velho in Directory.GetFiles(PastaBackups, "bcfichas-*.db")
+                     .Where(f => !string.Equals(Path.GetFullPath(f), Path.GetFullPath(destino), StringComparison.OrdinalIgnoreCase))
+                     .OrderByDescending(f => f).Skip(CopiasGuardadas - 1))
             File.Delete(velho);
         return destino;
     }

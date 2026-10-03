@@ -217,8 +217,8 @@ public sealed class CatalogoServico
                     l => (Controla: l.GetInt64(0) == 1, Estoque: l.GetInt64(1)), ("$id", produto.Id)).FirstOrDefault();
                 if (antes.Controla != produto.ControlaEstoque || antes.Estoque != produto.Estoque)
                     Banco.Executar(c, t, """
-                        UPDATE itens_pedido SET baixado = 0 WHERE produto_id = $id;
-                        UPDATE componentes_item SET baixado = 0 WHERE produto_id = $id;
+                        UPDATE itens_pedido SET baixado = 0 WHERE produto_id = $id AND baixado <> 0;
+                        UPDATE componentes_item SET baixado = 0 WHERE produto_id = $id AND baixado <> 0;
                         """, ("$id", produto.Id));
                 Banco.Executar(c, t, """
                     UPDATE produtos SET nome = $nome, detalhe = $detalhe, aba_id = $aba, posicao = $pos,

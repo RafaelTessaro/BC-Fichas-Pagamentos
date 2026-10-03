@@ -22,6 +22,12 @@ public sealed class ConfigServico
 
     public Configuracao Atual { get; private set; }
 
+    /// <summary>
+    /// As configurações gravadas não deu para ler (ex.: gravadas por uma versão mais nova): o programa usa as
+    /// padrão, e nada que dependa delas (como a limpeza das imagens sem uso) apaga arquivos.
+    /// </summary>
+    public bool ComDefeito { get; private set; }
+
     public event Action<Configuracao>? Alterada;
 
     public void Salvar(Configuracao configuracao)
@@ -41,6 +47,7 @@ public sealed class ConfigServico
             "INSERT INTO config (chave, valor) VALUES ('geral', $v) ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor",
             ("$v", json));
         Atual = configuracao.Clonar();
+        ComDefeito = false;
         Alterada?.Invoke(Atual);
     }
 
@@ -57,6 +64,7 @@ public sealed class ConfigServico
         }
         catch (JsonException)
         {
+            ComDefeito = true;
             return new Configuracao { VersaoConfig = Configuracao.VersaoAtual };
         }
     }

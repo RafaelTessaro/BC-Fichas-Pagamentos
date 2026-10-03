@@ -35,7 +35,9 @@ public sealed class Banco
         var conexao = new SqliteConnection(_conexao);
         conexao.Open();
         using var cmd = conexao.CreateCommand();
-        cmd.CommandText = "PRAGMA foreign_keys = ON; PRAGMA synchronous = FULL;";
+        // journal_size_limit: depois de uma operação grande (apagar as vendas, restaurar), o arquivo -wal volta a
+        // no máximo 4 MB em vez de ficar do tamanho dela.
+        cmd.CommandText = "PRAGMA foreign_keys = ON; PRAGMA synchronous = FULL; PRAGMA journal_size_limit = 4194304;";
         cmd.ExecuteNonQuery();
         return conexao;
     }

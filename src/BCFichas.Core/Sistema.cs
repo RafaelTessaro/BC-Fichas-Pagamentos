@@ -62,10 +62,12 @@ public sealed class Sistema
         {
             sistema.Catalogo.SalvarAba(new Aba { Nome = "ITENS" });
         }
-        // Fotos e logotipos que sobraram (trocados, de produtos excluídos) não ficam acumulando na pasta de dados.
+        // Fotos e logotipos que sobraram (trocados, de produtos excluídos) e fichas salvas em arquivo não ficam
+        // acumulando na pasta de dados.
         try
         {
             sistema.Programacao.LimparImagensSemUso();
+            sistema.Programacao.LimparFichasSalvasAntigas();
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
