@@ -82,7 +82,8 @@ se ela estiver travada).
 2. Aponte a câmera para o QR code (ou digite o endereço no navegador). O QR code já leva o PIN.
 3. Pronto. O celular guarda o PIN: da próxima vez é só abrir.
 
-- **Android:** quando aparecer "Wi-Fi sem acesso à internet", toque em **Manter conectado**. Se o painel não abrir,
+- **Android:** quando avisar que a rede não tem acesso à internet, responda que quer continuar conectado (o nome
+  do botão muda conforme a marca: "Sim", "Manter conectado"...). Se o painel não abrir,
   **desligue os dados móveis** (com eles ligados, alguns Android mandam tudo pelo 4G, onde as máquinas não estão).
 - **iPhone:** abra no **Safari** e toque em Compartilhar → **Adicionar à Tela de Início**: fica um ícone do
   BC Fichas que abre como um aplicativo.
@@ -128,8 +129,9 @@ BC Fichas original.
 Hoje o painel funciona pelo navegador, sem instalar nada, no Android e no iPhone. Um aplicativo próprio seria:
 
 - **Android:** dá para fazer um aplicativo que se conecta sozinho no Wi-Fi do evento e ignora o 4G (resolve o
-  "desligue os dados móveis"). Desde setembro de 2026, para instalar fora da Play Store no Brasil, o Google exige
-  o cadastro do desenvolvedor (US$ 25, uma vez, com documento).
+  "desligue os dados móveis"). Para testar, a conta gratuita do Google instala em até 20 aparelhos. Para distribuir
+  a todos, o Google passa a exigir em 2027 o cadastro do desenvolvedor (US$ 25, uma vez, com documento) também para
+  aplicativos instalados fora das lojas (desde 30/09/2026 isso já vale no Brasil para os instalados pelas lojas).
 - **iPhone:** a Apple exige a conta de desenvolvedor (US$ 99 por ano) e um Mac (ou um serviço de compilação). Para
   o iPhone, o painel pelo Safari com "Adicionar à Tela de Início" já faz o mesmo papel.
 
