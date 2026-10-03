@@ -356,4 +356,50 @@
     <Setter Property="Width" Value="22" />
     <Setter Property="Height" Value="22" />
   </Style>
+
+  <!-- Escolha entre opções (maquininha, grade da aba): cartão que fica verde quando escolhido -->
+  <Style Selector="Button.escolha">
+    <Setter Property="Background" Value="{StaticResource Superficie}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Borda}" />
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="14,12" />
+    <Setter Property="MinHeight" Value="76" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.escolha:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource Fundo}" />
+    <Setter Property="BorderBrush" Value="#CBD5E1" />
+  </Style>
+  <Style Selector="Button.escolha.escolhida">
+    <Setter Property="Background" Value="{StaticResource PrimariaClara}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Primaria}" />
+  </Style>
+  <Style Selector="Button.escolha.escolhida:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource PrimariaClara}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Primaria}" />
+  </Style>
+  <Style Selector="Button.escolha Border.icone-escolha">
+    <Setter Property="Width" Value="44" />
+    <Setter Property="Height" Value="44" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Background" Value="{StaticResource Fundo}" />
+  </Style>
+  <Style Selector="Button.escolha Border.icone-escolha PathIcon">
+    <Setter Property="Foreground" Value="{StaticResource TextoSuave}" />
+  </Style>
+  <Style Selector="Button.escolha.escolhida Border.icone-escolha">
+    <Setter Property="Background" Value="{StaticResource Primaria}" />
+  </Style>
+  <Style Selector="Button.escolha.escolhida Border.icone-escolha PathIcon">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.escolha PathIcon.marcada">
+    <Setter Property="IsVisible" Value="False" />
+    <Setter Property="Foreground" Value="{StaticResource Primaria}" />
+  </Style>
+  <Style Selector="Button.escolha.escolhida PathIcon.marcada">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
 </Styles>

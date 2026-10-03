@@ -34,7 +34,7 @@ public class FluxoDeVendaTests
         Assert.Single(t.EsperarImpressoes(1));
         Assert.Equal("", t.Principal.Operador);
         Assert.Equal(5000, t.Principal.Sessao!.ValorAberturaCentavos);
-        Assert.Equal(12, t.Venda.Botoes.Count);
+        Assert.Equal(6, t.Venda.Botoes.Count); // um botão para cada produto da aba, sem espaço vazio
         Assert.Equal(["COMIDAS", "BEBIDAS", "DOCES"], t.Venda.Abas.Select(a => a.Nome));
     }
 

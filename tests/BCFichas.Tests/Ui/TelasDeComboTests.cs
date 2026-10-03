@@ -193,6 +193,10 @@ public class TelasDeComboTests
     public void Produto_fora_da_tela_de_venda_nao_precisa_de_posicao()
     {
         using var t = new TelaDeTeste(catalogoPadrao: true);
+        var itens = t.Sistema.Catalogo.Abas()[0];
+        itens.Colunas = 4;
+        itens.Linhas = 3;
+        t.Sistema.Catalogo.SalvarAba(itens);
         t.AbrirCaixa();
         var tela = new ProdutosViewModel(t.Principal);
         t.Principal.Abrir(tela);

@@ -42,8 +42,12 @@ public class TelasDeGestaoTests
     [AvaloniaFact]
     public void Produtos_aba_cheia_mostra_a_posicao_sem_erro_e_explica_no_novo()
     {
-        // Catálogo do programa: a aba ITENS já tem os 12 botões da grade 4 x 3 (o caso das fotos do cliente)
+        // Catálogo do programa com a aba ITENS na grade 4 x 3: os 12 botões já estão ocupados (o caso das fotos do cliente)
         using var t = new TelaDeTeste(catalogoPadrao: true);
+        var itens = t.Sistema.Catalogo.Abas()[0];
+        itens.Colunas = 4;
+        itens.Linhas = 3;
+        t.Sistema.Catalogo.SalvarAba(itens);
         t.AbrirCaixa();
         var tela = new ProdutosViewModel(t.Principal);
         t.Principal.Abrir(tela);
@@ -167,10 +171,6 @@ public class TelasDeGestaoTests
         t.Foto("25-config-seguranca");
 
         tela.NomeEvento = "quermesse";
-        tela.Colunas = 3;
-        // O total de botões por aba acompanha colunas × linhas
-        Assert.Equal(9, tela.TotalGrade);
-        Assert.Equal("3 colunas × 3 linhas", tela.TextoGrade);
         // Quem digitar o telefone da BC Fichas no rodapé não o vê duas vezes: ele já sai sozinho
         tela.Rodape = " bc-fichas fone: (19) 3023-9050 ";
         tela.SalvarCommand.Execute(null);
@@ -182,8 +182,10 @@ public class TelasDeGestaoTests
         Assert.Equal("QUERMESSE", t.Principal.NomeEvento);
         Assert.True(t.Sistema.Config.Atual.CodigoDeBarras);
 
+        // Sem espaço vazio: um botão para cada produto da aba
         t.Principal.IrParaVenda();
-        Assert.Equal(9, t.Venda.Botoes.Count);
+        Assert.Equal(t.Sistema.Catalogo.ProdutosDaAba(t.Venda.Abas[0].Aba.Id).Count, t.Venda.Botoes.Count);
+        Assert.DoesNotContain(t.Venda.Botoes, b => b.Vazio);
     }
 
     [AvaloniaFact]

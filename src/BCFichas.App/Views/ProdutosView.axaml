@@ -142,7 +142,7 @@
                 </ComboBox>
               </StackPanel>
               <StackPanel Grid.Row="4" Grid.Column="2" IsVisible="{Binding Ativo}">
-                <TextBlock Text="Posição na tela (livres)" Classes="rotulo" />
+                <TextBlock Text="Posição na aba (livres)" Classes="rotulo" />
                 <ComboBox x:Name="Posicao" ItemsSource="{Binding Posicoes}" SelectedItem="{Binding Posicao}" />
                 <!-- Largura presa à do campo: o texto quebra em vez de alargar a coluna -->
                 <TextBlock Text="{Binding AvisoPosicao}" Classes="dica" Foreground="{StaticResource Perigo}"

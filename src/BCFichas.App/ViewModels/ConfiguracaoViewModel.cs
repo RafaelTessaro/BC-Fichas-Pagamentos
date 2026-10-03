@@ -16,15 +16,44 @@ public sealed record Opcao<T>(T Valor, string Texto)
 }
 
 /// <summary>Uma aba na lista da tela (nova ainda não tem <see cref="Aba"/>). Tudo é gravado ao tocar em Salvar.</summary>
-public sealed partial class AbaEdicao(Aba? aba) : ObservableObject
+public sealed partial class AbaEdicao : ObservableObject
 {
-    public Aba? Aba { get; } = aba;
+    public AbaEdicao(Aba? aba, int produtos = 0)
+    {
+        Aba = aba;
+        Produtos = produtos;
+        _nome = aba?.Nome ?? "";
+        _colunas = aba?.Colunas ?? 0;
+        _linhas = aba?.Linhas ?? 0;
+    }
+
+    public Aba? Aba { get; }
     public bool Nova => Aba is null;
-    [ObservableProperty] private string _nome = aba?.Nome ?? "";
+    /// <summary>Produtos na tela de venda desta aba.</summary>
+    public int Produtos { get; }
+    [ObservableProperty] private string _nome;
+
+    /// <summary>Grade dos botões desta aba: 0 colunas = automática.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Automatica), nameof(GradeTexto), nameof(ProdutosTexto), nameof(NaoCabe))]
+    private int _colunas;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(GradeTexto), nameof(ProdutosTexto), nameof(NaoCabe))]
+    private int _linhas;
+
+    public bool Automatica => Colunas <= 0;
+    public int Capacidade => Automatica ? Core.Aba.MaximoAutomatico : Colunas * Math.Max(1, Linhas);
+    public string GradeTexto => Automatica ? "Automática" : $"{Colunas} × {Linhas}";
+    /// <summary>Mais produtos do que a grade mostra: os de posição maior ficam fora da tela.</summary>
+    public bool NaoCabe => Produtos > Capacidade;
+    public string ProdutosTexto => (Produtos == 1 ? "1 produto" : $"{Produtos} produtos") +
+                                   (NaoCabe ? $" • {Produtos - Capacidade} fora" : "");
 
     public string NomeLimpo => Nome.Trim().ToUpperInvariant();
-    /// <summary>Nova com nome escrito, ou nome trocado.</summary>
-    public bool Mudou => Aba is null ? NomeLimpo.Length > 0 : NomeLimpo != Aba.Nome;
+    public bool GradeMudou => Aba is not null && (Colunas != Aba.Colunas || Linhas != Aba.Linhas);
+    /// <summary>Nova com nome escrito, nome trocado ou grade trocada.</summary>
+    public bool Mudou => Aba is null ? NomeLimpo.Length > 0 : NomeLimpo != Aba.Nome || GradeMudou;
 }
 
 /// <summary>Uma tela que pode pedir a senha master para abrir.</summary>
@@ -73,7 +102,6 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     ];
 
     public List<int> Caixas { get; } = Enumerable.Range(1, 30).ToList();
-    public List<int> OpcoesGrade { get; } = Enumerable.Range(2, 5).ToList();
     public List<int> Papeis { get; } = [80, 58];
     public List<int> Velocidades { get; } = [9600, 19200, 38400, 57600, 115200];
     public List<int> Zooms { get; } = [70, 80, 90, 100, 110, 125, 150];
@@ -113,12 +141,6 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     [ObservableProperty] private Bitmap? _previa;
 
     // Botões
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(TotalGrade), nameof(TextoGrade))]
-    private int _colunas = 4;
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(TotalGrade), nameof(TextoGrade))]
-    private int _linhas = 3;
     [ObservableProperty] private string _pastaFotos = "";
 
     // Impressora
@@ -153,9 +175,6 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     public bool SemImpressoras => Impressoras.Count == 0;
     public bool MaquininhaSimulador => TipoMaquininha?.Valor == Core.TipoMaquininha.Simulador;
     public bool MaquininhaSeparada => !MaquininhaSimulador;
-    /// <summary>Quantos produtos cabem em cada aba da tela de venda.</summary>
-    public int TotalGrade => Colunas * Linhas;
-    public string TextoGrade => $"{Colunas} colunas × {Linhas} linhas";
     public bool TemSenha => SenhaMaster.Length > 0;
     public bool SemSenha => !TemSenha;
     public string AjusteTexto => AjusteHorizontal == 0
@@ -259,8 +278,6 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         MostrarValor = c.MostrarValorNaFicha;
         Logo = c.Logo;
 
-        Colunas = c.Colunas;
-        Linhas = c.Linhas;
         PastaFotos = c.PastaFotos;
         PastaBackup = c.PastaBackup;
         CarregarAbas();
@@ -352,7 +369,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
             foreach (var aba in Abas.Where(a => !a.Nova || a.NomeLimpo.Length > 0).ToList())
             {
                 if (aba.Nova)
-                    ids.Add(Sistema.Catalogo.SalvarAba(new Aba { Nome = aba.Nome }).Id);
+                    ids.Add(Sistema.Catalogo.SalvarAba(new Aba { Nome = aba.Nome, Colunas = aba.Colunas, Linhas = aba.Linhas }).Id);
                 else
                     ids.Add(aba.Aba!.Id);
             }
@@ -360,6 +377,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
             foreach (var aba in Abas.Where(a => !a.Nova && a.Mudou))
             {
                 aba.Aba!.Nome = aba.Nome;
+                aba.Aba.Colunas = aba.Colunas;
+                aba.Aba.Linhas = aba.Linhas;
                 Sistema.Catalogo.SalvarAba(aba.Aba);
             }
             Sistema.Catalogo.ReordenarAbas(ids);
@@ -910,12 +929,22 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     private void CarregarAbas()
     {
         Abas.Clear();
-        foreach (var a in Sistema.Catalogo.Abas()) Abas.Add(Linha(a));
+        var porAba = Sistema.Catalogo.Produtos().Where(p => p.Ativo).GroupBy(p => p.AbaId)
+            .ToDictionary(g => g.Key, g => g.Count());
+        foreach (var a in Sistema.Catalogo.Abas()) Abas.Add(Linha(a, porAba.GetValueOrDefault(a.Id)));
     }
 
-    private AbaEdicao Linha(Aba? aba)
+    /// <summary>Como os botões desta aba se arrumam na tela de venda (com a prévia dos produtos dela).</summary>
+    [RelayCommand]
+    private void GradeDaAba(AbaEdicao aba)
     {
-        var linha = new AbaEdicao(aba);
+        var produtos = aba.Nova ? [] : Sistema.Catalogo.ProdutosDaAba(aba.Aba!.Id).OrderBy(p => p.Posicao).ToList();
+        Principal.AbrirDialogo(new GradeAbaViewModel(Principal, aba, produtos));
+    }
+
+    private AbaEdicao Linha(Aba? aba, int produtos = 0)
+    {
+        var linha = new AbaEdicao(aba, produtos);
         linha.PropertyChanged += (_, _) => AtualizarAlteracoes();
         return linha;
     }
@@ -938,8 +967,6 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         c.CodigoDeBarras = CodigoDeBarras;
         c.MostrarValorNaFicha = MostrarValor;
         c.Logo = Logo;
-        c.Colunas = Colunas;
-        c.Linhas = Linhas;
         c.PastaFotos = string.IsNullOrWhiteSpace(PastaFotos) ? new Configuracao().PastaFotos : PastaFotos.Trim();
         c.PastaBackup = string.IsNullOrWhiteSpace(PastaBackup) ? new Configuracao().PastaBackup : PastaBackup.Trim();
         c.Impressora = TipoImpressora?.Valor ?? Core.TipoImpressora.Windows;

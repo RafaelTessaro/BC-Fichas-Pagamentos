@@ -79,8 +79,11 @@ public sealed partial class VendaViewModel : ViewModelBase
     public ObservableCollection<BotaoProduto> Botoes { get; } = new();
     public ObservableCollection<LinhaItem> Linhas { get; } = new();
 
-    [ObservableProperty] private int _colunas = 4;
-    [ObservableProperty] private int _linhasGrade = 3;
+    /// <summary>Grade da aba escolhida: colunas (0 = automática) e linhas.</summary>
+    [ObservableProperty] private int _colunas;
+    [ObservableProperty] private int _linhasGrade;
+    /// <summary>A aba escolhida não tem produto: a tela explica onde cadastrar.</summary>
+    [ObservableProperty] private bool _semProdutos;
     [ObservableProperty] private string _total = Dinheiro.Formatar(0);
     [ObservableProperty] private string _quantidadeTexto = "";
 
@@ -95,10 +98,6 @@ public sealed partial class VendaViewModel : ViewModelBase
 
     public void Recarregar()
     {
-        var config = _principal.Config;
-        Colunas = config.Colunas;
-        LinhasGrade = config.Linhas;
-
         var abas = _principal.Sistema.Catalogo.Abas();
         var atual = Abas.FirstOrDefault(a => a.Ativa)?.Aba.Id;
         Abas.Clear();
@@ -107,7 +106,11 @@ public sealed partial class VendaViewModel : ViewModelBase
 
         var selecionada = Abas.FirstOrDefault(a => a.Aba.Id == atual) ?? Abas.FirstOrDefault();
         if (selecionada is not null) SelecionarAba(selecionada);
-        else Botoes.Clear();
+        else
+        {
+            Botoes.Clear();
+            SemProdutos = true;
+        }
 
         AtualizarProdutosDoCarrinho();
     }
@@ -116,14 +119,14 @@ public sealed partial class VendaViewModel : ViewModelBase
     public void AtualizarEstoque()
     {
         var aba = Abas.FirstOrDefault(a => a.Ativa);
-        if (aba is not null) MontarBotoes(aba.Aba.Id);
+        if (aba is not null) MontarBotoes(aba.Aba);
     }
 
     [RelayCommand]
     private void SelecionarAba(AbaItem aba)
     {
         foreach (var a in Abas) a.Ativa = a == aba;
-        MontarBotoes(aba.Aba.Id);
+        MontarBotoes(aba.Aba);
     }
 
     [RelayCommand]
@@ -199,28 +202,21 @@ public sealed partial class VendaViewModel : ViewModelBase
 
     private bool TemItens() => !Vazio;
 
-    private void MontarBotoes(long abaId)
+    /// <summary>
+    /// Botões da aba na ordem das posições, sem espaço vazio: a grade da tela (<see cref="Views.GradeDeBotoes"/>)
+    /// divide a área entre eles. Com colunas × linhas, cabem no máximo colunas × linhas.
+    /// </summary>
+    private void MontarBotoes(Aba aba)
     {
-        var total = Colunas * LinhasGrade;
-        var produtos = _principal.Sistema.Catalogo.ProdutosDaAba(abaId);
-        var grade = new Produto?[total];
-        var sobra = new List<Produto>();
-        foreach (var p in produtos)
-        {
-            if (p.Posicao >= 1 && p.Posicao <= total && grade[p.Posicao - 1] is null) grade[p.Posicao - 1] = p;
-            else sobra.Add(p);
-        }
-        // Produtos fora da grade (grade diminuiu) vão para os espaços livres.
-        for (var i = 0; i < total && sobra.Count > 0; i++)
-        {
-            if (grade[i] is not null) continue;
-            grade[i] = sobra[0];
-            sobra.RemoveAt(0);
-        }
-
+        Colunas = aba.Colunas;
+        LinhasGrade = aba.Linhas;
+        var produtos = _principal.Sistema.Catalogo.ProdutosDaAba(aba.Id)
+            .OrderBy(p => p.Posicao).ThenBy(p => p.Nome)
+            .Take(aba.Capacidade);
         Botoes.Clear();
-        foreach (var p in grade)
-            Botoes.Add(new BotaoProduto(p, CacheImagens.Obter(_principal.Sistema.Impressao.CaminhoImagem(p?.Imagem), 240)));
+        foreach (var p in produtos)
+            Botoes.Add(new BotaoProduto(p, CacheImagens.Obter(_principal.Sistema.Impressao.CaminhoImagem(p.Imagem), 240)));
+        SemProdutos = Botoes.Count == 0;
     }
 
     /// <summary>O estoque dos produtos no pedido pode ter mudado (venda, edição).</summary>

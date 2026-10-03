@@ -22,6 +22,7 @@
     <DataTemplate DataType="vm:NovaSenhaViewModel"><v:NovaSenhaView /></DataTemplate>
     <DataTemplate DataType="vm:NumeroViewModel"><v:NumeroView /></DataTemplate>
     <DataTemplate DataType="vm:EscolherBackupViewModel"><v:EscolherBackupView /></DataTemplate>
+    <DataTemplate DataType="vm:GradeAbaViewModel"><v:GradeAbaView /></DataTemplate>
   </Application.DataTemplates>
 
   <Application.Resources>

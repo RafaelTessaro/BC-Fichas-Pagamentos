@@ -13,8 +13,8 @@ na **Elgin i9** em papel de 80 mm.
 
 | Tela | O que faz |
 | --- | --- |
-| **Venda** | Barra lateral preta e verde com a marca da BC Fichas, menu, caixa, as **abas do cardápio** (Comidas, Bebidas… até umas 6, uma embaixo da outra) e relógio; botões com foto do produto (ou só cor); pedido com + e − (o valor de cada linha fica sempre à vista, mesmo com nome comprido); total e botão de pagamento. |
-| **Pagamento** | Cartões grandes para Dinheiro, PIX (com o símbolo oficial do Pix), Débito e Crédito. Dinheiro com troco calculado e notas rápidas; débito, crédito e PIX registrados para o relatório (veja "Maquininha de cartão"). |
+| **Venda** | Barra lateral preta e verde com a marca da BC Fichas, menu, caixa, as **abas do cardápio** (Comidas, Bebidas… até umas 6, uma embaixo da outra) e relógio; botões com foto do produto (ou só cor) que **ocupam a tela toda, sem espaço vazio** (cada aba tem a sua grade, veja "Grade de botões"); pedido com + e − (o valor de cada linha fica sempre à vista, mesmo com nome comprido); total e botão de pagamento. |
+| **Pagamento** | Cartões grandes para Dinheiro, PIX (com o símbolo oficial do Pix), Débito e Crédito. Dinheiro com troco calculado, notas rápidas e botão Limpar; débito, crédito e PIX registrados para o relatório (veja "Maquininha de cartão"). |
 | **Menu** | Ao voltar de uma tela aberta pelo menu (Produtos, Relatórios…), o menu continua aberto; ele só fecha no X. |
 | **Produtos** | Nome, detalhe, preço, custo, aba, posição na tela, cor, imagem (o botão Imagem abre sempre em `C:\Sistema_New\produtos`), estoque, fichas por unidade e **combos** (veja "Combos"). Produto pode ficar fora da tela de venda. |
 | **Reimprimir fichas** | Segunda via do pedido inteiro ou de um item só (sai marcado "REIMPRESSÃO"); fichas devolvidas não são reimpressas. |
@@ -69,6 +69,24 @@ Comprovantes de abertura de caixa, devolução de fichas e teste de impressão:
 ![Comprovantes](docs/telas/comprovantes.png)
 
 Mais telas em [`docs/telas`](docs/telas).
+
+## Grade de botões
+
+Cada aba da tela de venda tem a sua grade (**Configurações → Botões e abas → toque na grade da aba**), com a
+prévia dos produtos dela:
+
+- **Automática (recomendado):** o programa escolhe quantos botões vão em cada linha para eles ficarem do maior
+  tamanho possível, com as linhas equilibradas (7 produtos = 4 + 3; 10 = 4 + 3 + 3). Cadastrou ou tirou um
+  produto, a tela se ajusta sozinha.
+- **Colunas × linhas:** você escolhe (por exemplo 4 × 2 = até 8 botões). Com menos produtos, as linhas que sobram
+  somem e os botões crescem; a última linha estica. Os produtos ficam na ordem das posições, sempre no mesmo lugar.
+
+Nos dois jeitos **não sobra espaço vazio**: os botões ocupam a área toda. A arrumação segue o que fazem as
+galerias de vídeo-chamada e os sistemas de caixa que deixam a grade por categoria (com "0 = automático").
+
+| Escolher a grade da aba | 4 por linha com 7 produtos |
+| --- | --- |
+| ![](docs/telas/54-config-grade-da-aba.png) | ![](docs/telas/53-venda-sem-espaco-vazio.png) |
 
 ## Maquininha de cartão
 

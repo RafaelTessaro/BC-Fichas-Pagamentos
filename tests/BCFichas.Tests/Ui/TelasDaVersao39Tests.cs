@@ -140,13 +140,13 @@ public class TelasDaVersao39Tests
     {
         using var t = new TelaDeTeste();
         var tela = AbrirConfiguracao(t);
-        tela.Colunas = 5;
+        tela.TelaCheia = true;
         Assert.True(tela.TemAlteracoes);
         var desfazer = tela.DesfazerCommand.ExecuteAsync(null);
         await TelaDeTeste.Esperar(() => t.Principal.Dialogo is MensagemViewModel);
         ((MensagemViewModel)t.Principal.Dialogo!).SimCommand.Execute(null);
         await desfazer;
-        Assert.Equal(4, tela.Colunas);
+        Assert.False(tela.TelaCheia);
         Assert.False(tela.TemAlteracoes);
 
         // A senha é gravada na hora: não deixa o aviso de "não salvo"

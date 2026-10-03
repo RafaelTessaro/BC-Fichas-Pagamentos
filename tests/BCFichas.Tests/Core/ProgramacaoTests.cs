@@ -378,6 +378,65 @@ public class ProgramacaoTests : IDisposable
     }
 
     [Fact]
+    public void Grade_de_cada_aba_vai_no_backup_e_backup_antigo_usa_a_das_configuracoes()
+    {
+        var a = _a.Sistema;
+        var abas = a.Catalogo.Abas();
+        abas[0].Colunas = 5;
+        abas[0].Linhas = 2;
+        a.Catalogo.SalvarAba(abas[0]);
+        var config = a.Config.Atual.Clonar();
+        config.Colunas = 3;
+        config.Linhas = 4;
+        a.Config.Salvar(config);
+        var arquivo = Path.Combine(_a.Pasta, "grade.bcf");
+        a.Programacao.Salvar(arquivo);
+
+        _b.Sistema.Programacao.Carregar(arquivo, 2);
+        var restauradas = _b.Sistema.Catalogo.Abas();
+        Assert.Equal((5, 2), (restauradas[0].Colunas, restauradas[0].Linhas));
+        Assert.True(restauradas[1].Automatica);
+
+        // Backup feito antes da 3.10 (sem a grade nas abas): as abas ficam com a grade das configurações dele
+        using (var zip = System.IO.Compression.ZipFile.Open(arquivo, System.IO.Compression.ZipArchiveMode.Update))
+        {
+            var entrada = zip.GetEntry("programacao.json")!;
+            string json;
+            using (var leitura = new StreamReader(entrada.Open())) json = leitura.ReadToEnd();
+            var raiz = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+            foreach (var aba in raiz["Abas"]!.AsArray())
+            {
+                aba!.AsObject().Remove("Colunas");
+                aba.AsObject().Remove("Linhas");
+            }
+            entrada.Delete();
+            using var escrita = new StreamWriter(zip.CreateEntry("programacao.json").Open());
+            escrita.Write(raiz.ToJsonString());
+        }
+        _b.Sistema.Programacao.Carregar(arquivo, 2);
+        Assert.All(_b.Sistema.Catalogo.Abas(), x => Assert.Equal((3, 4), (x.Colunas, x.Linhas)));
+    }
+
+    [Fact]
+    public void Banco_antigo_passa_a_grade_das_configuracoes_para_cada_aba()
+    {
+        var a = _a.Sistema;
+        var config = a.Config.Atual.Clonar();
+        config.Colunas = 5;
+        config.Linhas = 2;
+        a.Config.Salvar(config);
+        // Volta o banco para a versão 5 (antes da 3.10 a grade era uma só, nas configurações)
+        a.Banco.Executar("ALTER TABLE abas DROP COLUMN colunas; ALTER TABLE abas DROP COLUMN linhas; DELETE FROM versao WHERE v = 6;");
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+
+        var atualizado = Sistema.Iniciar(_a.Pasta, criarExemplos: false);
+        Assert.NotEmpty(atualizado.Catalogo.Abas());
+        Assert.All(atualizado.Catalogo.Abas(), x => Assert.Equal((5, 2), (x.Colunas, x.Linhas)));
+        // Aba nova já nasce automática
+        Assert.True(atualizado.Catalogo.SalvarAba(new Aba { Nome = "Nova" }).Automatica);
+    }
+
+    [Fact]
     public void Backup_que_deu_errado_antes_nao_atrapalha_o_proximo()
     {
         var arquivo = Path.Combine(_a.Pasta, "festa.bcf");

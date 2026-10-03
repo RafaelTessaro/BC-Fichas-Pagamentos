@@ -154,7 +154,8 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
     public bool SemFichasNoCombo => Componentes.Count == 0;
     public string NomeDoCombo => string.IsNullOrWhiteSpace(Nome) ? "Combo novo" : Nome.Trim().ToUpperInvariant();
     public bool TemImagem => Imagem is not null;
-    private int TotalPosicoes => Principal.Config.Colunas * Principal.Config.Linhas;
+    /// <summary>Quantos botões cabem na aba escolhida (cada aba tem a sua grade, ou é automática).</summary>
+    private int TotalPosicoes => Aba?.Capacidade ?? Core.Aba.MaximoAutomatico;
 
     public override void AoAbrir()
     {
@@ -539,7 +540,7 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
         }
         if (Posicoes.Count == 0)
             AvisoPosicao = $"A aba {Aba.Nome} está cheia ({TotalPosicoes} botões). Escolha outra aba ou aumente a " +
-                           "grade em Configurações → Botões e abas.";
+                           "grade dela em Configurações → Botões e abas.";
 
         var escolhida = atual ?? (escolherLivre || anterior is null || !Posicoes.Contains(anterior.Value)
             ? Posicoes.Cast<int?>().FirstOrDefault()

@@ -1,0 +1,117 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.Views.GradeAbaView"
+             x:DataType="vm:GradeAbaViewModel">
+  <Border Classes="cartao" Width="940" MaxWidth="{Binding $parent[Window].Bounds.Width}" Padding="24">
+    <Grid ColumnDefinitions="*,24,400" RowDefinitions="Auto,*,Auto">
+      <!-- Título -->
+      <StackPanel Grid.ColumnSpan="3" Orientation="Horizontal" Spacing="14" Margin="0,0,0,18">
+        <Border Width="48" Height="48" CornerRadius="12" Background="{StaticResource FundoLateral}">
+          <PathIcon Data="{StaticResource IconeGrade}" Width="24" Height="24" Foreground="{StaticResource Marca}" />
+        </Border>
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="{Binding Titulo}" Classes="titulo" FontSize="22" />
+          <TextBlock Text="{Binding Subtitulo}" Classes="suave" FontSize="14" />
+        </StackPanel>
+      </StackPanel>
+
+      <!-- Escolha -->
+      <StackPanel Grid.Row="1" Spacing="10">
+        <Button Classes="escolha" Classes.escolhida="{Binding Automatica}" Command="{Binding EscolherAutomaticaCommand}">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Classes="icone-escolha">
+              <PathIcon Data="{StaticResource IconeGrade}" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+              <TextBlock Text="Automática (recomendado)" FontSize="17" FontWeight="Bold" />
+              <TextBlock Text="Os botões se ajustam à quantidade de produtos, sem espaço vazio" Classes="suave"
+                         FontSize="13" FontWeight="Normal" TextWrapping="Wrap" />
+            </StackPanel>
+            <PathIcon Grid.Column="2" Classes="marcada" Data="{StaticResource IconeOk}" />
+          </Grid>
+        </Button>
+        <Button Classes="escolha" Classes.escolhida="{Binding Fixa}" Command="{Binding EscolherFixaCommand}">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Classes="icone-escolha">
+              <PathIcon Data="{StaticResource IconeAbas}" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+              <TextBlock Text="Colunas e linhas" FontSize="17" FontWeight="Bold" />
+              <TextBlock Text="Você escolhe quantos botões por linha e quantas linhas" Classes="suave" FontSize="13"
+                         FontWeight="Normal" TextWrapping="Wrap" />
+            </StackPanel>
+            <PathIcon Grid.Column="2" Classes="marcada" Data="{StaticResource IconeOk}" />
+          </Grid>
+        </Button>
+
+        <Border Background="{StaticResource Fundo}" CornerRadius="12" Padding="14,10" IsVisible="{Binding Fixa}">
+          <StackPanel Spacing="4">
+            <Grid ColumnDefinitions="*,12,*">
+              <StackPanel>
+                <TextBlock Text="Colunas (por linha)" Classes="rotulo" />
+                <ComboBox ItemsSource="{Binding OpcoesColunas}" SelectedItem="{Binding Colunas}" />
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Text="Linhas" Classes="rotulo" />
+                <ComboBox ItemsSource="{Binding OpcoesLinhas}" SelectedItem="{Binding Linhas}" />
+              </StackPanel>
+            </Grid>
+            <TextBlock Text="{Binding Capacidade}" FontWeight="Bold" FontSize="15" Margin="2,6,0,0" />
+          </StackPanel>
+        </Border>
+
+        <TextBlock Text="{Binding Explicacao}" Classes="suave" FontSize="14" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding Aviso}" Foreground="{StaticResource Perigo}" FontSize="14" FontWeight="SemiBold"
+                   TextWrapping="Wrap" IsVisible="{Binding Aviso, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+      </StackPanel>
+
+      <!-- Prévia com os produtos da aba -->
+      <StackPanel Grid.Row="1" Grid.Column="2" Spacing="8">
+        <TextBlock Text="Como fica na tela de venda" Classes="rotulo" Margin="2,0,0,0" />
+        <Border Background="{StaticResource Fundo}" BorderBrush="{StaticResource Borda}" BorderThickness="1"
+                CornerRadius="14" Padding="6" Height="390">
+          <Panel>
+            <TextBlock Text="Os produtos aparecem aqui quando forem cadastrados nesta aba." IsVisible="{Binding SemProdutos}"
+                       Classes="suave" FontSize="14" TextWrapping="Wrap" TextAlignment="Center"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24,0" />
+            <ItemsControl ItemsSource="{Binding Previa}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <v:GradeDeBotoes Colunas="{Binding $parent[UserControl].((vm:GradeAbaViewModel)DataContext).ColunasPrevia}"
+                                   Linhas="{Binding $parent[UserControl].((vm:GradeAbaViewModel)DataContext).LinhasPrevia}" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:BotaoProduto">
+                  <Border Background="{Binding Fundo}" CornerRadius="8" Margin="3" BoxShadow="0 1 2 0 #260F172A">
+                    <Grid RowDefinitions="*,Auto" Margin="4">
+                      <v:TextoQueCabe Text="{Binding Nome}" Foreground="{Binding Texto}" TamanhoMaximo="13" FontWeight="Bold"
+                                      TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" MaxLines="3"
+                                      TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Row="1" Text="{Binding Preco}" Foreground="{Binding Texto}" FontSize="10"
+                                 FontWeight="SemiBold" Opacity="0.85" HorizontalAlignment="Center" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Panel>
+        </Border>
+      </StackPanel>
+
+      <!-- Botões -->
+      <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10"
+                  Margin="0,18,0,0">
+        <Button Classes="suave" Content="Cancelar" Command="{Binding CancelarCommand}" Height="56" Padding="26,0" />
+        <Button Classes="primario" Command="{Binding AplicarCommand}" Height="56" Padding="30,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeOk}" Foreground="White" />
+            <TextBlock Text="Usar esta grade" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

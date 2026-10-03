@@ -73,50 +73,14 @@
     <Style Selector="Button.suave.branco">
       <Setter Property="Background" Value="{StaticResource Superficie}" />
     </Style>
-    <!-- Escolha da maquininha: cartão que fica verde quando escolhido -->
-    <Style Selector="Button.escolha">
-      <Setter Property="Background" Value="{StaticResource Superficie}" />
-      <Setter Property="BorderBrush" Value="{StaticResource Borda}" />
-      <Setter Property="BorderThickness" Value="2" />
-      <Setter Property="CornerRadius" Value="14" />
-      <Setter Property="Padding" Value="14,12" />
-      <Setter Property="MinHeight" Value="76" />
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    </Style>
-    <Style Selector="Button.escolha:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{StaticResource Fundo}" />
-      <Setter Property="BorderBrush" Value="#CBD5E1" />
-    </Style>
-    <Style Selector="Button.escolha.escolhida">
-      <Setter Property="Background" Value="{StaticResource PrimariaClara}" />
-      <Setter Property="BorderBrush" Value="{StaticResource Primaria}" />
-    </Style>
-    <Style Selector="Button.escolha.escolhida:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{StaticResource PrimariaClara}" />
-      <Setter Property="BorderBrush" Value="{StaticResource Primaria}" />
-    </Style>
-    <Style Selector="Button.escolha Border.icone-escolha">
-      <Setter Property="Width" Value="44" />
-      <Setter Property="Height" Value="44" />
-      <Setter Property="CornerRadius" Value="12" />
-      <Setter Property="Background" Value="{StaticResource Fundo}" />
-    </Style>
-    <Style Selector="Button.escolha Border.icone-escolha PathIcon">
+    <Style Selector="Button.grade-aba TextBlock.produtos-aba">
       <Setter Property="Foreground" Value="{StaticResource TextoSuave}" />
     </Style>
-    <Style Selector="Button.escolha.escolhida Border.icone-escolha">
-      <Setter Property="Background" Value="{StaticResource Primaria}" />
+    <Style Selector="Button.grade-aba.erro">
+      <Setter Property="BorderBrush" Value="{StaticResource Perigo}" />
     </Style>
-    <Style Selector="Button.escolha.escolhida Border.icone-escolha PathIcon">
-      <Setter Property="Foreground" Value="White" />
-    </Style>
-    <Style Selector="Button.escolha PathIcon.marcada">
-      <Setter Property="IsVisible" Value="False" />
-      <Setter Property="Foreground" Value="{StaticResource Primaria}" />
-    </Style>
-    <Style Selector="Button.escolha.escolhida PathIcon.marcada">
-      <Setter Property="IsVisible" Value="True" />
+    <Style Selector="Button.grade-aba.erro TextBlock.produtos-aba">
+      <Setter Property="Foreground" Value="{StaticResource Perigo}" />
     </Style>
     <Style Selector="Border.bloco">
       <Setter Property="Background" Value="{StaticResource Fundo}" />
@@ -468,40 +432,91 @@
         <!-- BOTÕES E ABAS -->
         <TabItem Header="Botões e abas">
           <ScrollViewer>
-            <Grid Classes="pagina" ColumnDefinitions="*,14,*">
-              <StackPanel Spacing="14">
-                <!-- Grade -->
+            <Grid Classes="pagina" ColumnDefinitions="3*,14,2*">
+              <!-- Abas: cada uma com a sua grade de botões -->
+              <Border Classes="bloco" VerticalAlignment="Top">
+                <StackPanel Spacing="4">
+                  <Grid Classes="cabeca" ColumnDefinitions="Auto,*,Auto">
+                    <Border Classes="icone-bloco menor">
+                      <PathIcon Data="{StaticResource IconeAbas}" />
+                    </Border>
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Classes="titulo-bloco" Text="Abas da tela de venda" />
+                      <TextBlock Classes="texto-bloco"
+                                 Text="Cada aba tem a sua grade de botões: toque nela para escolher. Com uma aba só, a barra de abas fica escondida." />
+                    </StackPanel>
+                    <Button Grid.Column="2" Classes="suave branco" Command="{Binding NovaAbaCommand}" VerticalAlignment="Center"
+                            Height="44" Padding="12,0" Margin="8,0,0,0">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource IconeMais}" Width="16" Height="16" />
+                        <TextBlock Text="Nova aba" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </Button>
+                  </Grid>
+                  <ItemsControl x:Name="ListaAbas" ItemsSource="{Binding Abas}" Margin="0,8,0,0">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:AbaEdicao">
+                        <Border Classes="opcoes" Padding="6" Margin="0,0,0,8">
+                          <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
+                            <TextBox Text="{Binding Nome}" MaxLength="20" Watermark="Nome da aba" />
+                            <!-- Grade desta aba: automática ou colunas × linhas -->
+                            <Button Grid.Column="1" Classes="suave grade-aba" Classes.erro="{Binding NaoCabe}" Margin="6,0,0,0"
+                                    Height="48" MinWidth="150" Padding="10,0" HorizontalContentAlignment="Left"
+                                    Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).GradeDaAbaCommand}"
+                                    CommandParameter="{Binding}" ToolTip.Tip="Grade de botões desta aba">
+                              <Grid ColumnDefinitions="Auto,*">
+                                <PathIcon Data="{StaticResource IconeGrade}" Width="18" Height="18" Foreground="{StaticResource Primaria}" />
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                  <TextBlock Text="{Binding GradeTexto}" FontWeight="Bold" FontSize="14" />
+                                  <TextBlock Classes="produtos-aba" Text="{Binding ProdutosTexto}" FontSize="11" FontWeight="Normal" />
+                                </StackPanel>
+                              </Grid>
+                            </Button>
+                            <Button Grid.Column="2" Classes="fantasma" Width="46" Padding="0" Margin="4,0,0,0"
+                                    Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).SubirAbaCommand}"
+                                    CommandParameter="{Binding}" ToolTip.Tip="Subir">
+                              <PathIcon Data="{StaticResource IconeSetaCima}" />
+                            </Button>
+                            <Button Grid.Column="3" Classes="fantasma" Width="46" Padding="0"
+                                    Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).DescerAbaCommand}"
+                                    CommandParameter="{Binding}" ToolTip.Tip="Descer">
+                              <PathIcon Data="{StaticResource IconeSetaBaixo}" />
+                            </Button>
+                            <Button Grid.Column="4" Classes="fantasma" Width="46" Padding="0"
+                                    Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).ExcluirAbaCommand}"
+                                    CommandParameter="{Binding}" ToolTip.Tip="Excluir">
+                              <PathIcon Data="{StaticResource IconeLixo}" Foreground="{StaticResource Perigo}" />
+                            </Button>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Classes="dica" Text="Abas novas, nomes, grades, ordem e exclusões valem ao tocar em Salvar." />
+                </StackPanel>
+              </Border>
+
+              <StackPanel Grid.Column="2" Spacing="14">
+                <!-- Como funciona a grade -->
                 <Border Classes="bloco">
-                  <StackPanel Spacing="4">
+                  <StackPanel Spacing="8">
                     <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
                       <Border Classes="icone-bloco menor">
                         <PathIcon Data="{StaticResource IconeGrade}" />
                       </Border>
                       <StackPanel Grid.Column="1">
-                        <TextBlock Classes="titulo-bloco" Text="Grade de botões" />
-                        <TextBlock Classes="texto-bloco" Text="Quantos produtos cabem em cada aba da tela de venda." />
+                        <TextBlock Classes="titulo-bloco" Text="Sem espaço vazio" />
+                        <TextBlock Classes="texto-bloco" Text="Os botões ocupam a tela toda da aba." />
                       </StackPanel>
                     </Grid>
-                    <Grid ColumnDefinitions="*,12,*">
-                      <StackPanel>
-                        <TextBlock Text="Colunas" Classes="rotulo" />
-                        <ComboBox ItemsSource="{Binding OpcoesGrade}" SelectedItem="{Binding Colunas}" />
-                      </StackPanel>
-                      <StackPanel Grid.Column="2">
-                        <TextBlock Text="Linhas" Classes="rotulo" />
-                        <ComboBox ItemsSource="{Binding OpcoesGrade}" SelectedItem="{Binding Linhas}" />
-                      </StackPanel>
-                    </Grid>
-                    <Border Classes="opcoes" Padding="18,12" Margin="0,12,0,0">
-                      <Grid ColumnDefinitions="Auto,*">
-                        <TextBlock Text="{Binding TotalGrade}" FontSize="44" FontWeight="ExtraBold"
-                                   Foreground="{StaticResource Primaria}" VerticalAlignment="Center" />
-                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                          <TextBlock Text="botões em cada aba" FontSize="18" FontWeight="Bold" />
-                          <TextBlock Text="{Binding TextoGrade}" Classes="suave" FontSize="14" />
-                        </StackPanel>
-                      </Grid>
-                    </Border>
+                    <TextBlock TextWrapping="Wrap" FontSize="14">
+                      <Run Text="Automática:" FontWeight="Bold" />
+                      <Run Text="os botões crescem ou diminuem conforme a quantidade de produtos (7 produtos = 4 + 3)." />
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" FontSize="14">
+                      <Run Text="Colunas × linhas:" FontWeight="Bold" />
+                      <Run Text="você escolhe; com menos produtos, as linhas que sobram somem e a última linha estica." />
+                    </TextBlock>
                   </StackPanel>
                 </Border>
 
@@ -513,8 +528,8 @@
                         <PathIcon Data="{StaticResource IconePasta}" />
                       </Border>
                       <StackPanel Grid.Column="1">
-                        <TextBlock Classes="titulo-bloco" Text="Pasta das fotos dos produtos" />
-                        <TextBlock Classes="texto-bloco" Text="O botão Imagem do cadastro de produtos sempre começa nesta pasta." />
+                        <TextBlock Classes="titulo-bloco" Text="Pasta das fotos" />
+                        <TextBlock Classes="texto-bloco" Text="O botão Imagem do cadastro de produtos começa nesta pasta." />
                       </StackPanel>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
@@ -530,55 +545,6 @@
                   </StackPanel>
                 </Border>
               </StackPanel>
-
-              <!-- Abas -->
-              <Border Grid.Column="2" Classes="bloco" VerticalAlignment="Top">
-                <StackPanel Spacing="4">
-                  <Grid Classes="cabeca" ColumnDefinitions="Auto,*,Auto">
-                    <Border Classes="icone-bloco menor">
-                      <PathIcon Data="{StaticResource IconeAbas}" />
-                    </Border>
-                    <StackPanel Grid.Column="1">
-                      <TextBlock Classes="titulo-bloco" Text="Abas da tela de venda" />
-                      <TextBlock Classes="texto-bloco" Text="Ex.: Comidas, Bebidas. Com uma aba só, a barra de abas fica escondida." />
-                    </StackPanel>
-                    <Button Grid.Column="2" Classes="suave branco" Command="{Binding NovaAbaCommand}" VerticalAlignment="Center"
-                            Height="44" Padding="12,0" Margin="8,0,0,0">
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Data="{StaticResource IconeMais}" Width="16" Height="16" />
-                        <TextBlock Text="Nova aba" VerticalAlignment="Center" />
-                      </StackPanel>
-                    </Button>
-                  </Grid>
-                  <ItemsControl x:Name="ListaAbas" ItemsSource="{Binding Abas}" Margin="0,8,0,0">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate x:DataType="vm:AbaEdicao">
-                        <Border Classes="opcoes" Padding="6" Margin="0,0,0,8">
-                          <Grid ColumnDefinitions="*,Auto,Auto,Auto">
-                            <TextBox Text="{Binding Nome}" MaxLength="20" Watermark="Nome da aba" />
-                            <Button Grid.Column="1" Classes="fantasma" Width="46" Padding="0" Margin="6,0,0,0"
-                                    Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).SubirAbaCommand}"
-                                    CommandParameter="{Binding}" ToolTip.Tip="Subir">
-                              <PathIcon Data="{StaticResource IconeSetaCima}" />
-                            </Button>
-                            <Button Grid.Column="2" Classes="fantasma" Width="46" Padding="0"
-                                    Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).DescerAbaCommand}"
-                                    CommandParameter="{Binding}" ToolTip.Tip="Descer">
-                              <PathIcon Data="{StaticResource IconeSetaBaixo}" />
-                            </Button>
-                            <Button Grid.Column="3" Classes="fantasma" Width="46" Padding="0"
-                                    Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).ExcluirAbaCommand}"
-                                    CommandParameter="{Binding}" ToolTip.Tip="Excluir">
-                              <PathIcon Data="{StaticResource IconeLixo}" Foreground="{StaticResource Perigo}" />
-                            </Button>
-                          </Grid>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <TextBlock Classes="dica" Text="Abas novas, nomes, ordem e exclusões valem ao tocar em Salvar." />
-                </StackPanel>
-              </Border>
             </Grid>
           </ScrollViewer>
         </TabItem>

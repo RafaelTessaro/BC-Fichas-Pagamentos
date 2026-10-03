@@ -121,23 +121,26 @@
         <ColumnDefinition Width="0.5*" MinWidth="300" MaxWidth="370" />
       </Grid.ColumnDefinitions>
 
-      <!-- Botões dos produtos (as abas ficam na barra lateral) -->
+      <!-- Botões dos produtos (as abas ficam na barra lateral): ocupam a área toda, sem espaço vazio -->
       <Grid>
+        <StackPanel IsVisible="{Binding SemProdutos}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+          <Border Width="76" Height="76" CornerRadius="20" Background="{StaticResource Borda}" HorizontalAlignment="Center">
+            <PathIcon Data="{StaticResource IconeCaixaProduto}" Width="38" Height="38" Foreground="{StaticResource TextoSuave}" />
+          </Border>
+          <TextBlock Text="Nenhum produto nesta aba" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+          <TextBlock Text="Cadastre em Menu → Produtos." Classes="suave" FontSize="15" HorizontalAlignment="Center" />
+        </StackPanel>
         <ItemsControl ItemsSource="{Binding Botoes}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-              <UniformGrid Columns="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).Colunas}"
-                           Rows="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).LinhasGrade}" />
+              <v:GradeDeBotoes Colunas="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).Colunas}"
+                               Linhas="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).LinhasGrade}" />
             </ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:BotaoProduto">
               <Panel>
-                <!-- Espaço vazio da grade -->
-                <Rectangle IsVisible="{Binding Vazio}" Margin="5" RadiusX="14" RadiusY="14" Stroke="#CBD5E1"
-                           StrokeThickness="2" StrokeDashArray="4,3" Opacity="0.7" />
-
-                <Button Classes="produto" IsVisible="{Binding !Vazio}"
+                <Button Classes="produto"
                         Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).AdicionarCommand}"
                         CommandParameter="{Binding}">
                   <Panel>
