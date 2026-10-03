@@ -30,18 +30,19 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
             Aviso = null;
         });
 
-        Sistema.Impressao.Impresso += AoImprimir;
         Sistema.Config.Alterada += AoMudarConfig;
         Sistema.Catalogo.Alterado += AoMudarCatalogo;
         Sistema.Vendas.EstoqueAlterado += AoMudarEstoque;
 
         AplicarConfig(Sistema.Config.Atual);
         AtualizarRelogio();
-        StatusImpressora = Sistema.Impressao.Descricao();
     }
 
     public Sistema Sistema { get; }
     public Configuracao Config => Sistema.Config.Atual;
+
+    /// <summary>Senha técnica da aba Máquina (os testes trocam por uma senha conhecida).</summary>
+    public SenhaTecnica SenhaTecnica { get; set; } = SenhaTecnica.Padrao;
     public VendaViewModel Venda { get; }
     public SessaoCaixa? Sessao { get; private set; }
 
@@ -54,9 +55,6 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private bool _avisoErro;
     [ObservableProperty] private string _relogio = "";
     [ObservableProperty] private string _data = "";
-    [ObservableProperty] private string _statusImpressora = "";
-    [ObservableProperty] private bool _impressoraComErro;
-    [ObservableProperty] private string _statusMaquininha = "";
     [ObservableProperty] private string _nomeEvento = "";
     [ObservableProperty] private string _caixaTexto = "";
     [ObservableProperty] private string _operador = "";
@@ -355,7 +353,6 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
         _encerrado = true;
         _timerRelogio.Stop();
         _timerAviso.Stop();
-        Sistema.Impressao.Impresso -= AoImprimir;
         Sistema.Config.Alterada -= AoMudarConfig;
         Sistema.Catalogo.Alterado -= AoMudarCatalogo;
         Sistema.Vendas.EstoqueAlterado -= AoMudarEstoque;
@@ -363,8 +360,7 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
 
     private bool _encerrado;
 
-    // Os eventos podem vir de outra thread (impressão): repassa para a tela.
-    private void AoImprimir(ResultadoImpressao r) => NaTela(() => AtualizarImpressora(r));
+    // Os eventos podem vir de outra thread: repassa para a tela.
     private void AoMudarConfig(Configuracao c) => NaTela(() => AplicarConfig(c));
     private void AoMudarCatalogo() => NaTela(Venda.Recarregar);
     private void AoMudarEstoque() => NaTela(Venda.AtualizarEstoque);
@@ -383,18 +379,9 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
         AplicarNoWindows?.Invoke(c);
         TecladoHabilitado = c.TecladoNaTela;
         if (!c.TecladoNaTela) TecladoVisivel = false;
-        StatusMaquininha = "Maquininha " + Sistema.Maquininha.Nome;
-        StatusImpressora = Sistema.Impressao.Descricao();
-        ImpressoraComErro = false;
     }
 
     private void AtualizarSessao() => Operador = Sessao?.Operador ?? "";
-
-    private void AtualizarImpressora(ResultadoImpressao resultado)
-    {
-        ImpressoraComErro = !resultado.Ok;
-        StatusImpressora = resultado.Ok ? Sistema.Impressao.Descricao() : resultado.Mensagem;
-    }
 
     private void AtualizarRelogio()
     {
@@ -432,7 +419,9 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
             var pagos = await Sistema.Vendas.ResolverPendentesAsync(Sistema.Maquininha, CancellationToken.None);
             if (pagos.Count > 0)
                 await Mensagem("Pedidos recuperados",
-                    $"{pagos.Count} pedido(s) foram pagos antes do programa fechar. Reimprima as fichas em Menu > Reimprimir fichas.");
+                    $"{pagos.Count} pedido(s) foram pagos antes do programa fechar. " + (Config.LiberarReimpressao
+                        ? "Reimprima as fichas em Menu > Reimprimir fichas."
+                        : $"Para reimprimir as fichas, ligue para o suporte: {Configuracao.Suporte}."));
         }
         catch (Exception e)
         {

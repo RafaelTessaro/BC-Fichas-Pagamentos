@@ -16,6 +16,7 @@ public class TelaMaquinaTests
         var tela = new ConfiguracaoViewModel(t.Principal);
         t.Principal.Abrir(tela);
         tela.AbaSelecionada = AbaMaquina;
+        tela.MaquinaLiberada = true; // a senha técnica tem teste próprio (TelasDaVersao311Tests)
         TelaDeTeste.Atualizar();
         return tela;
     }

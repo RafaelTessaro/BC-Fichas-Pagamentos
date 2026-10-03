@@ -18,6 +18,15 @@ public sealed class TelaDeTeste : IDisposable
 
     private readonly SistemaTemporario _temporario;
 
+    /// <summary>
+    /// Nos testes a senha técnica da aba Máquina é esta (a de verdade não fica no código, só o resumo dela).
+    /// </summary>
+    public const string SenhaTecnica = "abc123";
+
+    private static readonly global::BCFichas.Core.SenhaTecnica SenhaTecnicaDeTeste = new(
+        Convert.FromHexString("7b8a16ca60db69463a996ada81e479ad"),
+        Convert.FromHexString("b7e59b8ab14c2a3acfd3dde7af2e47c5622883b489c55ee13458684aa57b4cbd"), 1000);
+
     /// <param name="catalogoPadrao">Usa os produtos de exemplo do programa em vez do catálogo dos testes.</param>
     public TelaDeTeste(int largura = 1280, int altura = 800, Action<Configuracao>? configurar = null,
         bool catalogoPadrao = false)
@@ -30,7 +39,7 @@ public sealed class TelaDeTeste : IDisposable
         configurar?.Invoke(config);
         Sistema.Config.Salvar(config);
 
-        Principal = new PrincipalViewModel(Sistema);
+        Principal = new PrincipalViewModel(Sistema) { SenhaTecnica = SenhaTecnicaDeTeste };
         Janela = new JanelaPrincipal { DataContext = Principal, Width = largura, Height = altura };
         Janela.Show();
         Principal.Iniciar();

@@ -24,28 +24,31 @@ public sealed partial class MenuViewModel : ViewModelBase
     {
         _p = principal;
         var c = principal.Config;
-        Itens =
-        [
+        // Sangria e Fechar caixa ficam na barra lateral da venda. Reimprimir e Devolver só aparecem quando a BC
+        // Fichas libera para o cliente (Configurações → Máquina).
+        var itens = new List<ItemMenu>
+        {
             new("Produtos", "Cadastrar e editar botões", "IconeCaixaProduto", "#2563EB", c.Protegida(TelaProtegida.Produtos),
                 () => AbrirPeloMenu(TelaProtegida.Produtos, () => new ProdutosViewModel(_p))),
-            new("Reimprimir fichas", "Segunda via de um pedido", "IconeImpressora", "#7C3AED", c.Protegida(TelaProtegida.Reimpressao),
-                () => AbrirPeloMenu(TelaProtegida.Reimpressao, () => new ReimpressaoViewModel(_p))),
-            new("Devolver fichas", "Cliente não usou a ficha", "IconeTroca", "#DB2777", c.Protegida(TelaProtegida.Devolucao),
-                () => AbrirPeloMenu(TelaProtegida.Devolucao, () => new DevolucaoViewModel(_p))),
-            new("Sangria / Suprimento", "Tirar ou pôr dinheiro", "IconeDinheiro", "#16A34A", c.Protegida(TelaProtegida.Sangria),
-                () => AbrirPeloMenu(TelaProtegida.Sangria, () => new SangriaViewModel(_p))),
-            new("Relatórios", "Vendas, caixas e sangrias", "IconeGrafico", "#D97706", c.Protegida(TelaProtegida.Relatorios),
-                () => AbrirPeloMenu(TelaProtegida.Relatorios, () => new RelatoriosViewModel(_p))),
-            principal.ModoTeste
-                ? new("Sair do modo teste", "Apaga as vendas de teste", "IconeAlerta", "#EA580C", false,
-                    () => _ = _p.SairDoModoTeste())
-                : new("Fechar caixa", "Conferir e encerrar o dia", "IconeCadeado", "#DC2626", c.Protegida(TelaProtegida.FecharCaixa),
-                    () => AbrirPeloMenu(TelaProtegida.FecharCaixa, () => new FechamentoViewModel(_p))),
-            new("Configurações", "Evento, ficha, impressora", "IconeConfig", "#475569", c.Protegida(TelaProtegida.Configuracao),
-                () => AbrirPeloMenu(TelaProtegida.Configuracao, () => new ConfiguracaoViewModel(_p))),
-            new("Sair do programa", "Fecha o BC Fichas", "IconeDesligar", "#334155", c.Protegida(TelaProtegida.SairDoPrograma),
-                () => _p.ExecutarProtegido(TelaProtegida.SairDoPrograma, Sair)),
-        ];
+        };
+        if (c.LiberarReimpressao)
+            itens.Add(new("Reimprimir fichas", "Segunda via de um pedido", "IconeImpressora", "#7C3AED",
+                c.Protegida(TelaProtegida.Reimpressao),
+                () => AbrirPeloMenu(TelaProtegida.Reimpressao, () => new ReimpressaoViewModel(_p))));
+        if (c.LiberarDevolucao)
+            itens.Add(new("Devolver fichas", "Devolve o valor em dinheiro", "IconeTroca", "#DB2777",
+                c.Protegida(TelaProtegida.Devolucao),
+                () => AbrirPeloMenu(TelaProtegida.Devolucao, () => new DevolucaoViewModel(_p))));
+        itens.Add(new("Relatórios", "Vendas, caixas e sangrias", "IconeGrafico", "#D97706", c.Protegida(TelaProtegida.Relatorios),
+            () => AbrirPeloMenu(TelaProtegida.Relatorios, () => new RelatoriosViewModel(_p))));
+        if (principal.ModoTeste)
+            itens.Add(new("Sair do modo teste", "Apaga as vendas de teste", "IconeAlerta", "#EA580C", false,
+                () => _ = _p.SairDoModoTeste()));
+        itens.Add(new("Configurações", "Evento, ficha, impressora", "IconeConfig", "#475569", c.Protegida(TelaProtegida.Configuracao),
+            () => AbrirPeloMenu(TelaProtegida.Configuracao, () => new ConfiguracaoViewModel(_p))));
+        itens.Add(new("Sair do programa", "Fecha o BC Fichas", "IconeDesligar", "#334155", c.Protegida(TelaProtegida.SairDoPrograma),
+            () => _p.ExecutarProtegido(TelaProtegida.SairDoPrograma, Sair)));
+        Itens = itens;
     }
 
     public List<ItemMenu> Itens { get; }

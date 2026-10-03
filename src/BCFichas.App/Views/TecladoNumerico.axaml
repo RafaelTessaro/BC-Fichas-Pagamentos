@@ -3,7 +3,7 @@
              xmlns:v="using:BCFichas.App.Views"
              x:Class="BCFichas.App.Views.TecladoNumerico"
              x:DataType="v:TecladoNumerico">
-  <!-- Teclado de valores: manda "0"-"9", "00", "<" (apagar) e "C" (limpar) para o Comando. -->
+  <!-- Teclado de valores: manda "0"-"9", "00", "<" (apagar) e "C" (limpar, em vermelho) para o Comando. -->
   <Grid x:Name="Grade" RowDefinitions="*,*,*,*" ColumnDefinitions="*,*,*" MinHeight="230">
     <Grid.Styles>
       <Style Selector="Button.tecla">
@@ -12,6 +12,10 @@
       </Style>
       <Style Selector="Button.tecla.especial">
         <Setter Property="FontSize" Value="17" />
+      </Style>
+      <Style Selector="Button.tecla.limpar">
+        <Setter Property="Foreground" Value="{StaticResource Perigo}" />
+        <Setter Property="FontWeight" Value="Bold" />
       </Style>
     </Grid.Styles>
     <Button Classes="tecla" Grid.Row="0" Grid.Column="0" Content="1" CommandParameter="1" />
@@ -24,6 +28,7 @@
     <Button Classes="tecla" Grid.Row="2" Grid.Column="1" Content="8" CommandParameter="8" />
     <Button Classes="tecla" Grid.Row="2" Grid.Column="2" Content="9" CommandParameter="9" />
     <Button Classes="tecla especial" Grid.Row="3" Grid.Column="0" Content="{Binding $parent[v:TecladoNumerico].TextoEsquerda}"
+            Classes.limpar="{Binding $parent[v:TecladoNumerico].TeclaEsquerda, Converter={x:Static v:Conversores.EhLimpar}}"
             CommandParameter="{Binding $parent[v:TecladoNumerico].TeclaEsquerda}" />
     <Button Classes="tecla" Grid.Row="3" Grid.Column="1" Content="0" CommandParameter="0" />
     <Button Classes="tecla especial" Grid.Row="3" Grid.Column="2" CommandParameter="&lt;">

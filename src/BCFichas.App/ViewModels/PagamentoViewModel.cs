@@ -29,6 +29,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     private CancellationTokenSource? _cancelar;
     private Pedido? _pedido;
     private FormaPagamento _forma;
+    private bool _fechada;
 
     public PagamentoViewModel(PrincipalViewModel principal, SessaoCaixa sessao, IReadOnlyList<LinhaCarrinho> linhas,
         Action aoConcluir)
@@ -81,18 +82,20 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     public bool EmErroImpressao => Etapa == EtapaPagamento.ErroImpressao;
     public bool PodeFechar => Etapa is EtapaPagamento.Escolher or EtapaPagamento.Dinheiro or EtapaPagamento.Recusado;
 
+    /// <summary>A impressora falhou: "Reimprimir depois" só quando a reimpressão está liberada no menu.</summary>
+    public string TextoFecharSemImprimir => _principal.Config.LiberarReimpressao ? "Reimprimir depois" : "Fechar";
+
     [RelayCommand]
     private void EscolherDinheiro()
     {
         _forma = FormaPagamento.Dinheiro;
         FormaTexto = "Dinheiro";
-        Recebido.Centavos = 0;
+        // Já vem com o valor da venda (pagou certinho: é só confirmar). Se o cliente deu mais, a primeira tecla
+        // apaga e o operador digita o que recebeu.
+        Recebido.Sugerir(TotalCentavos);
         AtualizarTroco();
         Etapa = EtapaPagamento.Dinheiro;
     }
-
-    [RelayCommand]
-    private void ValorExato() => Recebido.Centavos = TotalCentavos;
 
     [RelayCommand]
     private async Task ConfirmarDinheiro()
@@ -226,7 +229,17 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     private void Fechar()
     {
         if (Etapa == EtapaPagamento.Maquininha) return;
+        FecharJanela();
+    }
+
+    /// <summary>Fecha o pagamento. Venda em dinheiro com troco: o troco continua na tela de venda por uns segundos.</summary>
+    private void FecharJanela()
+    {
+        if (_fechada) return;
+        _fechada = true;
         _principal.FecharDialogo(this);
+        if (_pedido is { Forma: FormaPagamento.Dinheiro, TrocoCentavos: > 0 } pago)
+            _principal.Venda.MostrarUltimoTroco(pago.TrocoCentavos, pago.RecebidoCentavos);
     }
 
     /// <summary>Pago: limpa o pedido da tela e imprime as fichas.</summary>
@@ -254,7 +267,8 @@ public sealed partial class PagamentoViewModel : ViewModelBase
         {
             _principal.Sistema.Vendas.RegistrarImpressao(pedido.Id);
             ResultadoImpressao = resultado.Mensagem;
-            if (!TemTroco) _ = FecharSozinho();
+            // Com troco também fecha sozinho: o troco fica em cima do pedido, sem travar a próxima venda.
+            _ = FecharSozinho();
         }
         else
         {
@@ -266,7 +280,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     private async Task FecharSozinho()
     {
         await Task.Delay(2500);
-        if (Etapa == EtapaPagamento.Concluido) _principal.FecharDialogo(this);
+        if (Etapa == EtapaPagamento.Concluido && !_fechada) FecharJanela();
     }
 
     private void AtualizarTroco()

@@ -864,9 +864,40 @@
             </StackPanel>
           </ScrollViewer>
         </TabItem>
-        <!-- MÁQUINA: programar várias máquinas e começar de novo -->
+        <!-- MÁQUINA: programar várias máquinas, começar de novo e liberar opções (só com a senha técnica) -->
         <TabItem Header="Máquina">
-          <ScrollViewer>
+          <Panel>
+          <!-- Cadeado: a senha técnica da BC Fichas (no modo teste não pede) -->
+          <Border Classes="bloco" Width="460" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="28,24"
+                  IsVisible="{Binding !MaquinaLiberada}">
+            <StackPanel Spacing="12">
+              <Border Width="64" Height="64" CornerRadius="18" Background="{StaticResource FundoLateral}"
+                      HorizontalAlignment="Center">
+                <PathIcon Data="{StaticResource IconeCadeado}" Width="32" Height="32" Foreground="{StaticResource Marca}" />
+              </Border>
+              <TextBlock Text="Área técnica da BC Fichas" FontSize="21" FontWeight="Bold" HorizontalAlignment="Center" />
+              <TextBlock Classes="suave" FontSize="15" TextWrapping="Wrap" TextAlignment="Center"
+                         Text="Backup, restaurar, apagar as vendas e as opções liberadas para o cliente. Digite a senha técnica." />
+              <TextBox x:Name="CampoSenhaTecnica" Text="{Binding SenhaTecnicaDigitada}" PasswordChar="●"
+                       Watermark="Senha técnica" FontSize="20" MaxLength="40" Margin="0,4,0,0">
+                <TextBox.KeyBindings>
+                  <KeyBinding Gesture="Enter" Command="{Binding LiberarMaquinaCommand}" />
+                </TextBox.KeyBindings>
+              </TextBox>
+              <TextBlock Text="{Binding ErroSenhaTecnica}" Foreground="{StaticResource Perigo}" FontWeight="Bold"
+                         HorizontalAlignment="Center"
+                         IsVisible="{Binding ErroSenhaTecnica, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <Button Classes="primario" Command="{Binding LiberarMaquinaCommand}" IsEnabled="{Binding !ConferindoSenha}"
+                      HorizontalAlignment="Stretch" Height="56">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <PathIcon Data="{StaticResource IconeCadeado}" Foreground="White" />
+                  <TextBlock Text="Entrar" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </Border>
+
+          <ScrollViewer IsVisible="{Binding MaquinaLiberada}">
             <StackPanel Margin="6,6,6,24" MaxWidth="900" HorizontalAlignment="Left" Spacing="14">
               <Border Background="{StaticResource FundoLateral}" CornerRadius="14" Padding="18,14">
                 <Grid ColumnDefinitions="*,Auto">
@@ -888,6 +919,41 @@
                     <TextBlock Text="COM VENDAS" Foreground="White" FontWeight="Bold" FontSize="14" />
                   </Border>
                 </Grid>
+              </Border>
+
+              <!-- Opções que só aparecem no Menu quando o cliente pede -->
+              <Border Classes="bloco">
+                <StackPanel Spacing="4">
+                  <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                    <Border Classes="icone-bloco menor">
+                      <PathIcon Data="{StaticResource IconeMenu}" />
+                    </Border>
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Classes="titulo-bloco" Text="Liberar no menu" />
+                      <TextBlock Classes="texto-bloco" Text="Só ligue se o cliente pedir. Desligadas, não aparecem no Menu." />
+                    </StackPanel>
+                  </Grid>
+                  <Border Classes="opcoes">
+                    <StackPanel>
+                      <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Classes="nome-opcao" Text="Devolução de fichas" />
+                          <TextBlock Classes="dica" TextWrapping="Wrap"
+                                     Text="Só em dinheiro: digita o valor das fichas devolvidas e ele sai do caixa como uma sangria." />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding LiberarDevolucao}" />
+                      </Grid>
+                      <Border Classes="separador" />
+                      <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Classes="nome-opcao" Text="Reimpressão de fichas" />
+                          <TextBlock Classes="dica" TextWrapping="Wrap" Text="Segunda via das fichas de um pedido." />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding LiberarReimpressao}" />
+                      </Grid>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
               </Border>
 
               <!-- Backup da programação -->
@@ -973,6 +1039,7 @@
                          Text="Antes de apagar ou restaurar, o programa guarda sozinho uma cópia de segurança do banco em dados\backups (as 15 últimas). Se apagar sem querer, chame o suporte." />
             </StackPanel>
           </ScrollViewer>
+          </Panel>
         </TabItem>
       </TabControl>
     </Border>

@@ -190,24 +190,29 @@ public class FluxoDeVendaTests
         t.Venda.PagarCommand.Execute(null);
         var pagamento = Assert.IsType<PagamentoViewModel>(t.Principal.Dialogo);
 
-        pagamento.EscolherDinheiroCommand.Execute(null);
-        pagamento.ValorExatoCommand.Execute(null);
+        pagamento.EscolherDinheiroCommand.Execute(null); // já vem com o valor da venda
         await pagamento.ConfirmarDinheiroCommand.ExecuteAsync(null);
 
         Assert.True(pagamento.EmErroImpressao);
         Assert.Contains("COM99", pagamento.Mensagem);
         t.Foto("09-pagamento-erro-impressora");
-        Assert.True(t.Principal.ImpressoraComErro);
     }
 
     [AvaloniaFact]
     public void Menu_lista_as_ferramentas_e_pede_senha_nas_protegidas()
     {
-        using var t = new TelaDeTeste(configurar: c => c.SenhaMaster = "1234");
+        using var t = new TelaDeTeste(configurar: c =>
+        {
+            c.SenhaMaster = "1234";
+            c.LiberarDevolucao = true;
+            c.LiberarReimpressao = true;
+        });
         t.AbrirCaixa();
         t.Venda.AbrirMenuCommand.Execute(null);
         var menu = Assert.IsType<MenuViewModel>(t.Principal.Dialogo);
-        Assert.Equal(8, menu.Itens.Count);
+        // Sangria e Fechar caixa ficam na barra lateral
+        Assert.Equal(["Produtos", "Reimprimir fichas", "Devolver fichas", "Relatórios", "Configurações", "Sair do programa"],
+            menu.Itens.Select(i => i.Titulo));
         Assert.True(menu.Itens.Single(i => i.Titulo == "Devolver fichas").Protegido);
         t.Foto("10-menu");
 

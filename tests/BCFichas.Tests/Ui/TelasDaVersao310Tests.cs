@@ -235,21 +235,4 @@ public class TelasDaVersao310Tests
     private static List<Avalonia.Controls.Button> BotoesSalvar(TelaDeTeste t, ConfiguracaoViewModel tela) =>
         t.Janela.GetVisualDescendants().OfType<Avalonia.Controls.Button>()
             .Where(b => ReferenceEquals(b.Command, tela.SalvarCommand) && b.IsEffectivelyVisible).ToList();
-
-    [AvaloniaFact]
-    public void Dinheiro_tem_botao_limpar()
-    {
-        using var t = new TelaDeTeste();
-        t.AbrirCaixa();
-        t.Tocar("PASTEL");
-        t.Venda.PagarCommand.Execute(null);
-        var pagamento = Assert.IsType<PagamentoViewModel>(t.Principal.Dialogo);
-        pagamento.EscolherDinheiroCommand.Execute(null);
-        pagamento.Recebido.TeclaCommand.Execute("9");
-        pagamento.Recebido.TeclaCommand.Execute("9");
-        TelaDeTeste.Atualizar();
-        var limpar = t.Achar<Avalonia.Controls.Button>(b => Avalonia.Controls.ToolTip.GetTip(b) as string == "Limpar o valor");
-        limpar.Command!.Execute(limpar.CommandParameter);
-        Assert.Equal("R$ 0,00", pagamento.Recebido.Texto);
-    }
 }

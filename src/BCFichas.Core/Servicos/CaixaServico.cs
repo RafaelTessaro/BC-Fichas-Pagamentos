@@ -84,11 +84,12 @@ public sealed class CaixaServico
         if (!sessao.Aberta) throw new ErroDeNegocio("O caixa está fechado.");
         if (valor <= 0) throw new ErroDeNegocio("Informe um valor maior que zero.");
 
-        if (tipo == TipoMovimento.Sangria)
+        if (tipo is TipoMovimento.Sangria or TipoMovimento.Devolucao)
         {
             var disponivel = Resumo(sessao.Id).DinheiroEsperado;
+            var acao = tipo == TipoMovimento.Devolucao ? "devolver" : "retirar";
             if (valor > disponivel)
-                throw new ErroDeNegocio($"Não dá para retirar {Dinheiro.Formatar(valor)}: no caixa há {Dinheiro.Formatar(disponivel)} em dinheiro.");
+                throw new ErroDeNegocio($"Não dá para {acao} {Dinheiro.Formatar(valor)}: no caixa há {Dinheiro.Formatar(disponivel)} em dinheiro.");
         }
 
         var movimento = new Movimento
@@ -153,10 +154,17 @@ public sealed class CaixaServico
             "SELECT SUM(valor) FROM movimentos WHERE sessao_id = $s AND tipo = $t",
             ("$s", sessaoId), ("$t", (int)tipo)) ?? 0;
 
-        // Devoluções feitas neste caixa (a venda pode ter sido em outro caixa ou outro dia).
-        var devolucoes = _banco.Consultar(
-            "SELECT forma, SUM(valor), COUNT(*) FROM devolucoes WHERE sessao_id = $s GROUP BY forma",
-            l => ((FormaPagamento)l.GetInt32(0), l.GetInt64(1), l.GetInt32(2)), ("$s", sessaoId));
+        // Devoluções feitas neste caixa: as em dinheiro (só o valor, como uma sangria) e as de antes da versão
+        // 3.11, feitas pelo pedido (a venda podia ter sido em outro caixa ou outro dia).
+        var devolucoes = _banco.Consultar("""
+            SELECT forma, SUM(valor), COUNT(*) FROM (
+                SELECT forma, valor FROM devolucoes WHERE sessao_id = $s
+                UNION ALL
+                SELECT $dinheiro, valor FROM movimentos WHERE sessao_id = $s AND tipo = $devolucao)
+            GROUP BY forma
+            """,
+            l => ((FormaPagamento)l.GetInt32(0), l.GetInt64(1), l.GetInt32(2)), ("$s", sessaoId),
+            ("$dinheiro", (int)FormaPagamento.Dinheiro), ("$devolucao", (int)TipoMovimento.Devolucao));
         var devolvidos = _banco.Consultar("""
             SELECT i.nome, SUM(i.quantidade), SUM(i.valor)
             FROM itens_devolucao i JOIN devolucoes d ON d.id = i.devolucao_id

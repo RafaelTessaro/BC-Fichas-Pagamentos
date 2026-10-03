@@ -34,7 +34,7 @@ public sealed class ResumoVM
             new("− Sangrias", Dinheiro.Formatar(r.Sangrias)),
         ];
         if (r.Devolvido(FormaPagamento.Dinheiro) > 0)
-            Gaveta.Add(new("− Fichas devolvidas", Dinheiro.Formatar(r.Devolvido(FormaPagamento.Dinheiro))));
+            Gaveta.Add(new("− Devoluções", Dinheiro.Formatar(r.Devolvido(FormaPagamento.Dinheiro))));
         Gaveta.Add(new("= Dinheiro esperado", Dinheiro.Formatar(r.DinheiroEsperado), Destaque: true));
         TemDevolucoes = r.TemDevolucoes;
         TotalDevolvido = "− " + Dinheiro.Formatar(r.TotalDevolvido);
@@ -200,7 +200,8 @@ public sealed partial class FechamentoViewModel : PaginaViewModel
     }
 }
 
-public sealed record MovimentoItem(string Hora, string Tipo, string Valor, string Motivo, bool Sangria);
+/// <param name="Saida">Dinheiro que saiu da gaveta (sangria ou devolução): o valor fica em vermelho.</param>
+public sealed record MovimentoItem(string Hora, string Tipo, string Valor, string Motivo, bool Saida);
 
 /// <summary>Sangria (tirar dinheiro) e suprimento (pôr dinheiro).</summary>
 public sealed partial class SangriaViewModel(PrincipalViewModel principal) : PaginaViewModel(principal)
@@ -293,15 +294,13 @@ public sealed partial class SangriaViewModel(PrincipalViewModel principal) : Pag
             new("− Sangrias", Dinheiro.Formatar(resumo.Sangrias)),
         };
         if (resumo.Devolvido(FormaPagamento.Dinheiro) > 0)
-            composicao.Add(new("− Fichas devolvidas", Dinheiro.Formatar(resumo.Devolvido(FormaPagamento.Dinheiro))));
+            composicao.Add(new("− Devoluções", Dinheiro.Formatar(resumo.Devolvido(FormaPagamento.Dinheiro))));
         Composicao = composicao;
         AtualizarDepois();
         foreach (var m in Sistema.Caixa.Movimentos(sessao.Id))
         {
             Movimentos.Add(new MovimentoItem(m.CriadoEm.ToString("HH:mm", CultureInfo.InvariantCulture),
-                m.Tipo == TipoMovimento.Sangria ? "Sangria" : "Suprimento",
-                (m.Tipo == TipoMovimento.Sangria ? "− " : "+ ") + Dinheiro.Formatar(m.ValorCentavos),
-                m.Motivo, m.Tipo == TipoMovimento.Sangria));
+                m.NomeCurto, (m.Saida ? "− " : "+ ") + Dinheiro.Formatar(m.ValorCentavos), m.Motivo, m.Saida));
         }
     }
 }

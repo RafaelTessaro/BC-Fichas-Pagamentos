@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using BCFichas.Core;
@@ -66,12 +67,17 @@ public sealed class LinhaItem(LinhaCarrinho linha)
 /// <summary>Tela principal: abas, botões de produto, pedido e botão de pagamento.</summary>
 public sealed partial class VendaViewModel : ViewModelBase
 {
+    /// <summary>Quanto tempo o último troco fica em cima do pedido.</summary>
+    public static readonly TimeSpan TempoDoTroco = TimeSpan.FromSeconds(5);
+
     private readonly PrincipalViewModel _principal;
     private readonly Carrinho _carrinho = new();
+    private readonly DispatcherTimer _timerTroco = new() { Interval = TempoDoTroco };
 
     public VendaViewModel(PrincipalViewModel principal)
     {
         _principal = principal;
+        _timerTroco.Tick += (_, _) => EsconderTroco();
     }
 
     public PrincipalViewModel Principal => _principal;
@@ -93,6 +99,28 @@ public sealed partial class VendaViewModel : ViewModelBase
     private bool _vazio = true;
 
     public bool MostrarAbas => Abas.Count > 1;
+
+    // Último troco (venda em dinheiro): fica em cima do pedido por uns segundos, sem tapar os botões.
+    [ObservableProperty] private bool _mostrarTroco;
+    [ObservableProperty] private string _ultimoTroco = "";
+    [ObservableProperty] private string _ultimoRecebido = "";
+
+    /// <summary>Depois de uma venda em dinheiro com troco: mostra quanto devolver ao cliente.</summary>
+    public void MostrarUltimoTroco(long troco, long recebido)
+    {
+        if (troco <= 0) return;
+        UltimoTroco = Dinheiro.Formatar(troco);
+        UltimoRecebido = $"Recebido {Dinheiro.Formatar(recebido)}";
+        MostrarTroco = true;
+        _timerTroco.Stop();
+        _timerTroco.Start();
+    }
+
+    public void EsconderTroco()
+    {
+        _timerTroco.Stop();
+        MostrarTroco = false;
+    }
 
     internal Carrinho Carrinho => _carrinho;
 
@@ -186,6 +214,19 @@ public sealed partial class VendaViewModel : ViewModelBase
 
     [RelayCommand]
     private void AbrirMenu() => _principal.AbrirDialogo(new MenuViewModel(_principal));
+
+    /// <summary>Barra lateral: sangria e suprimento (antes ficava no menu).</summary>
+    [RelayCommand]
+    private void AbrirSangria() =>
+        _principal.AbrirProtegido(TelaProtegida.Sangria, () => new SangriaViewModel(_principal));
+
+    /// <summary>Barra lateral: fechar o caixa (no modo teste, sair do teste).</summary>
+    [RelayCommand]
+    private void FecharCaixa()
+    {
+        if (_principal.ModoTeste) _ = _principal.SairDoModoTeste();
+        else _principal.AbrirProtegido(TelaProtegida.FecharCaixa, () => new FechamentoViewModel(_principal));
+    }
 
     /// <summary>Toque no logo da BC Fichas (5 toques seguidos ligam o modo teste).</summary>
     [RelayCommand]

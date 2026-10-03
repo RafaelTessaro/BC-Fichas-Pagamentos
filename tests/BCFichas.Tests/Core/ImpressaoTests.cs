@@ -250,12 +250,10 @@ public class AmostrasDeImpressao
         var pix = t.Sistema.Vendas.CriarPedido(sessao, carrinho.Linhas, FormaPagamento.Pix);
         t.Sistema.Vendas.ConfirmarPagamento(pix.Id, null);
         t.Sistema.Caixa.RegistrarMovimento(sessao, TipoMovimento.Sangria, 2000, "cofre");
-        var pastel = pedido.Itens.First(i => i.Nome == "PASTEL");
-        var devolucao = t.Sistema.Devolucoes.Devolver(sessao, pedido.Id, new Dictionary<long, int> { [pastel.Id] = 1 }, "não usou");
-        SalvarDocumento(Relatorios.Devolucao(devolucao, t.Sistema.Vendas.Pedido(pedido.Id)!, config,
-            t.Sistema.Caixa.Resumo(sessao.Id).DinheiroEsperado), "devolucao-de-fichas.png");
-        var cerveja = pix.Itens.First(i => i.Nome == "CERVEJA");
-        t.Sistema.Devolucoes.Devolver(sessao, pix.Id, new Dictionary<long, int> { [cerveja.Id] = 2 }, "");
+        // Devolução (só em dinheiro): sai da gaveta como uma sangria
+        var devolucao = t.Sistema.Caixa.RegistrarMovimento(sessao, TipoMovimento.Devolucao, 1000, "");
+        SalvarDocumento(Relatorios.Movimento(devolucao, config, t.Sistema.Caixa.Resumo(sessao.Id).DinheiroEsperado),
+            "devolucao-de-fichas.png");
 
         var resumo = t.Sistema.Caixa.Fechar(sessao, 13000);
         SalvarDocumento(Relatorios.Fechamento(resumo, config), "fechamento-de-caixa.png");

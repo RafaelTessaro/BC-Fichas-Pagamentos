@@ -56,14 +56,7 @@ public class MemoriaComMuitasVendasTests(ITestOutputHelper saida)
         TelaDeTeste.Atualizar();
 
         await Tela("Reimpressão", new ReimpressaoViewModel(t.Principal));
-        var devolucao = new DevolucaoViewModel(t.Principal);
-        await Tela("Devolução", devolucao, () =>
-        {
-            devolucao.Busca = "54321";
-            devolucao.BuscarCommand.Execute(null);
-            Assert.True(devolucao.TemPedido);
-            return Task.CompletedTask;
-        });
+        await Tela("Devolução", new DevolucaoViewModel(t.Principal));
         await Tela("Fechamento", new FechamentoViewModel(t.Principal));
         await Tela("Sangria", new SangriaViewModel(t.Principal));
 

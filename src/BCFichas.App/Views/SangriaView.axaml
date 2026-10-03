@@ -122,7 +122,7 @@
                         <TextBlock Text="{Binding Motivo}" Classes="suave" FontSize="13" TextTrimming="CharacterEllipsis" />
                       </StackPanel>
                       <TextBlock Grid.Column="1" Text="{Binding Valor}" FontSize="17" FontWeight="Bold"
-                                 VerticalAlignment="Center" Classes.saida="{Binding Sangria}" />
+                                 VerticalAlignment="Center" Classes.saida="{Binding Saida}" />
                     </Grid>
                   </Border>
                 </DataTemplate>

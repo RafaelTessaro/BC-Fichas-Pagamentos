@@ -22,6 +22,9 @@ public static class Conversores
     public static readonly IValueConverter Segundos = new FuncValueConverter<int, string>(s =>
         s == 0 ? "Nunca (eu toco em aprovar ou recusar)" : $"{s} segundos");
 
+    /// <summary>Tecla "C" do teclado numérico: é o Limpar (fica em vermelho).</summary>
+    public static readonly IValueConverter EhLimpar = new FuncValueConverter<string?, bool>(tecla => tecla == "C");
+
     /// <summary>Tela com altura para mostrar tudo na barra lateral (em tela baixa, sobra lugar para as abas).</summary>
     public static readonly IValueConverter TelaAlta = new FuncValueConverter<double, bool>(altura => altura >= 720);
 }

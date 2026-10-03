@@ -6,7 +6,7 @@
              x:DataType="vm:DevolucaoViewModel">
   <Grid RowDefinitions="Auto,*">
     <Border Classes="cabecalho">
-      <Grid ColumnDefinitions="Auto,*,Auto">
+      <Grid ColumnDefinitions="Auto,*">
         <Button Classes="fantasma" Command="{Binding VoltarCommand}" Height="48" Padding="12,0">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <PathIcon Data="{StaticResource IconeVoltar}" />
@@ -14,179 +14,108 @@
           </StackPanel>
         </Button>
         <TextBlock Grid.Column="1" Text="Devolução de fichas" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
-        <Border Grid.Column="2" Classes="selo" Padding="14,6">
-          <TextBlock FontSize="16" Foreground="{StaticResource PrimariaEscura}">
-            <Run Text="Dinheiro no caixa:" />
-            <Run Text="{Binding DinheiroEmCaixa}" FontWeight="Bold" />
-          </TextBlock>
-        </Border>
       </Grid>
     </Border>
 
-    <Grid Grid.Row="1" ColumnDefinitions="330,*" Margin="10">
-
-      <!-- Achar o pedido pelo número da ficha (ou passando a ficha no leitor de código de barras) -->
+    <Grid Grid.Row="1" ColumnDefinitions="*,380" Margin="10">
+      <!-- O valor das fichas devolvidas: sai da gaveta em dinheiro -->
       <Border Classes="cartao" Margin="5">
-        <StackPanel Spacing="10">
-          <TextBlock Text="Número do pedido" Classes="secao" Margin="0" />
-          <TextBlock Text="É o número depois de PED: na ficha." Classes="dica" Margin="0,-6,0,0" />
-          <TextBox x:Name="CampoBusca" Classes="numero semteclado" Text="{Binding Busca}" FontSize="30" FontWeight="Bold"
-                   MaxLength="14" Watermark="Ex.: 13" HorizontalContentAlignment="Center">
-            <TextBox.KeyBindings>
-              <KeyBinding Gesture="Enter" Command="{Binding BuscarCommand}" />
-            </TextBox.KeyBindings>
-          </TextBox>
-          <v:TecladoNumerico Comando="{Binding TeclaCommand}" TeclaEsquerda="C" Height="250" />
-          <Button Classes="primario" Command="{Binding BuscarCommand}" HorizontalAlignment="Stretch" Height="58">
-            <StackPanel Orientation="Horizontal" Spacing="10">
-              <PathIcon Data="{StaticResource IconeBusca}" Foreground="White" />
-              <TextBlock Text="Buscar pedido" Foreground="White" FontSize="19" FontWeight="Bold" />
-            </StackPanel>
-          </Button>
-          <TextBlock Text="Com leitor de código de barras, é só passar a ficha." Classes="dica" TextAlignment="Center" />
-        </StackPanel>
-      </Border>
-
-      <Border Grid.Column="1" Classes="cartao" Margin="5">
-        <Panel>
-
-          <!-- Sem pedido: explicação e devoluções já feitas neste caixa -->
-          <Grid IsVisible="{Binding SemPedido}" RowDefinitions="Auto,Auto,*">
-            <Border Background="{StaticResource Fundo}" CornerRadius="14" Padding="18">
+        <ScrollViewer>
+          <Grid ColumnDefinitions="*,280" RowDefinitions="Auto,*,Auto">
+            <Border Grid.ColumnSpan="2" Background="{StaticResource Fundo}" CornerRadius="12" Padding="14,10"
+                    Margin="0,0,0,12">
               <Grid ColumnDefinitions="Auto,*">
-                <Border Width="56" Height="56" CornerRadius="14" Background="{StaticResource PrimariaClara}" VerticalAlignment="Top">
-                  <PathIcon Data="{StaticResource IconeFicha}" Width="30" Height="30" Foreground="{StaticResource Primaria}" />
+                <Border Width="44" Height="44" CornerRadius="12" Background="{StaticResource FundoLateral}">
+                  <PathIcon Data="{StaticResource IconeTroca}" Width="24" Height="24" Foreground="{StaticResource Marca}" />
                 </Border>
-                <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="6">
-                  <TextBlock Text="O cliente não usou uma ficha?" FontSize="19" FontWeight="Bold" />
-                  <TextBlock TextWrapping="Wrap" FontSize="15" Classes="suave"
-                             Text="Pegue a ficha de volta, busque o pedido e marque o que voltou. A venda continua valendo; só a parte devolvida sai do total." />
-                  <TextBlock TextWrapping="Wrap" FontSize="15" Classes="suave"
-                             Text="Pago em dinheiro: o valor sai da gaveta. Pago no cartão ou no PIX: o estorno é feito na maquininha (por causa das taxas)." />
+                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                  <TextBlock Text="Só em dinheiro" FontSize="17" FontWeight="Bold" />
+                  <TextBlock Classes="suave" FontSize="14" TextWrapping="Wrap"
+                             Text="Some o valor das fichas que o cliente trouxe e digite o total. O dinheiro sai do caixa como uma sangria e aparece no fechamento como devolução." />
                 </StackPanel>
               </Grid>
             </Border>
-            <TextBlock Grid.Row="1" Text="Devoluções deste caixa" Classes="secao" Margin="0,18,0,6" />
-            <Panel Grid.Row="2">
-              <TextBlock Text="Nenhuma devolução ainda." Classes="suave" IsVisible="{Binding SemFeitas}" />
-              <ScrollViewer>
-                <ItemsControl ItemsSource="{Binding Feitas}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:DevolucaoFeita">
-                      <Border BorderBrush="{StaticResource Borda}" BorderThickness="0,0,0,1" Padding="2,8">
-                        <Grid ColumnDefinitions="*,Auto">
-                          <StackPanel>
-                            <TextBlock FontWeight="SemiBold" FontSize="15">
-                              <Run Text="{Binding Hora}" />
-                              <Run Text="•" />
-                              <Run Text="{Binding Titulo}" />
-                              <Run Text="•" />
-                              <Run Text="{Binding Como}" />
-                            </TextBlock>
-                            <TextBlock Text="{Binding Itens}" Classes="suave" FontSize="13" TextTrimming="CharacterEllipsis" />
-                          </StackPanel>
-                          <TextBlock Grid.Column="1" Text="{Binding Valor}" FontSize="17" FontWeight="Bold"
-                                     Foreground="{StaticResource Perigo}" VerticalAlignment="Center" />
-                        </Grid>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </ScrollViewer>
-            </Panel>
-          </Grid>
 
-          <!-- Pedido achado: escolher as fichas devolvidas -->
-          <Grid IsVisible="{Binding TemPedido}" RowDefinitions="Auto,*,Auto">
-            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-              <StackPanel>
-                <TextBlock Text="{Binding PedidoTitulo}" Classes="titulo" />
-                <TextBlock Text="{Binding PedidoInfo}" Classes="suave" FontSize="15" TextWrapping="Wrap" />
+            <StackPanel Grid.Row="1" Spacing="8" Margin="0,0,16,0">
+              <TextBlock Text="Valor das fichas devolvidas" Classes="rotulo" Margin="2,0,0,0" />
+              <Border Background="{StaticResource Fundo}" CornerRadius="12" Padding="16,8">
+                <TextBlock Text="{Binding Valor.Texto}" FontSize="44" FontWeight="ExtraBold" TextAlignment="Right" />
+              </Border>
+              <TextBlock Text="{Binding Depois}" FontSize="15" FontWeight="SemiBold" TextAlignment="Right"
+                         Foreground="{StaticResource PrimariaEscura}" Classes.alerta="{Binding DepoisNegativo}"
+                         TextWrapping="Wrap"
+                         IsVisible="{Binding Depois, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+                <TextBlock Text="Imprimir comprovante" VerticalAlignment="Center" FontSize="15" />
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ImprimirComprovante}" />
+              </Grid>
+            </StackPanel>
+
+            <v:TecladoNumerico Grid.Row="1" Grid.Column="1" Comando="{Binding Valor.TeclaCommand}" TeclaEsquerda="C"
+                               VerticalAlignment="Top" Height="260" />
+
+            <Button Grid.Row="2" Grid.ColumnSpan="2" Classes="primario" Command="{Binding RegistrarCommand}"
+                    IsEnabled="{Binding PodeDevolver}" HorizontalAlignment="Stretch" Height="62" Margin="0,14,0,0">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <PathIcon Data="{StaticResource IconeNotas}" Width="26" Height="26" Foreground="White" />
+                <TextBlock Text="{Binding TextoBotao}" Foreground="White" FontSize="20" FontWeight="Bold" />
               </StackPanel>
-              <Button Grid.Column="1" Classes="suave" Content="Outro pedido" Command="{Binding OutroPedidoCommand}"
-                      VerticalAlignment="Top" />
-            </Grid>
+            </Button>
+          </Grid>
+        </ScrollViewer>
+      </Border>
 
+      <Grid Grid.Column="1" RowDefinitions="Auto,*">
+        <!-- Quanto deveria haver na gaveta agora, como na sangria -->
+        <Border Background="{StaticResource FundoLateral}" CornerRadius="16" Margin="5" Padding="20,16"
+                BoxShadow="0 2 8 0 #330F172A">
+          <StackPanel Spacing="2">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <PathIcon Data="{StaticResource IconeDinheiro}" Foreground="{StaticResource Marca}" Width="22" Height="22" />
+              <TextBlock Text="DINHEIRO QUE DEVE ESTAR NO CAIXA" Foreground="{StaticResource Marca}" FontWeight="Bold"
+                         FontSize="13" VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock Text="{Binding DinheiroEmCaixa}" Foreground="White" FontSize="46" FontWeight="ExtraBold" />
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1" Classes="cartao" Margin="5">
+          <Grid RowDefinitions="Auto,*,Auto">
+            <TextBlock Text="Devoluções deste caixa" Classes="secao" />
+            <TextBlock Grid.Row="1" Text="Nenhuma devolução ainda." Classes="suave"
+                       IsVisible="{Binding !Feitas.Count}" />
             <ScrollViewer Grid.Row="1">
-              <ItemsControl ItemsSource="{Binding Itens}">
+              <ItemsControl ItemsSource="{Binding Feitas}">
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="vm:ItemDevolucao">
-                    <Border BorderBrush="{StaticResource Borda}" BorderThickness="0,0,0,1" Padding="4,10"
-                            Classes.marcado="{Binding Marcado}" CornerRadius="10" IsEnabled="{Binding PodeDevolver}">
-                      <Grid ColumnDefinitions="*,Auto,110">
-                        <StackPanel VerticalAlignment="Center">
-                          <TextBlock Text="{Binding Nome}" FontWeight="Bold" FontSize="17" TextWrapping="Wrap" />
-                          <TextBlock Text="{Binding Combo}" IsVisible="{Binding DeCombo}" FontSize="13" FontWeight="SemiBold"
-                                     Foreground="{StaticResource PrimariaEscura}" />
-                          <TextBlock Classes="suave" FontSize="13" TextWrapping="Wrap">
-                            <Run Text="{Binding Preco}" />
-                            <Run Text="•" />
-                            <Run Text="{Binding Situacao}" />
-                          </TextBlock>
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
-                          <Button Classes="suave" Width="46" Height="46" Padding="0" CornerRadius="999" Command="{Binding MenosCommand}">
-                            <PathIcon Data="{StaticResource IconeMenos}" Width="20" Height="20" />
-                          </Button>
-                          <TextBlock Text="{Binding Quantidade}" FontSize="22" FontWeight="Bold" MinWidth="44"
-                                     TextAlignment="Center" VerticalAlignment="Center" />
-                          <Button Classes="suave" Width="46" Height="46" Padding="0" CornerRadius="999" Command="{Binding MaisCommand}">
-                            <PathIcon Data="{StaticResource IconeMais}" Width="20" Height="20" />
-                          </Button>
-                        </StackPanel>
-                        <TextBlock Grid.Column="2" Text="{Binding Total}" FontSize="18" FontWeight="Bold" TextAlignment="Right"
-                                   VerticalAlignment="Center" />
+                  <DataTemplate x:DataType="vm:DevolucaoFeita">
+                    <Border BorderBrush="{StaticResource Borda}" BorderThickness="0,0,0,1" Padding="2,8">
+                      <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock FontWeight="SemiBold" FontSize="15">
+                          <Run Text="{Binding Hora}" />
+                          <Run Text="•" />
+                          <Run Text="Devolução em dinheiro" />
+                        </TextBlock>
+                        <TextBlock Grid.Column="1" Text="{Binding Valor}" FontSize="17" FontWeight="Bold"
+                                   Foreground="{StaticResource Perigo}" />
                       </Grid>
                     </Border>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </ScrollViewer>
-
-            <StackPanel Grid.Row="2" Spacing="10" Margin="0,10,0,0">
-              <TextBox Text="{Binding Motivo}" Watermark="Motivo (opcional). Ex.: acabou o pastel" MaxLength="60" />
-              <Border Classes="instrucao" CornerRadius="14" Padding="16,12" Classes.maquininha="{Binding NaMaquininha}">
-                <Grid ColumnDefinitions="*,Auto">
-                  <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
-                    <TextBlock FontSize="14" FontWeight="Bold">
-                      <Run Text="A DEVOLVER •" />
-                      <Run Text="{Binding FormaTexto}" />
-                    </TextBlock>
-                    <TextBlock Text="{Binding Instrucao}" FontSize="15" TextWrapping="Wrap" />
-                  </StackPanel>
-                  <TextBlock Grid.Column="1" Text="{Binding TotalTexto}" FontSize="36" FontWeight="ExtraBold"
-                             VerticalAlignment="Center" />
-                </Grid>
-              </Border>
-              <CheckBox IsVisible="{Binding NaMaquininha}" IsChecked="{Binding EstornoFeito}" FontSize="17">
-                <TextBlock Text="Já fiz o estorno na maquininha de cartão" FontSize="17" FontWeight="SemiBold" />
-              </CheckBox>
-              <Button Classes="perigo" Command="{Binding RegistrarCommand}" IsEnabled="{Binding PodeRegistrar}"
-                      HorizontalAlignment="Stretch" Height="62">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <PathIcon Data="{StaticResource IconeTroca}" Foreground="White" Width="24" Height="24" />
-                  <TextBlock Text="Registrar devolução e imprimir comprovante" Foreground="White" FontSize="19" FontWeight="Bold" />
-                </StackPanel>
-              </Button>
-            </StackPanel>
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="2,10,2,0">
+              <TextBlock Text="TOTAL DEVOLVIDO" FontWeight="Bold" Classes="suave" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding TotalDevolvido}" FontSize="22" FontWeight="ExtraBold" />
+            </Grid>
           </Grid>
-        </Panel>
-      </Border>
+        </Border>
+      </Grid>
     </Grid>
   </Grid>
 
   <UserControl.Styles>
-    <Style Selector="Border.marcado">
-      <Setter Property="Background" Value="{StaticResource PerigoClara}" />
-    </Style>
-    <Style Selector="Border.instrucao">
-      <Setter Property="Background" Value="{StaticResource PrimariaClara}" />
-    </Style>
-    <Style Selector="Border.instrucao.maquininha">
-      <Setter Property="Background" Value="#DBEAFE" />
-    </Style>
-    <Style Selector="Border:disabled">
-      <Setter Property="Opacity" Value="0.5" />
+    <Style Selector="TextBlock.alerta">
+      <Setter Property="Foreground" Value="{StaticResource Perigo}" />
     </Style>
   </UserControl.Styles>
 </UserControl>

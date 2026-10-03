@@ -56,70 +56,6 @@ public class TelasDaVersao32Tests
     }
 
     [AvaloniaFact]
-    public async Task Devolucao_em_dinheiro_acha_o_pedido_e_tira_da_gaveta()
-    {
-        using var t = new TelaDeTeste();
-        t.AbrirCaixa(10000);
-        var pedido = Vender(t, FormaPagamento.Dinheiro, ("CACHORRO-QUENTE", 1), ("PASTEL", 1));
-        Vender(t, FormaPagamento.Pix, ("CERVEJA", 2));
-
-        t.Venda.AbrirMenuCommand.Execute(null);
-        var menu = Assert.IsType<MenuViewModel>(t.Principal.Dialogo);
-        menu.EscolherCommand.Execute(menu.Itens.Single(i => i.Titulo == "Devolver fichas"));
-        var tela = Assert.IsType<DevolucaoViewModel>(t.Principal.Pagina);
-        Assert.Equal("R$ 120,00", tela.DinheiroEmCaixa);
-        t.Foto("33-devolucao-buscar");
-
-        foreach (var digito in pedido.Numero.ToString()) tela.TeclaCommand.Execute(digito.ToString());
-        tela.BuscarCommand.Execute(null);
-        Assert.True(tela.TemPedido);
-        Assert.True(tela.EmDinheiro);
-        Assert.False(tela.PodeRegistrar);
-        tela.Itens.Single(i => i.Nome == "PASTEL").MaisCommand.Execute(null);
-        tela.Motivo = "acabou o pastel";
-        Assert.Equal("R$ 10,00", tela.TotalTexto);
-        Assert.StartsWith("Devolva R$ 10,00 em dinheiro", tela.Instrucao);
-        Assert.True(tela.PodeRegistrar);
-        TelaDeTeste.Atualizar();
-        t.Foto("34-devolucao-dinheiro");
-
-        await tela.RegistrarCommand.ExecuteAsync(null);
-        Assert.False(tela.TemPedido);
-        Assert.Single(tela.Feitas);
-        Assert.Equal("R$ 110,00", tela.DinheiroEmCaixa);
-        Assert.Single(t.EsperarImpressoes(1)); // comprovante da devolução
-        var resumo = t.Sistema.Caixa.Resumo(t.Principal.Sessao!.Id);
-        Assert.Equal(1000, resumo.Devolvido(FormaPagamento.Dinheiro));
-        t.Foto("35-devolucao-feita");
-    }
-
-    [AvaloniaFact]
-    public void Devolucao_no_pix_pede_para_confirmar_o_estorno_na_maquininha()
-    {
-        using var t = new TelaDeTeste();
-        t.AbrirCaixa();
-        var pedido = Vender(t, FormaPagamento.Pix, ("CERVEJA", 2), ("PASTEL", 1));
-        var tela = new DevolucaoViewModel(t.Principal);
-        t.Principal.Abrir(tela);
-
-        // Código de barras da ficha 2 (a 2ª cerveja): caixa 01, pedido, ficha 002
-        tela.Busca = $"01{pedido.Numero:000000}002";
-        tela.BuscarCommand.Execute(null);
-        Assert.True(tela.NaMaquininha);
-        Assert.Equal(1, tela.Itens.Single(i => i.Nome == "CERVEJA").Quantidade);
-        Assert.Contains("estorno de R$ 8,00 no PIX", tela.Instrucao);
-        Assert.False(tela.PodeRegistrar);
-        tela.EstornoFeito = true;
-        Assert.True(tela.PodeRegistrar);
-        TelaDeTeste.Atualizar();
-        t.Foto("36-devolucao-pix");
-
-        tela.Busca = "999";
-        tela.BuscarCommand.Execute(null);
-        Assert.Equal("Pedido 999 não encontrado neste caixa.", t.Principal.Aviso);
-    }
-
-    [AvaloniaFact]
     public async Task Modo_teste_pelo_atalho_escondido_separa_e_apaga_as_vendas_de_teste()
     {
         using var t = new TelaDeTeste(configurar: c => c.SenhaMaster = "4321");
@@ -197,14 +133,16 @@ public class TelasDaVersao32Tests
     {
         using var t = new TelaDeTeste();
         t.AbrirCaixa(5000);
-        var pedido = Vender(t, FormaPagamento.Dinheiro, ("PASTEL", 3));
-        t.Sistema.Devolucoes.Devolver(t.Principal.Sessao!, pedido.Id,
-            new Dictionary<long, int> { [pedido.Itens[0].Id] = 1 }, null);
+        Vender(t, FormaPagamento.Dinheiro, ("PASTEL", 3));
+        t.Sistema.Caixa.RegistrarMovimento(t.Principal.Sessao!, TipoMovimento.Devolucao, 1000, "");
         var tela = new SangriaViewModel(t.Principal);
         t.Principal.Abrir(tela);
 
         Assert.Equal("R$ 70,00", tela.DinheiroEmCaixa);
-        Assert.Contains(tela.Composicao, l => l.Nome == "− Fichas devolvidas" && l.Valor == "R$ 10,00");
+        Assert.Contains(tela.Composicao, l => l.Nome == "− Devoluções" && l.Valor == "R$ 10,00");
+        // A devolução aparece na lista como uma sangria (saída da gaveta)
+        var devolucao = Assert.Single(tela.Movimentos);
+        Assert.Equal(("Devolução", "− R$ 10,00", true), (devolucao.Tipo, devolucao.Valor, devolucao.Saida));
         TelaDeTeste.Atualizar();
         var valor = t.Achar<TextBlock>(b => b.Text == "R$ 70,00");
         Assert.True(valor.FontSize >= 40);

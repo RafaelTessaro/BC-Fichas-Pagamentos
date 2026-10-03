@@ -39,11 +39,30 @@ public sealed partial class EntradaValor : ObservableObject
     [NotifyPropertyChangedFor(nameof(Texto))]
     private long _centavos;
 
+    /// <summary>
+    /// O valor veio preenchido (ex.: o valor recebido já vem com o total da venda): a primeira tecla apaga e começa
+    /// do zero, para digitar o que o cliente entregou.
+    /// </summary>
+    [ObservableProperty] private bool _sugerido;
+
     public string Texto => Dinheiro.Formatar(Centavos);
+
+    /// <summary>Preenche um valor que some assim que o operador começa a digitar.</summary>
+    public void Sugerir(long centavos)
+    {
+        Centavos = centavos;
+        Sugerido = true;
+    }
 
     [RelayCommand]
     public void Tecla(string tecla)
     {
+        if (Sugerido)
+        {
+            Sugerido = false;
+            Centavos = 0;
+            if (tecla is "<" or "C") return;
+        }
         switch (tecla)
         {
             case "<":
@@ -65,7 +84,13 @@ public sealed partial class EntradaValor : ObservableObject
     [RelayCommand]
     public void Somar(string centavos)
     {
-        if (long.TryParse(centavos, out var valor)) Centavos = Math.Min(Maximo, Centavos + valor);
+        if (!long.TryParse(centavos, out var valor)) return;
+        if (Sugerido)
+        {
+            Sugerido = false;
+            Centavos = 0;
+        }
+        Centavos = Math.Min(Maximo, Centavos + valor);
     }
 }
 

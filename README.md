@@ -13,17 +13,17 @@ na **Elgin i9** em papel de 80 mm.
 
 | Tela | O que faz |
 | --- | --- |
-| **Venda** | Barra lateral preta e verde com a marca da BC Fichas, menu, caixa, as **abas do cardápio** (Comidas, Bebidas… até umas 6, uma embaixo da outra) e relógio; botões com foto do produto (ou só cor) que **ocupam a tela toda, sem espaço vazio** (cada aba tem a sua grade, veja "Grade de botões"); pedido com + e − (o valor de cada linha fica sempre à vista, mesmo com nome comprido); total e botão de pagamento. |
-| **Pagamento** | Cartões grandes para Dinheiro, PIX (com o símbolo oficial do Pix), Débito e Crédito. Dinheiro com troco calculado, notas rápidas e botão Limpar; débito, crédito e PIX registrados para o relatório (veja "Maquininha de cartão"). |
-| **Menu** | Ao voltar de uma tela aberta pelo menu (Produtos, Relatórios…), o menu continua aberto; ele só fecha no X. |
+| **Venda** | Barra lateral preta e verde com a marca da BC Fichas, menu, caixa, as **abas do cardápio** (Comidas, Bebidas… até umas 6, uma embaixo da outra), os botões **Sangria** e **Fechar caixa** e o relógio; botões com foto do produto (ou só cor) que **ocupam a tela toda, sem espaço vazio** (cada aba tem a sua grade, veja "Grade de botões"); pedido com + e − (o valor de cada linha fica sempre à vista, mesmo com nome comprido); total e botão de pagamento. Depois de uma venda em dinheiro com troco, o **troco** fica uns 5 segundos em cima do pedido (sem tapar os produtos). |
+| **Pagamento** | Cartões grandes para Dinheiro, PIX (com o símbolo oficial do Pix), Débito e Crédito. Dinheiro: o valor recebido **já vem com o valor da venda** (pagou certinho, é só confirmar); se o cliente deu mais, é só digitar (a primeira tecla apaga e começa do zero) ou tocar nas notas, e o troco (ou quanto falta) aparece embaixo; o **Limpar** fica no teclado, no lugar do 00. Débito, crédito e PIX registrados para o relatório (veja "Maquininha de cartão"). |
+| **Menu** | Produtos, Relatórios, Configurações e Sair (Sangria e Fechar caixa ficam na barra lateral). **Reimprimir** e **Devolver fichas** só aparecem quando a BC Fichas libera para o cliente (Configurações → Máquina). Ao voltar de uma tela aberta pelo menu, o menu continua aberto; ele só fecha no X. |
 | **Produtos** | Nome, detalhe, preço, custo, aba, posição na tela, cor, imagem (o botão Imagem abre sempre em `C:\Sistema_New\produtos`), estoque, fichas por unidade e **combos** (veja "Combos"). Produto pode ficar fora da tela de venda. |
 | **Reimprimir fichas** | Segunda via do pedido inteiro ou de um item só (sai marcado "REIMPRESSÃO"); fichas devolvidas não são reimpressas. |
-| **Devolver fichas** | O cliente não usou uma ficha: acha o pedido pelo número (PED) ou passando a ficha no leitor de código de barras e marca o que voltou. Veja "Devolução de fichas". |
-| **Sangria / Suprimento** | Tira ou põe dinheiro no caixa, com comprovante impresso; mostra em destaque quanto deve haver na gaveta e quanto fica depois. |
+| **Devolver fichas** | Só em dinheiro: digita o valor das fichas que o cliente devolveu e ele sai do caixa como uma sangria, no total de devoluções. Veja "Devolução de fichas". |
+| **Sangria / Suprimento** | Na barra lateral da venda. Tira ou põe dinheiro no caixa, com comprovante impresso; mostra em destaque quanto deve haver na gaveta e quanto fica depois. |
 | **Relatórios** | Caixa atual, caixas anteriores e sangrias: totais por forma de pagamento, fichas devolvidas, venda líquida e produtos vendidos. |
 | **Abrir / Fechar caixa** | Só o troco inicial, digitado ou somado com os **valores rápidos** (+R$ 1, 5, 10, 20, 50, 100); cada caixa é identificado pelo número (Caixa 01, 02…) e imprime o comprovante de **abertura de caixa** (troco, data e hora); no fechamento confere o dinheiro da gaveta (falta/sobra), imprime o relatório e, se configurado, desliga o tablet na hora. |
 | **Configurações** | Tudo em blocos com ícone e explicação. Enquanto houver mudança não salva aparece embaixo a barra **Alterações não salvas** com o botão Salvar (o único da tela), e ao tocar em Voltar o programa pergunta se quer salvar. Nome do evento, rodapé (opcional; embaixo dele toda ficha traz o telefone da BC Fichas), número do caixa (− e +, ou toque no número para digitar), modelo da ficha (7 modelos com prévia), borda, fonte, logotipo, código de barras, grade de botões, pasta das fotos, impressora (com ajuste da posição no papel), corte da guilhotina, maquininha, senha master e telas travadas. |
-| **Máquina** | Backup da programação (pasta padrão e pendrive) e restaurar em outra máquina escolhendo o número do caixa; deixa a máquina pura para o cliente ou zera a programação para um novo evento. Veja "Programar várias máquinas". |
+| **Máquina** | Só com a **senha técnica** da BC Fichas (pedida toda vez que se entra na aba; no modo teste não pede). Libera Devolução e Reimpressão no menu para o cliente que pedir; backup da programação (pasta padrão e pendrive) e restaurar em outra máquina escolhendo o número do caixa; deixa a máquina pura para o cliente ou zera a programação para um novo evento. Veja "Programar várias máquinas". |
 
 Também tem teclado na tela (para tablet sem teclado físico), ajuste de tamanho da tela e modo tela cheia.
 
@@ -31,9 +31,9 @@ Também tem teclado na tela (para tablet sem teclado físico), ajuste de tamanho
 | --- | --- | --- |
 | ![](docs/telas/01-abertura-de-caixa.png) | ![](docs/telas/04-pagamento-formas.png) | ![](docs/telas/07-pagamento-maquininha-separada.png) |
 
-| Devolução de fichas |
-| --- |
-| ![](docs/telas/34-devolucao-dinheiro.png) |
+| Troco depois da venda | Dinheiro já com o valor da venda | Devolução de fichas |
+| --- | --- | --- |
+| ![](docs/telas/57-venda-ultimo-troco.png) | ![](docs/telas/05-pagamento-dinheiro.png) | ![](docs/telas/34-devolucao-dinheiro.png) |
 
 | Sangria | Segurança | Modo teste |
 | --- | --- | --- |
@@ -120,8 +120,8 @@ combo**, igual à do sistema antigo, só que mais fácil:
 Exemplos: `COMBO HEINEKEN` por R$ 30,00 com 5 fichas `HEINEKEN` de R$ 6,50 (o relatório mostra o combo de
 R$ 30,00); `COMBO R$ 100,00` com 5 × `VALE R$ 10,00`, 6 × `VALE R$ 5,00`, 5 × `VALE R$ 2,00` e 10 × `VALE R$ 1,00`.
 
-Na devolução, cada ficha do combo volta pela sua parte do preço do combo (no COMBO HEINEKEN de R$ 30,00, cada
-uma das 5 fichas vale R$ 6,00; nos vales que somam o preço, cada vale volta o seu valor). A venda guarda o combo
+Cada ficha do combo vale a sua parte do preço do combo (no COMBO HEINEKEN de R$ 30,00, cada uma das 5 fichas
+vale R$ 6,00; nos vales que somam o preço, cada vale o seu valor). A venda guarda o combo
 como ele era na hora: mudar o combo depois não muda as fichas já vendidas (nem a reimpressão).
 
 | Fichas do combo | Ficha que saiu do combo |
@@ -130,20 +130,17 @@ como ele era na hora: mudar o combo depois não muda as fichas já vendidas (nem
 
 ## Devolução de fichas
 
-O cliente comprou um cachorro-quente e um pastel e não usou a ficha do pastel? Em **Menu → Devolver fichas**:
+Só aparece no menu quando a BC Fichas libera (**Configurações → Máquina → Liberar no menu**). A devolução é
+**só em dinheiro** e não precisa do número da venda. O cliente devolveu fichas que somam R$ 80,00? Em
+**Menu → Devolver fichas**:
 
-1. Pegue a ficha de volta e digite o número do pedido (o `PED:` da ficha) — ou passe a ficha no leitor de código
-   de barras, se ela tiver código.
-2. Marque quantas fichas de cada produto voltaram (num combo, cada produto das fichas aparece numa linha).
-3. **Pago em dinheiro:** devolva o valor ao cliente; ele sai da gaveta deste caixa.
-   **Pago no cartão ou no PIX:** faça o estorno na maquininha (por causa das taxas, o dinheiro não sai da gaveta)
-   e marque "Já fiz o estorno na maquininha".
-4. Toque em **Registrar devolução**: sai um comprovante para guardar junto com a ficha devolvida.
+1. Some o valor das fichas e digite o total (o programa mostra quanto fica no caixa depois).
+2. Toque em **Devolver R$ 80,00 ao cliente** e entregue o dinheiro. Sai um comprovante para guardar junto com as
+   fichas devolvidas.
 
-A venda não é cancelada: só a parte devolvida sai do total. O fechamento e os relatórios mostram as fichas
-devolvidas por forma de pagamento, a venda líquida (vendido − devolvido) e o dinheiro esperado na gaveta já
-descontado. O produto devolvido volta para o estoque, e a mesma ficha não pode ser devolvida duas vezes. Por
-padrão a devolução pede a senha master.
+O dinheiro sai da gaveta como uma sangria, mas conta à parte, no **total de devoluções**: o fechamento e os
+relatórios mostram as devoluções, a venda líquida (vendido − devolvido) e o dinheiro esperado na gaveta já
+descontado. Não dá para devolver mais do que há no caixa. Por padrão a devolução pede a senha master.
 
 ## Modo teste (para quem programa a máquina)
 
@@ -153,13 +150,15 @@ tablet, e digite a senha master.
 
 - Aparece a faixa laranja **MODO TESTE**; as vendas vão para um caixa separado, com numeração própria (começa do 1).
 - As fichas saem marcadas **FICHA DE TESTE • SEM VALOR** e o estoque não é mexido.
-- Para sair: **Menu → Sair do modo teste** (ou o botão na faixa laranja). Tudo o que foi feito no teste é apagado
+- A aba **Máquina** das Configurações abre sem a senha técnica (quem está no modo teste é a BC Fichas).
+- Para sair: **Menu → Sair do modo teste** (ou o botão na faixa laranja, ou **Sair do teste** na barra lateral). Tudo o que foi feito no teste é apagado
   e o programa volta ao caixa normal.
 
 ## Programar várias máquinas
 
 No sistema antigo era copiar o banco de dados, o logo e as imagens de uma máquina para a outra e mudar o número
-do caixa. Aqui é um arquivo só, em **Menu → Configurações → Máquina**:
+do caixa. Aqui é um arquivo só, em **Menu → Configurações → Máquina** (pede a senha técnica da BC Fichas, menos no
+modo teste):
 
 1. **Programe uma máquina** (produtos, combos, abas, evento, logotipo, modelo da ficha) e toque em **Fazer
    backup**. Sai o arquivo `BCFichas - NOME DO EVENTO.bcf` na **pasta do backup** (padrão `C:\Sistema_New\backup`,
@@ -185,11 +184,11 @@ ninguém apagar um evento em andamento com um toque.
 
 **Reprogramação para novo evento → Zerar programação:** é o "banco vazio" de antes, para cadastrar um evento
 diferente. Apaga vendas, produtos, combos, abas, evento e o jeito da ficha. Ficam só o número do caixa, a impressora, as opções de tela, as pastas e a senha
-master.
+master; Devolução e Reimpressão voltam a ficar desligadas no menu.
 
 | Aba Máquina | Qual backup restaurar | Número do caixa |
 | --- | --- | --- |
-| ![](docs/telas/42-config-maquina.png) | ![](docs/telas/47-restaurar-lista.png) | ![](docs/telas/44-numero-do-caixa.png) |
+| ![](docs/telas/60-config-maquina-liberar.png) | ![](docs/telas/47-restaurar-lista.png) | ![](docs/telas/44-numero-do-caixa.png) |
 
 Antes de apagar ou restaurar, o programa sempre guarda uma **cópia de segurança** do banco em `dados\backups`
 (as 15 últimas). Para voltar uma cópia: feche o BC Fichas, copie o arquivo `.db` da cópia para

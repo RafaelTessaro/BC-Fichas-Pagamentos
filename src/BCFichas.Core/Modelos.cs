@@ -21,6 +21,11 @@ public enum TipoMovimento
     Sangria = 1,
     /// <summary>Entrada de dinheiro no caixa (troco, reforço).</summary>
     Suprimento = 2,
+    /// <summary>
+    /// Devolução de fichas: o cliente devolveu fichas e recebeu o valor em dinheiro. Sai da gaveta como a sangria,
+    /// mas conta no total de devoluções (e tira da venda líquida).
+    /// </summary>
+    Devolucao = 3,
 }
 
 public static class Nomes
@@ -46,6 +51,7 @@ public static class Nomes
     {
         TipoMovimento.Sangria => "Sangria (retirada)",
         TipoMovimento.Suprimento => "Suprimento (entrada)",
+        TipoMovimento.Devolucao => "Devolução de fichas",
         _ => tipo.ToString(),
     };
 }
@@ -246,6 +252,18 @@ public sealed class Movimento
     public string Motivo { get; set; } = "";
     public string Usuario { get; set; } = "";
     public DateTime CriadoEm { get; set; }
+
+    /// <summary>Dinheiro que saiu da gaveta (sangria ou devolução).</summary>
+    public bool Saida => Tipo != TipoMovimento.Suprimento;
+
+    /// <summary>Nome curto para as listas: Sangria, Suprimento ou Devolução.</summary>
+    public string NomeCurto => Tipo switch
+    {
+        TipoMovimento.Sangria => "Sangria",
+        TipoMovimento.Suprimento => "Suprimento",
+        TipoMovimento.Devolucao => "Devolução",
+        _ => Tipo.ToString(),
+    };
 }
 
 public sealed record ProdutoVendido(string Nome, int Quantidade, long TotalCentavos);
@@ -261,7 +279,10 @@ public sealed class ResumoCaixa
     public long Suprimentos { get; init; }
     public List<ProdutoVendido> Produtos { get; init; } = new();
 
-    /// <summary>Devoluções feitas neste caixa, por forma de pagamento da venda original.</summary>
+    /// <summary>
+    /// Devoluções feitas neste caixa, por forma de pagamento da venda original. Desde a versão 3.11 a devolução é
+    /// só em dinheiro (só o valor, como uma sangria) e entra em Dinheiro; as de antes (pelo pedido) também contam.
+    /// </summary>
     public Dictionary<FormaPagamento, long> DevolucoesPorForma { get; init; } = new();
     public int QuantidadeDevolucoes { get; init; }
     public List<ProdutoVendido> ProdutosDevolvidos { get; init; } = new();
@@ -278,7 +299,7 @@ public sealed class ResumoCaixa
 
     /// <summary>
     /// Dinheiro que deveria estar na gaveta: abertura + vendas em dinheiro + suprimentos - sangrias
-    /// - fichas devolvidas em dinheiro.
+    /// - devoluções em dinheiro.
     /// </summary>
     public long DinheiroEsperado =>
         Sessao.ValorAberturaCentavos + Total(FormaPagamento.Dinheiro) + Suprimentos - Sangrias

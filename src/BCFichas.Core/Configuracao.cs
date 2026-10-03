@@ -136,6 +136,12 @@ public sealed class Configuracao
     public TipoMaquininha Maquininha { get; set; } = TipoMaquininha.Separada;
     public int SimuladorAprovarEmSegundos { get; set; } = 0;
 
+    // Opções que a BC Fichas libera quando o cliente pede (aba Máquina, com a senha técnica)
+    /// <summary>Devolução de fichas no Menu (só em dinheiro: o valor sai do caixa como uma sangria).</summary>
+    public bool LiberarDevolucao { get; set; }
+    /// <summary>Reimpressão de fichas (segunda via de um pedido) no Menu.</summary>
+    public bool LiberarReimpressao { get; set; }
+
     // Segurança
     public string SenhaMaster { get; set; } = "";
     public TelaProtegida TelasProtegidas { get; set; } =

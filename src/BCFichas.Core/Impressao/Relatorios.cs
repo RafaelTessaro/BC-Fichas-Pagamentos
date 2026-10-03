@@ -80,7 +80,7 @@ public static class Relatorios
         if (resumo.TemDevolucoes)
         {
             doc.Separador()
-                .Linha($"FICHAS DEVOLVIDAS ({resumo.QuantidadeDevolucoes})", negrito: true);
+                .Linha($"DEVOLUÇÕES DE FICHAS ({resumo.QuantidadeDevolucoes})", negrito: true);
             foreach (var forma in Enum.GetValues<FormaPagamento>().Where(f => resumo.Devolvido(f) > 0))
                 doc.Par(forma == FormaPagamento.Dinheiro ? "DINHEIRO (DA GAVETA)" : $"{Nomes.De(forma).ToUpperInvariant()} (MAQUININHA)",
                     "- " + Dinheiro.Formatar(resumo.Devolvido(forma)));
@@ -96,7 +96,7 @@ public static class Relatorios
             .Par("+ SUPRIMENTOS", Dinheiro.Formatar(resumo.Suprimentos))
             .Par("- SANGRIAS", Dinheiro.Formatar(resumo.Sangrias));
         if (resumo.Devolvido(FormaPagamento.Dinheiro) > 0)
-            doc.Par("- DEVOLUÇÕES EM DINHEIRO", Dinheiro.Formatar(resumo.Devolvido(FormaPagamento.Dinheiro)));
+            doc.Par("- DEVOLUÇÕES", Dinheiro.Formatar(resumo.Devolvido(FormaPagamento.Dinheiro)));
         doc.Par("= ESPERADO", Dinheiro.Formatar(resumo.DinheiroEsperado), negrito: true);
 
         if (s.ValorContadoCentavos is { } contado)
@@ -129,20 +129,32 @@ public static class Relatorios
         return doc;
     }
 
-    public static Documento Movimento(Movimento m, Configuracao config, long dinheiroNoCaixa) =>
-        new Documento()
+    /// <summary>Comprovante de sangria, suprimento ou devolução de fichas (fica com o caixa).</summary>
+    public static Documento Movimento(Movimento m, Configuracao config, long dinheiroNoCaixa)
+    {
+        var doc = new Documento()
             .Titulo(config.NomeEvento)
-            .Faixa(m.Tipo == TipoMovimento.Sangria ? "SANGRIA (RETIRADA)" : "SUPRIMENTO (ENTRADA)")
+            .Faixa(m.Tipo switch
+            {
+                TipoMovimento.Sangria => "SANGRIA (RETIRADA)",
+                TipoMovimento.Devolucao => "DEVOLUÇÃO DE FICHAS",
+                _ => "SUPRIMENTO (ENTRADA)",
+            })
             .Espaco(6)
             .Par($"CAIXA {m.Caixa:00}", Data(m.CriadoEm))
             .ParSeHouver("OPERADOR", m.Usuario)
             .Separador()
-            .Par("VALOR", Dinheiro.Formatar(m.ValorCentavos), negrito: true, tamanho: 30)
+            .Par(m.Tipo == TipoMovimento.Devolucao ? "VALOR DEVOLVIDO" : "VALOR", Dinheiro.Formatar(m.ValorCentavos),
+                negrito: true, tamanho: 30);
+        if (m.Tipo == TipoMovimento.Devolucao)
+            doc.Linha("DEVOLVIDO EM DINHEIRO AO CLIENTE", Alinhamento.Centro, negrito: true, tamanho: 22);
+        return doc
             .Linha(string.IsNullOrWhiteSpace(m.Motivo) ? "" : "MOTIVO: " + m.Motivo)
             .Par("DINHEIRO NO CAIXA", Dinheiro.Formatar(dinheiroNoCaixa))
             .Espaco(30)
             .Linha("______________________________", Alinhamento.Centro)
             .Linha("ASSINATURA", Alinhamento.Centro, tamanho: 20);
+    }
 
     public static Documento Teste(Configuracao config, string destino) =>
         new Documento { Moldura = true }

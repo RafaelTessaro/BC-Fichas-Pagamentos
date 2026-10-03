@@ -82,6 +82,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
             AtualizarPrevia();
         });
         PropertyChanged += AoMudar;
+        MaquinaLiberada = principal.ModoTeste;
     }
 
     public List<Opcao<ModeloFicha>> Modelos { get; } =
@@ -168,6 +169,10 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TemSenha), nameof(SemSenha))]
     private string _senhaMaster = "";
+
+    // Máquina: opções que a BC Fichas libera quando o cliente pede
+    [ObservableProperty] private bool _liberarDevolucao;
+    [ObservableProperty] private bool _liberarReimpressao;
 
     public bool TemLogo => Logo is not null;
     public bool ImpressoraWindows => TipoImpressora?.Valor == Core.TipoImpressora.Windows;
@@ -296,6 +301,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         SimuladorSegundos = SegundosSimulador.Contains(c.SimuladorAprovarEmSegundos) ? c.SimuladorAprovarEmSegundos : 0;
 
         SenhaMaster = c.SenhaMaster;
+        LiberarDevolucao = c.LiberarDevolucao;
+        LiberarReimpressao = c.LiberarReimpressao;
         ProtecaoTela Protecao(TelaProtegida tela, string nome, string descricao, string icone) =>
             new(tela, nome, descricao, icone, c.TelasProtegidas.HasFlag(tela));
         Protecoes =
@@ -459,9 +466,32 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     partial void OnAbaSelecionadaChanged(int value)
     {
         if (value == AbaImpressora && !_carregando) ProcurarImpressoras(NomeImpressora, PortaSerial);
+        // Saiu da aba Máquina: na próxima vez pede a senha técnica de novo (no modo teste, nunca pede).
+        if (value != AbaMaquina) MaquinaLiberada = Principal.ModoTeste;
     }
 
     private const int AbaImpressora = 3;
+    public const int AbaMaquina = 6;
+
+    // Aba Máquina: só com a senha técnica da BC Fichas (ou no modo teste, que é a BC Fichas programando a máquina)
+    [ObservableProperty] private bool _maquinaLiberada;
+    [ObservableProperty] private string _senhaTecnicaDigitada = "";
+    [ObservableProperty] private string _erroSenhaTecnica = "";
+    [ObservableProperty] private bool _conferindoSenha;
+
+    [RelayCommand]
+    private async Task LiberarMaquina()
+    {
+        if (ConferindoSenha) return;
+        var digitada = SenhaTecnicaDigitada;
+        ConferindoSenha = true;
+        var certa = await Task.Run(() => Principal.SenhaTecnica.Confere(digitada));
+        ConferindoSenha = false;
+        SenhaTecnicaDigitada = "";
+        ErroSenhaTecnica = certa ? "" : "Senha técnica errada.";
+        MaquinaLiberada = certa;
+        if (certa) Principal.TecladoVisivel = false; // o campo da senha some; o teclado da tela também
+    }
 
     [RelayCommand]
     private void MoverImpressao(string direcao)
@@ -1005,6 +1035,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         c.Maquininha = TipoMaquininha?.Valor ?? Core.TipoMaquininha.Separada;
         c.SimuladorAprovarEmSegundos = SimuladorSegundos;
         c.SenhaMaster = SenhaMaster.Trim();
+        c.LiberarDevolucao = LiberarDevolucao;
+        c.LiberarReimpressao = LiberarReimpressao;
         c.TelasProtegidas = Protecoes.Where(p => p.Marcada).Aggregate(TelaProtegida.Nenhuma, (t, p) => t | p.Tela);
         return c;
     }
@@ -1012,7 +1044,9 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     private void AoMudar(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(TemAlteracoes) or nameof(Previa) or nameof(Ocupado) or nameof(SituacaoMaquina)
-            or nameof(SituacaoVendas) or nameof(MaquinaPura) or nameof(AbaSelecionada) or nameof(ImprimindoTeste))
+            or nameof(SituacaoVendas) or nameof(MaquinaPura) or nameof(AbaSelecionada) or nameof(ImprimindoTeste)
+            or nameof(MaquinaLiberada) or nameof(SenhaTecnicaDigitada) or nameof(ErroSenhaTecnica)
+            or nameof(ConferindoSenha))
             return;
         AtualizarAlteracoes();
         switch (e.PropertyName)

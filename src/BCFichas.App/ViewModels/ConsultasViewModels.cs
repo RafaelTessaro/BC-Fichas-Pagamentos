@@ -191,17 +191,15 @@ public sealed partial class RelatoriosViewModel(PrincipalViewModel principal) : 
         SessaoSelecionada = Sessoes.FirstOrDefault(x => x.Sessao.Id == id) ?? Sessoes.FirstOrDefault();
 
         Movimentos.Clear();
-        long sangrias = 0, suprimentos = 0;
-        foreach (var m in Sistema.Caixa.Movimentos(de, ate))
-        {
-            if (m.Tipo == TipoMovimento.Sangria) sangrias += m.ValorCentavos;
-            else suprimentos += m.ValorCentavos;
+        var movimentos = Sistema.Caixa.Movimentos(de, ate);
+        foreach (var m in movimentos)
             Movimentos.Add(new MovimentoItem($"{Formato.DataHora(m.CriadoEm)} • {Formato.Caixa(m.Caixa, m.Usuario)}",
-                m.Tipo == TipoMovimento.Sangria ? "Sangria" : "Suprimento",
-                (m.Tipo == TipoMovimento.Sangria ? "− " : "+ ") + Dinheiro.Formatar(m.ValorCentavos),
-                m.Motivo, m.Tipo == TipoMovimento.Sangria));
-        }
-        TotalMovimentos = $"Sangrias: {Dinheiro.Formatar(sangrias)}   •   Suprimentos: {Dinheiro.Formatar(suprimentos)}";
+                m.NomeCurto, (m.Saida ? "− " : "+ ") + Dinheiro.Formatar(m.ValorCentavos), m.Motivo, m.Saida));
+        long Soma(TipoMovimento tipo) => movimentos.Where(m => m.Tipo == tipo).Sum(m => m.ValorCentavos);
+        TotalMovimentos = $"Sangrias: {Dinheiro.Formatar(Soma(TipoMovimento.Sangria))}   •   " +
+                          $"Suprimentos: {Dinheiro.Formatar(Soma(TipoMovimento.Suprimento))}";
+        var devolvido = Soma(TipoMovimento.Devolucao);
+        if (devolvido > 0) TotalMovimentos += $"   •   Devoluções: {Dinheiro.Formatar(devolvido)}";
         OnPropertyChanged(nameof(TotalMovimentos));
     }
 

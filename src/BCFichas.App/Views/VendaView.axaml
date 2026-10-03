@@ -9,7 +9,7 @@
 
     <!-- Barra lateral com a marca da BC Fichas (antes era a barra de cima) -->
     <Border Background="{StaticResource FundoLateral}" BorderBrush="{StaticResource MarcaBorda}" BorderThickness="0,0,1,0">
-      <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto" Margin="10,14,10,10">
+      <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" Margin="10,14,10,10">
         <!-- Tocar 5 vezes seguidas no logo liga/desliga o modo teste (atalho escondido) -->
         <Button Classes="marca" Command="{Binding ToqueNaMarcaCommand}" Focusable="False">
           <v:MarcaBC Tamanho="54" />
@@ -63,32 +63,36 @@
           </ScrollViewer>
         </Grid>
 
-        <StackPanel Grid.Row="4" Spacing="0" Margin="0,0,0,14">
+        <!-- Sangria e fechar o caixa à mão, sem abrir o menu (no modo teste, o "fechar" sai do teste) -->
+        <Grid Grid.Row="4" ColumnDefinitions="*,6,*" Margin="0,0,0,12">
+          <Button Classes="lateral acao" Command="{Binding AbrirSangriaCommand}" ToolTip.Tip="Sangria e suprimento">
+            <StackPanel Spacing="3">
+              <PathIcon Data="{StaticResource IconeDinheiro}" />
+              <TextBlock Text="Sangria" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="2" Classes="lateral acao" Command="{Binding FecharCaixaCommand}"
+                  ToolTip.Tip="Fechar o caixa">
+            <StackPanel Spacing="3">
+              <PathIcon Data="{StaticResource IconeCadeado}" />
+              <TextBlock Text="Fechar caixa" IsVisible="{Binding !Principal.ModoTeste}" />
+              <TextBlock Text="Sair do teste" IsVisible="{Binding Principal.ModoTeste}" />
+            </StackPanel>
+          </Button>
+        </Grid>
+
+        <StackPanel Grid.Row="5" Spacing="0" Margin="0,0,0,12">
           <TextBlock Text="{Binding Principal.Relogio}" Foreground="White" FontSize="34" FontWeight="Bold"
                      HorizontalAlignment="Center" />
           <TextBlock Text="{Binding Principal.Data}" Foreground="{StaticResource MarcaTextoSuave}" FontSize="14"
                      HorizontalAlignment="Center" />
         </StackPanel>
 
-        <!-- Situação da impressora e da maquininha, suporte e versão -->
-        <Border Grid.Row="5" BorderBrush="{StaticResource MarcaBorda}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
-          <StackPanel Spacing="7">
-            <Grid ColumnDefinitions="Auto,*">
-              <PathIcon Data="{StaticResource IconeImpressora}" Width="15" Height="15" VerticalAlignment="Top" Margin="0,2,6,0"
-                        Foreground="{StaticResource MarcaTextoSuave}" Classes.erro="{Binding Principal.ImpressoraComErro}" />
-              <TextBlock Grid.Column="1" Text="{Binding Principal.StatusImpressora}" FontSize="12"
-                         Foreground="{StaticResource MarcaTextoSuave}" Classes.erro="{Binding Principal.ImpressoraComErro}"
-                         TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
-            </Grid>
-            <Grid ColumnDefinitions="Auto,*"
-                  IsVisible="{Binding $parent[Window].Bounds.Height, Converter={x:Static v:Conversores.TelaAlta}}">
-              <PathIcon Data="{StaticResource IconeCartao}" Width="15" Height="15" VerticalAlignment="Top" Margin="0,2,6,0"
-                        Foreground="{StaticResource MarcaTextoSuave}" />
-              <TextBlock Grid.Column="1" Text="{Binding Principal.StatusMaquininha}" FontSize="12"
-                         Foreground="{StaticResource MarcaTextoSuave}" TextWrapping="Wrap" MaxLines="2" />
-            </Grid>
+        <!-- Suporte e versão -->
+        <Border Grid.Row="6" BorderBrush="{StaticResource MarcaBorda}" BorderThickness="0,1,0,0" Padding="0,8,0,0">
+          <StackPanel Spacing="4">
             <TextBlock Text="{Binding Principal.Suporte}" FontSize="11" Foreground="{StaticResource Marca}"
-                       FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"
+                       FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center"
                        IsVisible="{Binding $parent[Window].Bounds.Height, Converter={x:Static v:Conversores.TelaAlta}}" />
             <TextBlock Text="{Binding Principal.Versao}" FontSize="11" Foreground="{StaticResource MarcaTextoSuave}"
                        HorizontalAlignment="Center" />
@@ -199,7 +203,7 @@
 
       <!-- Pedido -->
       <Border Grid.Column="1" Classes="cartao" Margin="10,0,0,4" Padding="0">
-        <Grid RowDefinitions="Auto,*,Auto">
+        <Grid RowDefinitions="Auto,Auto,*,Auto">
           <Grid ColumnDefinitions="*,Auto" Margin="16,12,8,8">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
               <TextBlock Text="Pedido" Classes="titulo" FontSize="22" />
@@ -217,14 +221,28 @@
             </Button>
           </Grid>
 
+          <!-- Último troco (venda em dinheiro): fica uns segundos aqui em cima, sem tapar nada -->
+          <Border Grid.Row="1" Classes="troco" IsVisible="{Binding MostrarTroco}" Margin="10,0,10,8" Padding="14,8">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <PathIcon Data="{StaticResource IconeNotas}" Width="26" Height="26" Foreground="{StaticResource Aviso}"
+                        VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+                <TextBlock Text="TROCO" FontSize="15" FontWeight="ExtraBold" Foreground="{StaticResource Aviso}" />
+                <TextBlock Text="{Binding UltimoRecebido}" FontSize="12" Classes="suave" />
+              </StackPanel>
+              <TextBlock Grid.Column="2" Text="{Binding UltimoTroco}" FontSize="30" FontWeight="ExtraBold"
+                         VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+
           <!-- Pedido vazio -->
-          <StackPanel Grid.Row="1" IsVisible="{Binding Vazio}" VerticalAlignment="Center" Spacing="10" Margin="24">
+          <StackPanel Grid.Row="2" IsVisible="{Binding Vazio}" VerticalAlignment="Center" Spacing="10" Margin="24">
             <PathIcon Data="{StaticResource IconeFicha}" Width="64" Height="64" Foreground="#CBD5E1" />
             <TextBlock Text="Toque nos produtos para montar o pedido" Classes="suave" TextAlignment="Center"
                        TextWrapping="Wrap" FontSize="16" />
           </StackPanel>
 
-          <ScrollViewer Grid.Row="1" IsVisible="{Binding !Vazio}" Padding="10,0">
+          <ScrollViewer Grid.Row="2" IsVisible="{Binding !Vazio}" Padding="10,0">
             <ItemsControl ItemsSource="{Binding Linhas}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:LinhaItem">
@@ -257,7 +275,7 @@
             </ItemsControl>
           </ScrollViewer>
 
-          <Border Grid.Row="2" Background="{StaticResource Fundo}" CornerRadius="0,0,16,16" Padding="14,10,14,14">
+          <Border Grid.Row="3" Background="{StaticResource Fundo}" CornerRadius="0,0,16,16" Padding="14,10,14,14">
             <StackPanel Spacing="10">
               <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Text="TOTAL" FontSize="18" FontWeight="Bold" Classes="suave" VerticalAlignment="Center" />
@@ -280,12 +298,31 @@
   </Grid>
 
   <UserControl.Styles>
-    <Style Selector="TextBlock.erro">
-      <Setter Property="Foreground" Value="#F87171" />
-      <Setter Property="FontWeight" Value="Bold" />
+    <!-- Sangria e Fechar caixa na barra lateral -->
+    <Style Selector="Button.lateral.acao">
+      <Setter Property="MinHeight" Value="62" />
+      <Setter Property="Padding" Value="2,6" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
     </Style>
-    <Style Selector="PathIcon.erro">
-      <Setter Property="Foreground" Value="#F87171" />
+    <Style Selector="Button.lateral.acao PathIcon">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="Foreground" Value="{StaticResource Marca}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.lateral.acao TextBlock">
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.troco">
+      <Setter Property="Background" Value="{StaticResource AvisoClara}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Aviso}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="12" />
     </Style>
   </UserControl.Styles>
 </UserControl>

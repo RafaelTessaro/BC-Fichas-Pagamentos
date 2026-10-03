@@ -98,21 +98,18 @@
         <!-- 2. Dinheiro: valor recebido e troco -->
         <Grid IsVisible="{Binding EmDinheiro}" ColumnDefinitions="*,300" RowDefinitions="*,Auto">
           <StackPanel Spacing="10" Margin="0,0,16,0">
-            <TextBlock Text="Valor recebido" Classes="rotulo" Margin="2,0,0,0" />
+            <!-- Já vem com o valor da venda; a primeira tecla apaga e o operador digita o que recebeu -->
             <Grid ColumnDefinitions="*,Auto">
-              <Border Background="{StaticResource Fundo}" CornerRadius="12" Padding="16,8">
-                <TextBlock Text="{Binding Recebido.Texto}" FontSize="40" FontWeight="ExtraBold" TextAlignment="Right" />
+              <TextBlock Text="Valor recebido" Classes="rotulo" Margin="2,0,0,0" VerticalAlignment="Center" />
+              <Border Grid.Column="1" Background="{StaticResource PrimariaClara}" CornerRadius="999" Padding="10,3"
+                      IsVisible="{Binding Recebido.Sugerido}">
+                <TextBlock Text="Valor da venda • digite para trocar" FontSize="13" FontWeight="SemiBold"
+                           Foreground="{StaticResource PrimariaEscura}" />
               </Border>
-              <!-- Digitou errado: zera o valor recebido -->
-              <Button Grid.Column="1" Classes="suave" Command="{Binding Recebido.TeclaCommand}" CommandParameter="C"
-                      Margin="8,0,0,0" Width="92" VerticalAlignment="Stretch" Padding="0" ToolTip.Tip="Limpar o valor">
-                <StackPanel Spacing="2" HorizontalAlignment="Center">
-                  <PathIcon Data="{StaticResource IconeApagar}" Width="26" Height="20" Foreground="{StaticResource Perigo}" />
-                  <TextBlock Text="Limpar" FontSize="15" FontWeight="Bold" Foreground="{StaticResource Perigo}"
-                             HorizontalAlignment="Center" />
-                </StackPanel>
-              </Button>
             </Grid>
+            <Border Background="{StaticResource Fundo}" CornerRadius="12" Padding="16,8">
+              <TextBlock Text="{Binding Recebido.Texto}" FontSize="40" FontWeight="ExtraBold" TextAlignment="Right" />
+            </Border>
             <UniformGrid Columns="3">
               <UniformGrid.Styles>
                 <Style Selector="Button">
@@ -122,12 +119,12 @@
                   <Setter Property="FontSize" Value="18" />
                 </Style>
               </UniformGrid.Styles>
-              <Button Classes="opcao" Content="Valor exato" FontSize="15" Command="{Binding ValorExatoCommand}" />
-              <Button Classes="suave" Content="+ R$ 2" Command="{Binding Recebido.SomarCommand}" CommandParameter="200" />
-              <Button Classes="suave" Content="+ R$ 5" Command="{Binding Recebido.SomarCommand}" CommandParameter="500" />
-              <Button Classes="suave" Content="+ R$ 10" Command="{Binding Recebido.SomarCommand}" CommandParameter="1000" />
-              <Button Classes="suave" Content="+ R$ 20" Command="{Binding Recebido.SomarCommand}" CommandParameter="2000" />
-              <Button Classes="suave" Content="+ R$ 50" Command="{Binding Recebido.SomarCommand}" CommandParameter="5000" />
+              <Button Classes="suave" Content="R$ 2" Command="{Binding Recebido.SomarCommand}" CommandParameter="200" />
+              <Button Classes="suave" Content="R$ 5" Command="{Binding Recebido.SomarCommand}" CommandParameter="500" />
+              <Button Classes="suave" Content="R$ 10" Command="{Binding Recebido.SomarCommand}" CommandParameter="1000" />
+              <Button Classes="suave" Content="R$ 20" Command="{Binding Recebido.SomarCommand}" CommandParameter="2000" />
+              <Button Classes="suave" Content="R$ 50" Command="{Binding Recebido.SomarCommand}" CommandParameter="5000" />
+              <Button Classes="suave" Content="R$ 100" Command="{Binding Recebido.SomarCommand}" CommandParameter="10000" />
             </UniformGrid>
             <Border CornerRadius="12" Padding="16,10" Background="{StaticResource PrimariaClara}"
                     Classes.falta="{Binding FaltaDinheiro}">
@@ -138,7 +135,7 @@
             </Border>
           </StackPanel>
 
-          <v:TecladoNumerico Grid.Column="1" Comando="{Binding Recebido.TeclaCommand}" />
+          <v:TecladoNumerico Grid.Column="1" Comando="{Binding Recebido.TeclaCommand}" TeclaEsquerda="C" />
 
           <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*" Margin="0,14,0,0">
             <Button Classes="suave" Content="Voltar" Command="{Binding OutraFormaCommand}" Height="60" Padding="28,0" />
@@ -247,7 +244,8 @@
           <TextBlock Text="Confira papel, tampa e cabo da impressora e tente de novo. O pedido já está gravado."
                      HorizontalAlignment="Center" FontSize="15" Classes="suave" TextWrapping="Wrap" TextAlignment="Center" />
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
-            <Button Classes="suave" Content="Reimprimir depois" Command="{Binding FecharCommand}" Height="58" Padding="24,0" />
+            <Button Classes="suave" Content="{Binding TextoFecharSemImprimir}" Command="{Binding FecharCommand}" Height="58"
+                    Padding="24,0" />
             <Button Classes="primario" Command="{Binding TentarImprimirCommand}" Height="58" Padding="30,0">
               <StackPanel Orientation="Horizontal" Spacing="10">
                 <PathIcon Data="{StaticResource IconeImpressora}" Width="22" Height="22" Foreground="White" />

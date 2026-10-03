@@ -65,30 +65,12 @@ public class TelasDeComboTests
         var pagamento = Assert.IsType<PagamentoViewModel>(t.Principal.Dialogo);
         Assert.Equal("1 item(ns) • 5 ficha(s)", pagamento.ResumoItens);
         pagamento.EscolherDinheiroCommand.Execute(null);
-        pagamento.ValorExatoCommand.Execute(null);
         await pagamento.ConfirmarDinheiroCommand.ExecuteAsync(null);
         Assert.Equal(5, t.EsperarImpressoes(5).Length);
         pagamento.FecharCommand.Execute(null);
 
         var resumo = t.Sistema.Caixa.Resumo(t.Principal.Sessao!.Id);
         Assert.Equal("COMBO HEINEKEN", Assert.Single(resumo.Produtos).Nome);
-
-        // Devolução: o cliente devolve 1 das 5 Heineken do combo
-        var pedido = t.Sistema.Vendas.Pedidos(t.Principal.Sessao.Id).Single();
-        var devolucao = new DevolucaoViewModel(t.Principal);
-        t.Principal.Abrir(devolucao);
-        devolucao.Busca = pedido.Numero.ToString();
-        devolucao.BuscarCommand.Execute(null);
-        var item = Assert.Single(devolucao.Itens);
-        Assert.Equal("HEINEKEN", item.Nome);
-        Assert.Equal("Ficha do COMBO HEINEKEN", item.Combo);
-        item.MaisCommand.Execute(null);
-        Assert.Equal("R$ 6,00", devolucao.TotalTexto);
-        t.Principal.Aviso = null;
-        TelaDeTeste.Atualizar();
-        t.Foto("41-devolucao-combo");
-        await devolucao.RegistrarCommand.ExecuteAsync(null);
-        Assert.Equal(600, t.Sistema.Caixa.Resumo(t.Principal.Sessao.Id).TotalDevolvido);
     }
 
     [AvaloniaFact]
