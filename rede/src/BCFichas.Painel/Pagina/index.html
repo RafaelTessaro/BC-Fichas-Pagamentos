@@ -93,6 +93,8 @@
 
   .maquina { cursor: pointer; }
   .maquina .estado { width: 12px; height: 12px; border-radius: 50%; background: var(--verde); flex: none; }
+  /* Valor com largura fixa: as barrinhas de todas as máquinas ficam do mesmo tamanho */
+  .maquina .num { flex: none; min-width: 7.6em; }
   .maquina.fora { opacity: .55; }
   .maquina.fora .estado { background: var(--perigo); }
   .barrinha { height: 6px; border-radius: 99px; background: var(--borda); margin-top: 6px; overflow: hidden; }

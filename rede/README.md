@@ -10,6 +10,8 @@ pagamento, cada máquina, os produtos mais vendidos e as vendas por hora.
 - **Projeto separado.** Fica na pasta `rede/` e gera o `BCFichasRede.exe`. O BC Fichas original continua igual,
   sem nenhuma mudança: pode instalar os dois no mesmo tablet que um não mexe no outro.
 
+Apresentação para avaliação (PDF, 10 páginas): [docs/painel-no-celular.pdf](docs/painel-no-celular.pdf).
+
 | No celular: painel | Cada máquina | Produtos | Vendas por hora |
 | --- | --- | --- | --- |
 | ![](docs/telas/70-celular-painel.png) | ![](docs/telas/71-celular-maquinas.png) | ![](docs/telas/72-celular-produtos.png) | ![](docs/telas/73-celular-por-hora.png) |
