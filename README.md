@@ -13,22 +13,27 @@ na **Elgin i9** em papel de 80 mm.
 
 | Tela | O que faz |
 | --- | --- |
-| **Venda** | Barra lateral com a marca da BC Fichas, menu, evento, caixa e relógio; botões com foto do produto (ou só cor); abas opcionais (Comidas, Bebidas…); pedido com + e − (o valor de cada linha fica sempre à vista, mesmo com nome comprido); total e botão de pagamento. |
-| **Pagamento** | Dinheiro com troco calculado e notas rápidas; débito, crédito e PIX registrados para o relatório (veja "Maquininha de cartão"). |
+| **Venda** | Barra lateral preta e verde com a marca da BC Fichas, menu, caixa, as **abas do cardápio** (Comidas, Bebidas… até umas 6, uma embaixo da outra) e relógio; botões com foto do produto (ou só cor); pedido com + e − (o valor de cada linha fica sempre à vista, mesmo com nome comprido); total e botão de pagamento. |
+| **Pagamento** | Cartões grandes para Dinheiro, PIX (com o símbolo oficial do Pix), Débito e Crédito. Dinheiro com troco calculado e notas rápidas; débito, crédito e PIX registrados para o relatório (veja "Maquininha de cartão"). |
+| **Menu** | Ao voltar de uma tela aberta pelo menu (Produtos, Relatórios…), o menu continua aberto; ele só fecha no X. |
 | **Produtos** | Nome, detalhe, preço, custo, aba, posição na tela, cor, imagem (o botão Imagem abre sempre em `C:\Sistema_New\produtos`), estoque, fichas por unidade e **combos** (veja "Combos"). Produto pode ficar fora da tela de venda. |
 | **Reimprimir fichas** | Segunda via do pedido inteiro ou de um item só (sai marcado "REIMPRESSÃO"); fichas devolvidas não são reimpressas. |
 | **Devolver fichas** | O cliente não usou uma ficha: acha o pedido pelo número (PED) ou passando a ficha no leitor de código de barras e marca o que voltou. Veja "Devolução de fichas". |
 | **Sangria / Suprimento** | Tira ou põe dinheiro no caixa, com comprovante impresso; mostra em destaque quanto deve haver na gaveta e quanto fica depois. |
 | **Relatórios** | Caixa atual, caixas anteriores e sangrias: totais por forma de pagamento, fichas devolvidas, venda líquida e produtos vendidos. |
-| **Abrir / Fechar caixa** | Só o troco inicial (cada caixa é identificado pelo número: Caixa 01, 02…) e imprime o comprovante de **abertura de caixa** (troco, data e hora); no fechamento confere o dinheiro da gaveta (falta/sobra), imprime o relatório e, se configurado, desliga o tablet na hora. |
-| **Configurações** | Nome do evento, rodapé (opcional; embaixo dele toda ficha traz o telefone da BC Fichas), modelo da ficha (7 modelos com prévia), borda, fonte, logotipo, código de barras, grade de botões, pasta das fotos, impressora (com ajuste da posição no papel), corte da guilhotina, maquininha, senha master e telas travadas. |
+| **Abrir / Fechar caixa** | Só o troco inicial, digitado ou somado com os **valores rápidos** (+R$ 1, 5, 10, 20, 50, 100); cada caixa é identificado pelo número (Caixa 01, 02…) e imprime o comprovante de **abertura de caixa** (troco, data e hora); no fechamento confere o dinheiro da gaveta (falta/sobra), imprime o relatório e, se configurado, desliga o tablet na hora. |
+| **Configurações** | Tudo em blocos com ícone e explicação. Enquanto houver mudança não salva aparece a barra **Alterações não salvas** com o botão Salvar, e ao tocar em Voltar o programa pergunta se quer salvar. Nome do evento, rodapé (opcional; embaixo dele toda ficha traz o telefone da BC Fichas), modelo da ficha (7 modelos com prévia), borda, fonte, logotipo, código de barras, grade de botões, pasta das fotos, impressora (com ajuste da posição no papel), corte da guilhotina, maquininha, senha master e telas travadas. |
 | **Máquina** | Backup da programação (pasta padrão e pendrive) e restaurar em outra máquina escolhendo o número do caixa; deixa a máquina pura para o cliente ou zera a programação para um novo evento. Veja "Programar várias máquinas". |
 
 Também tem teclado na tela (para tablet sem teclado físico), ajuste de tamanho da tela e modo tela cheia.
 
-| Abertura do caixa | Pagamento no cartão / PIX | Devolução de fichas |
+| Abertura do caixa | Formas de pagamento | Pagamento no cartão / PIX |
 | --- | --- | --- |
-| ![](docs/telas/01-abertura-de-caixa.png) | ![](docs/telas/07-pagamento-maquininha-separada.png) | ![](docs/telas/34-devolucao-dinheiro.png) |
+| ![](docs/telas/01-abertura-de-caixa.png) | ![](docs/telas/04-pagamento-formas.png) | ![](docs/telas/07-pagamento-maquininha-separada.png) |
+
+| Devolução de fichas |
+| --- |
+| ![](docs/telas/34-devolucao-dinheiro.png) |
 
 | Sangria | Segurança | Modo teste |
 | --- | --- | --- |

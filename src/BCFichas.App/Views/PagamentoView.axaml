@@ -31,30 +31,66 @@
         <!-- 1. Escolher a forma -->
         <Grid IsVisible="{Binding EmEscolher}" RowDefinitions="Auto,*">
           <TextBlock Text="Como o cliente vai pagar?" Classes="secao" Margin="6,0,0,8" />
-          <UniformGrid Grid.Row="1" Columns="2" Rows="2" Height="300">
-            <Button Classes="forma" Background="{StaticResource Primaria}" Command="{Binding EscolherDinheiroCommand}">
-              <StackPanel Spacing="10">
-                <PathIcon Data="{StaticResource IconeDinheiro}" Width="48" Height="48" Foreground="White" />
-                <TextBlock Text="Dinheiro" Foreground="White" FontSize="24" FontWeight="Bold" />
-              </StackPanel>
+          <UniformGrid Grid.Row="1" Columns="2" Rows="2" Height="330">
+            <Button Classes="forma" Background="{StaticResource GradienteDinheiro}" Command="{Binding EscolherDinheiroCommand}">
+              <Panel>
+                <!-- Ícone grande e apagado no canto, como marca d'água -->
+                <PathIcon Data="{StaticResource IconeNotas}" Width="130" Height="130" Foreground="#1FFFFFFF"
+                          HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-8,-10" />
+                <Grid RowDefinitions="*,Auto,Auto">
+                  <Border Width="62" Height="62" CornerRadius="18" Background="#2EFFFFFF" HorizontalAlignment="Left"
+                          VerticalAlignment="Top">
+                    <PathIcon Data="{StaticResource IconeNotas}" Width="34" Height="34" Foreground="White" />
+                  </Border>
+                  <TextBlock Grid.Row="1" Text="Dinheiro" FontSize="28" FontWeight="ExtraBold" Foreground="White" />
+                  <TextBlock Grid.Row="2" Text="Calcula o troco na hora" FontSize="14" FontWeight="SemiBold" Foreground="#D9FFFFFF" />
+                </Grid>
+              </Panel>
             </Button>
-            <Button Classes="forma" Background="{StaticResource Pix}" Command="{Binding PixCommand}">
-              <StackPanel Spacing="10">
-                <PathIcon Data="{StaticResource IconePix}" Width="44" Height="44" Foreground="White" />
-                <TextBlock Text="PIX" Foreground="White" FontSize="24" FontWeight="Bold" />
-              </StackPanel>
+            <Button Classes="forma" Background="{StaticResource GradientePix}" Command="{Binding PixCommand}">
+              <Panel>
+                <!-- Ícone grande e apagado no canto, como marca d'água -->
+                <PathIcon Data="{StaticResource IconePix}" Width="130" Height="130" Foreground="#1A77B6A8"
+                          HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-8,-10" />
+                <Grid RowDefinitions="*,Auto,Auto">
+                  <Border Width="62" Height="62" CornerRadius="18" Background="#2677B6A8" HorizontalAlignment="Left"
+                          VerticalAlignment="Top">
+                    <PathIcon Data="{StaticResource IconePix}" Width="34" Height="34" Foreground="{StaticResource PixVerde}" />
+                  </Border>
+                  <TextBlock Grid.Row="1" Text="PIX" FontSize="28" FontWeight="ExtraBold" Foreground="White" />
+                  <TextBlock Grid.Row="2" Text="Pagamento instantâneo" FontSize="14" FontWeight="SemiBold" Foreground="#D9FFFFFF" />
+                </Grid>
+              </Panel>
             </Button>
-            <Button Classes="forma" Background="{StaticResource Azul}" Command="{Binding DebitoCommand}">
-              <StackPanel Spacing="10">
-                <PathIcon Data="{StaticResource IconeCartao}" Width="48" Height="48" Foreground="White" />
-                <TextBlock Text="Débito" Foreground="White" FontSize="24" FontWeight="Bold" />
-              </StackPanel>
+            <Button Classes="forma" Background="{StaticResource GradienteDebito}" Command="{Binding DebitoCommand}">
+              <Panel>
+                <!-- Ícone grande e apagado no canto, como marca d'água -->
+                <PathIcon Data="{StaticResource IconeCartao}" Width="130" Height="130" Foreground="#1FFFFFFF"
+                          HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-8,-10" />
+                <Grid RowDefinitions="*,Auto,Auto">
+                  <Border Width="62" Height="62" CornerRadius="18" Background="#2EFFFFFF" HorizontalAlignment="Left"
+                          VerticalAlignment="Top">
+                    <PathIcon Data="{StaticResource IconeCartao}" Width="34" Height="34" Foreground="White" />
+                  </Border>
+                  <TextBlock Grid.Row="1" Text="Débito" FontSize="28" FontWeight="ExtraBold" Foreground="White" />
+                  <TextBlock Grid.Row="2" Text="Cartão na maquininha" FontSize="14" FontWeight="SemiBold" Foreground="#D9FFFFFF" />
+                </Grid>
+              </Panel>
             </Button>
-            <Button Classes="forma" Background="{StaticResource Indigo}" Command="{Binding CreditoCommand}">
-              <StackPanel Spacing="10">
-                <PathIcon Data="{StaticResource IconeCartao}" Width="48" Height="48" Foreground="White" />
-                <TextBlock Text="Crédito" Foreground="White" FontSize="24" FontWeight="Bold" />
-              </StackPanel>
+            <Button Classes="forma" Background="{StaticResource GradienteCredito}" Command="{Binding CreditoCommand}">
+              <Panel>
+                <!-- Ícone grande e apagado no canto, como marca d'água -->
+                <PathIcon Data="{StaticResource IconeCartaoChip}" Width="130" Height="130" Foreground="#1FFFFFFF"
+                          HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-8,-10" />
+                <Grid RowDefinitions="*,Auto,Auto">
+                  <Border Width="62" Height="62" CornerRadius="18" Background="#2EFFFFFF" HorizontalAlignment="Left"
+                          VerticalAlignment="Top">
+                    <PathIcon Data="{StaticResource IconeCartaoChip}" Width="34" Height="34" Foreground="White" />
+                  </Border>
+                  <TextBlock Grid.Row="1" Text="Crédito" FontSize="28" FontWeight="ExtraBold" Foreground="White" />
+                  <TextBlock Grid.Row="2" Text="Cartão na maquininha" FontSize="14" FontWeight="SemiBold" Foreground="#D9FFFFFF" />
+                </Grid>
+              </Panel>
             </Button>
           </UniformGrid>
         </Grid>
@@ -107,8 +143,8 @@
 
         <!-- 3. Aguardando a maquininha -->
         <StackPanel IsVisible="{Binding EmMaquininha}" Spacing="12" Margin="10,6,10,4">
-          <Border Width="88" Height="88" CornerRadius="999" Background="{StaticResource PrimariaClara}" HorizontalAlignment="Center">
-            <PathIcon Data="{Binding IconeForma}" Width="44" Height="44" Foreground="{StaticResource Primaria}" />
+          <Border Width="88" Height="88" CornerRadius="999" Background="{Binding FundoForma}" HorizontalAlignment="Center">
+            <PathIcon Data="{Binding IconeForma}" Width="44" Height="44" Foreground="{Binding CorForma}" />
           </Border>
           <TextBlock HorizontalAlignment="Center" FontSize="24" FontWeight="Bold">
             <Run Text="Pagamento em" />

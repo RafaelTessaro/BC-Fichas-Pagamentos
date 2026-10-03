@@ -14,13 +14,20 @@ public abstract partial class PaginaViewModel(PrincipalViewModel principal) : Vi
     public PrincipalViewModel Principal { get; } = principal;
     protected Sistema Sistema => Principal.Sistema;
 
+    /// <summary>Aberta pelo menu: ao voltar, o menu aparece de novo (ele só fecha no X).</summary>
+    public bool VoltaParaMenu { get; set; }
+
     /// <summary>Chamado sempre que a tela aparece.</summary>
     public virtual void AoAbrir()
     {
     }
 
     [RelayCommand]
-    protected virtual void Voltar() => Principal.IrParaVenda();
+    protected virtual void Voltar()
+    {
+        if (VoltaParaMenu) Principal.VoltarParaMenu();
+        else Principal.IrParaVenda();
+    }
 }
 
 /// <summary>Valor digitado no teclado numérico estilo maquininha: 1, 2, 5, 0 vira R$ 12,50.</summary>

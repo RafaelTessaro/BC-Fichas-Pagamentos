@@ -27,28 +27,37 @@ public sealed partial class MenuViewModel : ViewModelBase
         Itens =
         [
             new("Produtos", "Cadastrar e editar botões", "IconeCaixaProduto", "#2563EB", c.Protegida(TelaProtegida.Produtos),
-                () => _p.AbrirProtegido(TelaProtegida.Produtos, () => new ProdutosViewModel(_p))),
+                () => AbrirPeloMenu(TelaProtegida.Produtos, () => new ProdutosViewModel(_p))),
             new("Reimprimir fichas", "Segunda via de um pedido", "IconeImpressora", "#7C3AED", c.Protegida(TelaProtegida.Reimpressao),
-                () => _p.AbrirProtegido(TelaProtegida.Reimpressao, () => new ReimpressaoViewModel(_p))),
+                () => AbrirPeloMenu(TelaProtegida.Reimpressao, () => new ReimpressaoViewModel(_p))),
             new("Devolver fichas", "Cliente não usou a ficha", "IconeTroca", "#DB2777", c.Protegida(TelaProtegida.Devolucao),
-                () => _p.AbrirProtegido(TelaProtegida.Devolucao, () => new DevolucaoViewModel(_p))),
+                () => AbrirPeloMenu(TelaProtegida.Devolucao, () => new DevolucaoViewModel(_p))),
             new("Sangria / Suprimento", "Tirar ou pôr dinheiro", "IconeDinheiro", "#16A34A", c.Protegida(TelaProtegida.Sangria),
-                () => _p.AbrirProtegido(TelaProtegida.Sangria, () => new SangriaViewModel(_p))),
+                () => AbrirPeloMenu(TelaProtegida.Sangria, () => new SangriaViewModel(_p))),
             new("Relatórios", "Vendas, caixas e sangrias", "IconeGrafico", "#D97706", c.Protegida(TelaProtegida.Relatorios),
-                () => _p.AbrirProtegido(TelaProtegida.Relatorios, () => new RelatoriosViewModel(_p))),
+                () => AbrirPeloMenu(TelaProtegida.Relatorios, () => new RelatoriosViewModel(_p))),
             principal.ModoTeste
                 ? new("Sair do modo teste", "Apaga as vendas de teste", "IconeAlerta", "#EA580C", false,
                     () => _ = _p.SairDoModoTeste())
                 : new("Fechar caixa", "Conferir e encerrar o dia", "IconeCadeado", "#DC2626", c.Protegida(TelaProtegida.FecharCaixa),
-                    () => _p.AbrirProtegido(TelaProtegida.FecharCaixa, () => new FechamentoViewModel(_p))),
+                    () => AbrirPeloMenu(TelaProtegida.FecharCaixa, () => new FechamentoViewModel(_p))),
             new("Configurações", "Evento, ficha, impressora", "IconeConfig", "#475569", c.Protegida(TelaProtegida.Configuracao),
-                () => _p.AbrirProtegido(TelaProtegida.Configuracao, () => new ConfiguracaoViewModel(_p))),
+                () => AbrirPeloMenu(TelaProtegida.Configuracao, () => new ConfiguracaoViewModel(_p))),
             new("Sair do programa", "Fecha o BC Fichas", "IconeDesligar", "#334155", c.Protegida(TelaProtegida.SairDoPrograma),
                 () => _p.ExecutarProtegido(TelaProtegida.SairDoPrograma, Sair)),
         ];
     }
 
     public List<ItemMenu> Itens { get; }
+
+    /// <summary>Tela aberta pelo menu: o Voltar dela traz o menu de volta.</summary>
+    private void AbrirPeloMenu(TelaProtegida tela, Func<PaginaViewModel> criar) =>
+        _p.AbrirProtegido(tela, () =>
+        {
+            var pagina = criar();
+            pagina.VoltaParaMenu = true;
+            return pagina;
+        });
 
     [RelayCommand]
     private void Escolher(ItemMenu item)

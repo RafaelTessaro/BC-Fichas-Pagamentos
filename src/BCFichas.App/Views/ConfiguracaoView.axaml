@@ -26,13 +26,15 @@
       <Setter Property="Foreground" Value="{StaticResource TextoSuave}" />
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
+    <!-- Ícones no preto e verde da BC Fichas (como a barra lateral) -->
     <Style Selector="Border.icone-bloco.menor">
       <Setter Property="Width" Value="44" />
       <Setter Property="Height" Value="44" />
       <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Background" Value="{StaticResource FundoLateral}" />
     </Style>
     <Style Selector="Border.icone-bloco.menor PathIcon">
-      <Setter Property="Foreground" Value="White" />
+      <Setter Property="Foreground" Value="{StaticResource Marca}" />
       <Setter Property="Width" Value="24" />
       <Setter Property="Height" Value="24" />
     </Style>
@@ -185,7 +187,7 @@
     </Style>
   </UserControl.Styles>
 
-  <Grid RowDefinitions="Auto,*">
+  <Grid RowDefinitions="Auto,*,Auto">
     <Border Classes="cabecalho">
       <Grid ColumnDefinitions="Auto,*,Auto">
         <Button Classes="fantasma" Command="{Binding VoltarCommand}" Height="48" Padding="12,0">
@@ -195,12 +197,26 @@
           </StackPanel>
         </Button>
         <TextBlock Grid.Column="1" Text="Configurações" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
-        <Button Grid.Column="2" Classes="primario" Command="{Binding SalvarCommand}" Height="48" Padding="30,0">
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <PathIcon Data="{StaticResource IconeOk}" Foreground="White" />
-            <TextBlock Text="Salvar" Foreground="White" FontSize="17" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding !TemAlteracoes}">
+            <PathIcon Data="{StaticResource IconeOk}" Width="18" Height="18" Foreground="{StaticResource Primaria}" />
+            <TextBlock Text="Tudo salvo" Foreground="{StaticResource TextoSuave}" FontSize="15" FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
           </StackPanel>
-        </Button>
+          <Border Background="{StaticResource AvisoClara}" CornerRadius="999" Padding="12,5" VerticalAlignment="Center"
+                  IsVisible="{Binding TemAlteracoes}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Ellipse Width="9" Height="9" Fill="{StaticResource Aviso}" VerticalAlignment="Center" />
+              <TextBlock Text="Não salvo" Foreground="{StaticResource Aviso}" FontSize="14" FontWeight="Bold" />
+            </StackPanel>
+          </Border>
+          <Button Classes="primario" Command="{Binding SalvarCommand}" Height="52" Padding="30,0">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <PathIcon Data="{StaticResource IconeOk}" Foreground="White" />
+              <TextBlock Text="Salvar" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
       </Grid>
     </Border>
 
@@ -216,7 +232,7 @@
                 <Border Classes="bloco">
                   <StackPanel Spacing="4">
                     <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
-                      <Border Classes="icone-bloco menor" Background="{StaticResource Primaria}">
+                      <Border Classes="icone-bloco menor">
                         <PathIcon Data="{StaticResource IconeFicha}" />
                       </Border>
                       <StackPanel Grid.Column="1">
@@ -239,7 +255,7 @@
                 <Border Classes="bloco">
                   <StackPanel Spacing="4">
                     <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
-                      <Border Classes="icone-bloco menor" Background="{StaticResource Indigo}">
+                      <Border Classes="icone-bloco menor">
                         <PathIcon Data="{StaticResource IconeLoja}" />
                       </Border>
                       <StackPanel Grid.Column="1">
@@ -262,7 +278,7 @@
               <Border Grid.Column="2" Classes="bloco" VerticalAlignment="Top">
                 <StackPanel Spacing="4">
                   <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
-                    <Border Classes="icone-bloco menor" Background="{StaticResource Azul}">
+                    <Border Classes="icone-bloco menor">
                       <PathIcon Data="{StaticResource IconeTela}" />
                     </Border>
                     <StackPanel Grid.Column="1">
@@ -336,7 +352,7 @@
                 <Border Classes="bloco">
                   <StackPanel Spacing="4">
                     <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
-                      <Border Classes="icone-bloco menor" Background="{StaticResource Primaria}">
+                      <Border Classes="icone-bloco menor">
                         <PathIcon Data="{StaticResource IconeFicha}" />
                       </Border>
                       <StackPanel Grid.Column="1">
@@ -361,7 +377,7 @@
                 <Border Classes="bloco">
                   <StackPanel Spacing="4">
                     <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
-                      <Border Classes="icone-bloco menor" Background="{StaticResource Azul}">
+                      <Border Classes="icone-bloco menor">
                         <PathIcon Data="{StaticResource IconeOk}" />
                       </Border>
                       <StackPanel Grid.Column="1">
@@ -401,7 +417,7 @@
                 <Border Classes="bloco">
                   <StackPanel Spacing="4">
                     <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
-                      <Border Classes="icone-bloco menor" Background="{StaticResource Indigo}">
+                      <Border Classes="icone-bloco menor">
                         <PathIcon Data="{StaticResource IconeImagem}" />
                       </Border>
                       <StackPanel Grid.Column="1">
@@ -430,7 +446,7 @@
             <Border Grid.Column="1" Classes="bloco" Margin="8,6,4,6" Width="440">
               <Grid RowDefinitions="Auto,*">
                 <Grid Classes="cabeca" ColumnDefinitions="Auto,*" Margin="0,0,0,12">
-                  <Border Classes="icone-bloco menor" Background="{StaticResource EscuroSuave}">
+                  <Border Classes="icone-bloco menor">
                     <PathIcon Data="{StaticResource IconeImpressora}" />
                   </Border>
                   <StackPanel Grid.Column="1">
@@ -458,7 +474,7 @@
                 <Border Classes="bloco">
                   <StackPanel Spacing="4">
                     <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
-                      <Border Classes="icone-bloco menor" Background="{StaticResource Indigo}">
+                      <Border Classes="icone-bloco menor">
                         <PathIcon Data="{StaticResource IconeGrade}" />
                       </Border>
                       <StackPanel Grid.Column="1">
@@ -476,24 +492,15 @@
                         <ComboBox ItemsSource="{Binding OpcoesGrade}" SelectedItem="{Binding Linhas}" />
                       </StackPanel>
                     </Grid>
-                    <Border Classes="opcoes" Padding="12" Margin="0,12,0,0">
-                      <StackPanel Spacing="8">
-                        <ItemsControl ItemsSource="{Binding CelulasGrade}" Height="120">
-                          <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                              <UniformGrid Columns="{Binding $parent[ItemsControl].((vm:ConfiguracaoViewModel)DataContext).Colunas}" />
-                            </ItemsPanelTemplate>
-                          </ItemsControl.ItemsPanel>
-                          <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="x:Int32">
-                              <Border Background="{StaticResource PrimariaClara}" BorderBrush="{StaticResource Primaria}"
-                                      BorderThickness="1" CornerRadius="6" Margin="3" />
-                            </DataTemplate>
-                          </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock Text="{Binding TextoGrade}" Classes="suave" FontSize="14" FontWeight="SemiBold"
-                                   HorizontalAlignment="Center" />
-                      </StackPanel>
+                    <Border Classes="opcoes" Padding="18,12" Margin="0,12,0,0">
+                      <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Text="{Binding TotalGrade}" FontSize="44" FontWeight="ExtraBold"
+                                   Foreground="{StaticResource Primaria}" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                          <TextBlock Text="botões em cada aba" FontSize="18" FontWeight="Bold" />
+                          <TextBlock Text="{Binding TextoGrade}" Classes="suave" FontSize="14" />
+                        </StackPanel>
+                      </Grid>
                     </Border>
                   </StackPanel>
                 </Border>
@@ -502,7 +509,7 @@
                 <Border Classes="bloco">
                   <StackPanel Spacing="4">
                     <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
-                      <Border Classes="icone-bloco menor" Background="{StaticResource Aviso}">
+                      <Border Classes="icone-bloco menor">
                         <PathIcon Data="{StaticResource IconePasta}" />
                       </Border>
                       <StackPanel Grid.Column="1">
@@ -528,7 +535,7 @@
               <Border Grid.Column="2" Classes="bloco" VerticalAlignment="Top">
                 <StackPanel Spacing="4">
                   <Grid Classes="cabeca" ColumnDefinitions="Auto,*,Auto">
-                    <Border Classes="icone-bloco menor" Background="{StaticResource Azul}">
+                    <Border Classes="icone-bloco menor">
                       <PathIcon Data="{StaticResource IconeAbas}" />
                     </Border>
                     <StackPanel Grid.Column="1">
@@ -543,12 +550,12 @@
                       </StackPanel>
                     </Button>
                   </Grid>
-                  <ItemsControl ItemsSource="{Binding Abas}" Margin="0,8,0,0">
+                  <ItemsControl x:Name="ListaAbas" ItemsSource="{Binding Abas}" Margin="0,8,0,0">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate x:DataType="vm:AbaEdicao">
                         <Border Classes="opcoes" Padding="6" Margin="0,0,0,8">
                           <Grid ColumnDefinitions="*,Auto,Auto,Auto">
-                            <TextBox Text="{Binding Nome}" MaxLength="20" />
+                            <TextBox Text="{Binding Nome}" MaxLength="20" Watermark="Nome da aba" />
                             <Button Grid.Column="1" Classes="fantasma" Width="46" Padding="0" Margin="6,0,0,0"
                                     Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).SubirAbaCommand}"
                                     CommandParameter="{Binding}" ToolTip.Tip="Subir">
@@ -569,7 +576,7 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <TextBlock Classes="dica" Text="Os nomes das abas são gravados ao tocar em Salvar." />
+                  <TextBlock Classes="dica" Text="Abas novas, nomes, ordem e exclusões valem ao tocar em Salvar." />
                 </StackPanel>
               </Border>
             </Grid>
@@ -585,7 +592,7 @@
                 <Border Classes="bloco">
                   <StackPanel Spacing="4">
                     <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
-                      <Border Classes="icone-bloco menor" Background="{StaticResource EscuroSuave}">
+                      <Border Classes="icone-bloco menor">
                         <PathIcon Data="{StaticResource IconeImpressora}" />
                       </Border>
                       <StackPanel Grid.Column="1">
@@ -632,7 +639,7 @@
                 <Border Classes="bloco">
                   <StackPanel Spacing="4">
                     <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
-                      <Border Classes="icone-bloco menor" Background="{StaticResource Azul}">
+                      <Border Classes="icone-bloco menor">
                         <PathIcon Data="{StaticResource IconeFicha}" />
                       </Border>
                       <StackPanel Grid.Column="1">
@@ -655,16 +662,17 @@
               </StackPanel>
 
               <StackPanel Grid.Column="2" Spacing="14">
-                <!-- Posição -->
+                <!-- Posição e teste -->
                 <Border Classes="bloco">
                   <StackPanel Spacing="4">
                     <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
-                      <Border Classes="icone-bloco menor" Background="{StaticResource Indigo}">
+                      <Border Classes="icone-bloco menor">
                         <PathIcon Data="{StaticResource IconeTroca}" />
                       </Border>
                       <StackPanel Grid.Column="1">
                         <TextBlock Classes="titulo-bloco" Text="Posição no papel" />
-                        <TextBlock Classes="texto-bloco" Text="Se a ficha sai mais para um lado, puxe para o outro (meio milímetro por toque)." />
+                        <TextBlock Classes="texto-bloco"
+                                   Text="Se a ficha sai mais para um lado, puxe para o outro (meio milímetro por toque) e confira com um teste." />
                       </StackPanel>
                     </Grid>
                     <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
@@ -681,32 +689,19 @@
                         <PathIcon Data="{StaticResource IconeVoltar}" RenderTransform="rotate(180deg)" />
                       </Button>
                     </Grid>
-                    <Button Classes="fantasma" Content="Centralizar" HorizontalAlignment="Center" Height="44"
-                            Command="{Binding MoverImpressaoCommand}" CommandParameter="centro" />
-                  </StackPanel>
-                </Border>
-
-                <!-- Teste -->
-                <Border Classes="bloco">
-                  <Grid ColumnDefinitions="Auto,*">
-                    <Border Classes="icone-bloco menor" Background="{StaticResource Primaria}">
-                      <PathIcon Data="{StaticResource IconeImpressora}" />
-                    </Border>
-                    <StackPanel Grid.Column="1" Margin="12,0,0,0" Spacing="10">
-                      <StackPanel>
-                        <TextBlock Classes="titulo-bloco" Text="Imprimir teste" />
-                        <TextBlock Classes="texto-bloco"
-                                   Text="Sai uma ficha de exemplo com o que está nesta tela, mesmo antes de salvar." />
-                      </StackPanel>
-                      <Button Classes="primario" Command="{Binding ImprimirTesteCommand}" Height="54" HorizontalAlignment="Left"
-                              Padding="24,0" IsEnabled="{Binding !ImprimindoTeste}">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+                      <Button Classes="primario" Command="{Binding ImprimirTesteCommand}" Height="56" HorizontalAlignment="Stretch"
+                              IsEnabled="{Binding !ImprimindoTeste}">
                         <StackPanel Orientation="Horizontal" Spacing="10">
                           <PathIcon Data="{StaticResource IconeImpressora}" Foreground="White" />
-                          <TextBlock Text="Imprimir teste" Foreground="White" FontSize="17" VerticalAlignment="Center" />
+                          <TextBlock Text="Imprimir teste" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
                         </StackPanel>
                       </Button>
-                    </StackPanel>
-                  </Grid>
+                      <Button Grid.Column="1" Classes="suave branco" Content="Centralizar" Height="56" Padding="18,0"
+                              Margin="10,0,0,0" Command="{Binding MoverImpressaoCommand}" CommandParameter="centro" />
+                    </Grid>
+                    <TextBlock Classes="dica" Text="O teste usa o que está nesta tela, mesmo antes de salvar." />
+                  </StackPanel>
                 </Border>
               </StackPanel>
             </Grid>
@@ -720,7 +715,7 @@
               <Border Classes="bloco">
                 <StackPanel Spacing="12">
                   <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
-                    <Border Classes="icone-bloco menor" Background="{StaticResource Azul}">
+                    <Border Classes="icone-bloco menor">
                       <PathIcon Data="{StaticResource IconeCartao}" />
                     </Border>
                     <StackPanel Grid.Column="1">
@@ -902,8 +897,8 @@
               <!-- Backup da programação -->
               <Border Classes="bloco">
                 <Grid ColumnDefinitions="Auto,*">
-                  <Border Classes="icone-bloco" Background="{StaticResource Azul}">
-                    <PathIcon Data="{StaticResource IconeTroca}" Foreground="White" Width="28" Height="28" />
+                  <Border Classes="icone-bloco" Background="{StaticResource FundoLateral}">
+                    <PathIcon Data="{StaticResource IconeTroca}" Foreground="{StaticResource Marca}" Width="28" Height="28" />
                   </Border>
                   <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="8">
                     <TextBlock Text="Backup da programação" FontSize="18" FontWeight="Bold" />
@@ -984,6 +979,31 @@
           </ScrollViewer>
         </TabItem>
       </TabControl>
+    </Border>
+
+    <!-- Aparece quando algo mudou e não foi salvo: difícil esquecer de salvar -->
+    <Border Grid.Row="2" IsVisible="{Binding TemAlteracoes}" Background="{StaticResource FundoLateral}"
+            BorderBrush="{StaticResource MarcaBorda}" BorderThickness="0,1,0,0" Padding="20,12">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+        <Border Width="44" Height="44" CornerRadius="999" Background="{StaticResource AvisoClara}">
+          <PathIcon Data="{StaticResource IconeAlerta}" Width="22" Height="22" Foreground="{StaticResource Aviso}" />
+        </Border>
+        <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center">
+          <TextBlock Text="Alterações não salvas" Foreground="White" FontSize="18" FontWeight="Bold" />
+          <TextBlock Text="Toque em Salvar para gravar. Se sair sem salvar, as mudanças se perdem."
+                     Foreground="{StaticResource MarcaTextoSuave}" FontSize="14" TextWrapping="Wrap" />
+        </StackPanel>
+        <Button Grid.Column="2" Classes="lateral" Command="{Binding DesfazerCommand}" Height="54" Padding="20,0"
+                Margin="0,0,10,0" HorizontalAlignment="Right">
+          <TextBlock Text="Desfazer" Foreground="White" FontSize="16" FontWeight="SemiBold" />
+        </Button>
+        <Button Grid.Column="3" Classes="primario" Command="{Binding SalvarCommand}" Height="54" Padding="28,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeOk}" Foreground="White" />
+            <TextBlock Text="Salvar alterações" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
     </Border>
   </Grid>
 </UserControl>

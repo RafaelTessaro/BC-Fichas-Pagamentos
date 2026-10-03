@@ -117,6 +117,40 @@
   </Style>
 
   <!-- Botões da barra lateral escura -->
+  <!-- Abas do cardápio na barra lateral: a escolhida fica branca -->
+  <Style Selector="Button.aba-lateral">
+    <Setter Property="Background" Value="#14FFFFFF" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="BorderBrush" Value="{StaticResource MarcaBorda}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="MinHeight" Value="42" />
+    <Setter Property="Padding" Value="6,3" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.aba-lateral:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.aba-lateral:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="#26FFFFFF" />
+    <Setter Property="BorderBrush" Value="{StaticResource Marca}" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.aba-lateral.ativa">
+    <Setter Property="Background" Value="White" />
+    <Setter Property="Foreground" Value="{StaticResource Escuro}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Marca}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="Button.aba-lateral TextBlock.aba">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.aba-lateral.ativa TextBlock.aba">
+    <Setter Property="Foreground" Value="{StaticResource Escuro}" />
+  </Style>
+  <Style Selector="Button.aba-lateral.ativa:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.aba-lateral.ativa:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="White" />
+    <Setter Property="Foreground" Value="{StaticResource Escuro}" />
+  </Style>
+
   <Style Selector="Button.lateral">
     <Setter Property="Background" Value="#14FFFFFF" />
     <Setter Property="Foreground" Value="White" />
@@ -201,12 +235,17 @@
   </Style>
 
   <!-- Formas de pagamento -->
+  <!-- Formas de pagamento: cartões grandes com degradê, ícone em destaque e explicação -->
   <Style Selector="Button.forma">
     <Setter Property="Foreground" Value="White" />
-    <Setter Property="CornerRadius" Value="16" />
-    <Setter Property="Margin" Value="6" />
+    <Setter Property="CornerRadius" Value="20" />
+    <Setter Property="Margin" Value="7" />
+    <Setter Property="Padding" Value="20,18" />
+    <Setter Property="ClipToBounds" Value="True" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
     <Setter Property="FontSize" Value="22" />
     <Setter Property="FontWeight" Value="Bold" />
   </Style>

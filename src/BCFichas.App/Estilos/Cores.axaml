@@ -46,6 +46,24 @@
   <SolidColorBrush x:Key="MarcaBorda" Color="#2B4A36" />
   <SolidColorBrush x:Key="Teste" Color="#EA580C" />
   <SolidColorBrush x:Key="TesteClara" Color="#FFEDD5" />
+  <!-- Formas de pagamento -->
+  <SolidColorBrush x:Key="PixVerde" Color="#77B6A8" /><!-- verde oficial do Pix (manual da marca do Banco Central) -->
+  <LinearGradientBrush x:Key="GradienteDinheiro" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#22C55E" />
+    <GradientStop Offset="1" Color="#15803D" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="GradientePix" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#1B3A33" />
+    <GradientStop Offset="1" Color="#07110B" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="GradienteDebito" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#3B82F6" />
+    <GradientStop Offset="1" Color="#1D4ED8" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="GradienteCredito" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#8B5CF6" />
+    <GradientStop Offset="1" Color="#6D28D9" />
+  </LinearGradientBrush>
   <!-- Fundo da barra lateral: preto esverdeado, como o papel de parede da BC Fichas -->
   <LinearGradientBrush x:Key="FundoLateral" StartPoint="0%,0%" EndPoint="100%,100%">
     <GradientStop Offset="0" Color="#12301F" />

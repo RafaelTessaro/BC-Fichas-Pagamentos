@@ -12,10 +12,10 @@
       <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto" Margin="10,14,10,10">
         <!-- Tocar 5 vezes seguidas no logo liga/desliga o modo teste (atalho escondido) -->
         <Button Classes="marca" Command="{Binding ToqueNaMarcaCommand}" Focusable="False">
-          <v:MarcaBC Tamanho="60" />
+          <v:MarcaBC Tamanho="54" />
         </Button>
 
-        <Button Grid.Row="1" Classes="lateral" Command="{Binding AbrirMenuCommand}" Height="78" Margin="0,16,0,0"
+        <Button Grid.Row="1" Classes="lateral" Command="{Binding AbrirMenuCommand}" Height="70" Margin="0,12,0,0"
                 ToolTip.Tip="Menu">
           <StackPanel Spacing="4">
             <PathIcon Data="{StaticResource IconeMenu}" Width="30" Height="30" Foreground="White" />
@@ -23,7 +23,7 @@
           </StackPanel>
         </Button>
 
-        <StackPanel Grid.Row="2" Spacing="10" Margin="0,18,0,0">
+        <StackPanel Grid.Row="2" Spacing="10" Margin="0,12,0,0">
           <Border Background="{StaticResource Primaria}" CornerRadius="10" Padding="6,6" IsVisible="{Binding !Principal.ModoTeste}">
             <StackPanel>
               <TextBlock Text="{Binding Principal.CaixaTexto}" Foreground="White" FontWeight="Bold" FontSize="16"
@@ -38,6 +38,30 @@
             <TextBlock Text="MODO TESTE" Foreground="White" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" />
           </Border>
         </StackPanel>
+
+        <!-- Abas do cardápio (Comidas, Bebidas...): na barra lateral, uma embaixo da outra -->
+        <Grid Grid.Row="3" RowDefinitions="Auto,*" Margin="0,12,0,8" IsVisible="{Binding MostrarAbas}">
+          <TextBlock Text="ABAS" Foreground="{StaticResource MarcaTextoSuave}" FontSize="11" FontWeight="Bold"
+                     Margin="4,0,0,6"
+                     IsVisible="{Binding $parent[Window].Bounds.Height, Converter={x:Static v:Conversores.TelaAlta}}" />
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Abas}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Spacing="5" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:AbaItem">
+                  <Button Classes="aba-lateral" Classes.ativa="{Binding Ativa}"
+                          Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).SelecionarAbaCommand}"
+                          CommandParameter="{Binding}">
+                    <TextBlock Classes="aba" Text="{Binding Nome}" TextWrapping="Wrap" MaxLines="2"
+                               TextTrimming="CharacterEllipsis" TextAlignment="Center" FontSize="14" FontWeight="Bold" />
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
 
         <StackPanel Grid.Row="4" Spacing="0" Margin="0,0,0,14">
           <TextBlock Text="{Binding Principal.Relogio}" Foreground="White" FontSize="34" FontWeight="Bold"
@@ -56,14 +80,16 @@
                          Foreground="{StaticResource MarcaTextoSuave}" Classes.erro="{Binding Principal.ImpressoraComErro}"
                          TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
             </Grid>
-            <Grid ColumnDefinitions="Auto,*">
+            <Grid ColumnDefinitions="Auto,*"
+                  IsVisible="{Binding $parent[Window].Bounds.Height, Converter={x:Static v:Conversores.TelaAlta}}">
               <PathIcon Data="{StaticResource IconeCartao}" Width="15" Height="15" VerticalAlignment="Top" Margin="0,2,6,0"
                         Foreground="{StaticResource MarcaTextoSuave}" />
               <TextBlock Grid.Column="1" Text="{Binding Principal.StatusMaquininha}" FontSize="12"
                          Foreground="{StaticResource MarcaTextoSuave}" TextWrapping="Wrap" MaxLines="2" />
             </Grid>
             <TextBlock Text="{Binding Principal.Suporte}" FontSize="11" Foreground="{StaticResource Marca}"
-                       FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0" />
+                       FontWeight="SemiBold" TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"
+                       IsVisible="{Binding $parent[Window].Bounds.Height, Converter={x:Static v:Conversores.TelaAlta}}" />
             <TextBlock Text="{Binding Principal.Versao}" FontSize="11" Foreground="{StaticResource MarcaTextoSuave}"
                        HorizontalAlignment="Center" />
           </StackPanel>
@@ -95,25 +121,9 @@
         <ColumnDefinition Width="0.5*" MinWidth="300" MaxWidth="370" />
       </Grid.ColumnDefinitions>
 
-      <!-- Abas e botões dos produtos -->
-      <Grid RowDefinitions="Auto,*">
-        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
-                      IsVisible="{Binding MostrarAbas}" Margin="5,0,5,6">
-          <ItemsControl ItemsSource="{Binding Abas}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="vm:AbaItem">
-                <Button Classes="aba" Classes.ativa="{Binding Ativa}" Content="{Binding Nome}"
-                        Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).SelecionarAbaCommand}"
-                        CommandParameter="{Binding}" />
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </ScrollViewer>
-
-        <ItemsControl Grid.Row="1" ItemsSource="{Binding Botoes}">
+      <!-- Botões dos produtos (as abas ficam na barra lateral) -->
+      <Grid>
+        <ItemsControl ItemsSource="{Binding Botoes}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
               <UniformGrid Columns="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).Colunas}"

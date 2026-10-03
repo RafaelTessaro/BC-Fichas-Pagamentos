@@ -15,10 +15,16 @@ public sealed record Opcao<T>(T Valor, string Texto)
     public override string ToString() => Texto;
 }
 
-public sealed partial class AbaEdicao(Aba aba) : ObservableObject
+/// <summary>Uma aba na lista da tela (nova ainda não tem <see cref="Aba"/>). Tudo é gravado ao tocar em Salvar.</summary>
+public sealed partial class AbaEdicao(Aba? aba) : ObservableObject
 {
-    public Aba Aba { get; } = aba;
-    [ObservableProperty] private string _nome = aba.Nome;
+    public Aba? Aba { get; } = aba;
+    public bool Nova => Aba is null;
+    [ObservableProperty] private string _nome = aba?.Nome ?? "";
+
+    public string NomeLimpo => Nome.Trim().ToUpperInvariant();
+    /// <summary>Nova com nome escrito, ou nome trocado.</summary>
+    public bool Mudou => Aba is null ? NomeLimpo.Length > 0 : NomeLimpo != Aba.Nome;
 }
 
 /// <summary>Uma tela que pode pedir a senha master para abrir.</summary>
@@ -40,6 +46,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
 
     public ConfiguracaoViewModel(PrincipalViewModel principal) : base(principal)
     {
+        Abas.CollectionChanged += (_, _) => AtualizarAlteracoes();
         _timerPrevia = new DispatcherTimer(TimeSpan.FromMilliseconds(250), DispatcherPriority.Background, (_, _) =>
         {
             _timerPrevia!.Stop();
@@ -107,10 +114,10 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
 
     // Botões
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CelulasGrade), nameof(TextoGrade))]
+    [NotifyPropertyChangedFor(nameof(TotalGrade), nameof(TextoGrade))]
     private int _colunas = 4;
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CelulasGrade), nameof(TextoGrade))]
+    [NotifyPropertyChangedFor(nameof(TotalGrade), nameof(TextoGrade))]
     private int _linhas = 3;
     [ObservableProperty] private string _pastaFotos = "";
 
@@ -146,9 +153,9 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     public bool SemImpressoras => Impressoras.Count == 0;
     public bool MaquininhaSimulador => TipoMaquininha?.Valor == Core.TipoMaquininha.Simulador;
     public bool MaquininhaSeparada => !MaquininhaSimulador;
-    /// <summary>Um quadradinho por botão, para o desenho da grade (colunas × linhas).</summary>
-    public List<int> CelulasGrade => Enumerable.Range(1, Colunas * Linhas).ToList();
-    public string TextoGrade => $"{Colunas} × {Linhas} = {Colunas * Linhas} botões em cada aba";
+    /// <summary>Quantos produtos cabem em cada aba da tela de venda.</summary>
+    public int TotalGrade => Colunas * Linhas;
+    public string TextoGrade => $"{Colunas} colunas × {Linhas} linhas";
     public bool TemSenha => SenhaMaster.Length > 0;
     public bool SemSenha => !TemSenha;
     public string AjusteTexto => AjusteHorizontal == 0
@@ -161,6 +168,70 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     [ObservableProperty] private string _situacaoVendas = "";
     [ObservableProperty] private bool _maquinaPura;
     [ObservableProperty] private bool _ocupado;
+
+    // ---------- Alterações não salvas ----------
+
+    /// <summary>Algo mudou nesta tela e ainda não foi gravado (o botão Salvar fica em destaque).</summary>
+    [ObservableProperty] private bool _temAlteracoes;
+
+    /// <summary>Como a tela estava ao abrir (ou no último Salvar), para saber o que mudou.</summary>
+    private Configuracao? _salva;
+    private List<long> _ordemSalva = new();
+    private readonly List<AbaEdicao> _abasExcluidas = new();
+
+    private bool AbasMudaram => _abasExcluidas.Count > 0 || Abas.Any(a => a.Mudou) ||
+                                !Abas.Where(a => !a.Nova).Select(a => a.Aba!.Id).SequenceEqual(_ordemSalva);
+
+    private static string Json(Configuracao c) => System.Text.Json.JsonSerializer.Serialize(c);
+
+    private void AtualizarAlteracoes()
+    {
+        if (_carregando || _salva is null) return;
+        TemAlteracoes = Json(Montar()) != Json(_salva) || AbasMudaram;
+    }
+
+    /// <summary>A partir de agora o que está na tela é o que está gravado.</summary>
+    private void MarcarComoSalva()
+    {
+        _salva = Montar();
+        _ordemSalva = Abas.Where(a => !a.Nova).Select(a => a.Aba!.Id).ToList();
+        _abasExcluidas.Clear();
+        TemAlteracoes = false;
+    }
+
+    /// <summary>Volta tudo para o que está gravado.</summary>
+    [RelayCommand]
+    private async Task Desfazer()
+    {
+        if (!await Principal.Confirmar("Desfazer as alterações?",
+                "Tudo nesta tela volta a ser como está gravado.", "Desfazer", "Voltar"))
+            return;
+        AoAbrir();
+        Principal.MostrarAviso("Alterações desfeitas.");
+    }
+
+    /// <summary>Sair com alterações não salvas: pergunta antes (é fácil esquecer de tocar em Salvar).</summary>
+    protected override void Voltar() => _ = VoltarAsync();
+
+    private async Task VoltarAsync()
+    {
+        if (TemAlteracoes)
+        {
+            if (await Principal.Confirmar("Salvar as alterações?",
+                    "Você mudou as configurações e ainda não tocou em Salvar. Se sair sem salvar, as mudanças se perdem.",
+                    "Salvar", "Sair sem salvar"))
+            {
+                if (!Gravar(out var mudouCaixa)) return;
+                Principal.MostrarAviso("Configurações salvas.");
+                if (mudouCaixa)
+                {
+                    Principal.Iniciar();
+                    return;
+                }
+            }
+        }
+        base.Voltar();
+    }
 
     public override void AoAbrir()
     {
@@ -218,10 +289,12 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
             Protecao(TelaProtegida.FecharCaixa, "Fechar caixa", "Encerrar o dia", "IconeCadeado"),
             Protecao(TelaProtegida.SairDoPrograma, "Sair do programa", "Fechar o BC Fichas", "IconeDesligar"),
         ];
+        foreach (var p in Protecoes) p.PropertyChanged += (_, _) => AtualizarAlteracoes();
         OnPropertyChanged(nameof(Protecoes));
         OnPropertyChanged(nameof(SemImpressoras));
 
         _carregando = false;
+        MarcarComoSalva();
         AtualizarPrevia();
     }
 
@@ -250,27 +323,58 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
             return false;
         }
 
-        foreach (var aba in Abas)
-        {
-            if (aba.Nome.Trim().ToUpperInvariant() == aba.Aba.Nome) continue;
-            try
-            {
-                aba.Aba.Nome = aba.Nome;
-                Sistema.Catalogo.SalvarAba(aba.Aba);
-            }
-            catch (ErroDeNegocio e)
-            {
-                AbaSelecionada = 2;
-                Principal.MostrarAviso(e.Message, erro: true);
-                return false;
-            }
-        }
+        if (!GravarAbas()) return false;
 
         Sistema.Config.Salvar(Montar());
         Rodape = Sistema.Config.Atual.Rodape; // o campo mostra o que foi gravado (sem repetir a mensagem fixa)
         CarregarAbas();
+        MarcarComoSalva();
         return true;
     }
+
+    /// <summary>
+    /// Grava as abas como estão na lista: cria as novas (as sem nome ficam de fora), exclui as tiradas, troca os
+    /// nomes e a ordem.
+    /// </summary>
+    private bool GravarAbas()
+    {
+        if (!AbasMudaram) return true;
+        if (Abas.FirstOrDefault(a => !a.Nova && a.NomeLimpo.Length == 0) is not null)
+        {
+            AbaSelecionada = AbaBotoes;
+            Principal.MostrarAviso("Escreva o nome de todas as abas.", erro: true);
+            return false;
+        }
+        try
+        {
+            // Primeiro cria as novas: assim dá para trocar a única aba por outra
+            var ids = new List<long>();
+            foreach (var aba in Abas.Where(a => !a.Nova || a.NomeLimpo.Length > 0).ToList())
+            {
+                if (aba.Nova)
+                    ids.Add(Sistema.Catalogo.SalvarAba(new Aba { Nome = aba.Nome }).Id);
+                else
+                    ids.Add(aba.Aba!.Id);
+            }
+            foreach (var excluida in _abasExcluidas) Sistema.Catalogo.ExcluirAba(excluida.Aba!.Id);
+            foreach (var aba in Abas.Where(a => !a.Nova && a.Mudou))
+            {
+                aba.Aba!.Nome = aba.Nome;
+                Sistema.Catalogo.SalvarAba(aba.Aba);
+            }
+            Sistema.Catalogo.ReordenarAbas(ids);
+            return true;
+        }
+        catch (ErroDeNegocio e)
+        {
+            AbaSelecionada = AbaBotoes;
+            Principal.MostrarAviso(e.Message, erro: true);
+            CarregarAbas();
+            return false;
+        }
+    }
+
+    private const int AbaBotoes = 2;
 
     /// <summary>
     /// O backup e o "Apagar as vendas" usam o que está salvo. Se o evento, a ficha, o logotipo ou os botões foram
@@ -279,10 +383,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     private async Task<bool> SalvarAlteracoesAntes(string antes)
     {
         // Compara tudo o que vai no backup (o que é da máquina — impressora, tela, pastas — fica de fora).
-        var c = Principal.Config;
-        var mudou = System.Text.Json.JsonSerializer.Serialize(Montar().ComDadosDaMaquina(c)) !=
-                    System.Text.Json.JsonSerializer.Serialize(c) ||
-                    Abas.Any(x => x.Nome.Trim().ToUpperInvariant() != x.Aba.Nome);
+        var mudou = _salva is not null &&
+                    (Json(Montar().ComDadosDaMaquina(_salva)) != Json(_salva) || AbasMudaram);
         if (!mudou) return true;
         if (!await Principal.Confirmar("Alterações não salvas",
                 $"Você mudou o evento, a ficha, o logotipo ou os botões e ainda não tocou em Salvar. Salvar agora, {antes}?",
@@ -436,6 +538,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
             c.PastaBackup = texto;
             Sistema.Config.Salvar(c);
         }
+        if (_salva is not null) _salva.PastaBackup = texto;
+        AtualizarAlteracoes();
         return Core.Servicos.ProgramacaoServico.CaminhoDaPasta(texto);
     }
 
@@ -737,6 +841,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         var c = Principal.Config.Clonar();
         c.SenhaMaster = senha;
         Sistema.Config.Salvar(c);
+        if (_salva is not null) _salva.SenhaMaster = senha;
+        AtualizarAlteracoes();
     }
 
     [RelayCommand]
@@ -760,34 +866,31 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     [RelayCommand]
     private void RemoverLogo() => Logo = null;
 
+    /// <summary>Linha nova e vazia para escrever o nome (a tela põe o cursor nela). Gravada ao tocar em Salvar.</summary>
     [RelayCommand]
-    private void NovaAba()
-    {
-        try
-        {
-            Sistema.Catalogo.SalvarAba(new Aba { Nome = $"ABA {Abas.Count + 1}" });
-            CarregarAbas();
-        }
-        catch (ErroDeNegocio e)
-        {
-            Principal.MostrarAviso(e.Message, erro: true);
-        }
-    }
+    private void NovaAba() => Abas.Add(Linha(null));
 
     [RelayCommand]
     private async Task ExcluirAba(AbaEdicao aba)
     {
-        if (!await Principal.Confirmar("Excluir aba", $"Excluir a aba {aba.Aba.Nome}?", "Excluir", "Voltar", perigo: true))
-            return;
-        try
+        if (!aba.Nova)
         {
-            Sistema.Catalogo.ExcluirAba(aba.Aba.Id);
-            CarregarAbas();
+            if (Sistema.Catalogo.Produtos().Any(p => p.AbaId == aba.Aba!.Id))
+            {
+                Principal.MostrarAviso("Esta aba ainda tem produtos. Mova ou exclua os produtos antes.", erro: true);
+                return;
+            }
+            if (Abas.Count(a => a != aba && (!a.Nova || a.NomeLimpo.Length > 0)) == 0)
+            {
+                Principal.MostrarAviso("É preciso ter pelo menos uma aba.", erro: true);
+                return;
+            }
+            if (!await Principal.Confirmar("Excluir aba", $"Excluir a aba {aba.Aba!.Nome}? Ela sai ao tocar em Salvar.",
+                    "Excluir", "Voltar", perigo: true))
+                return;
+            _abasExcluidas.Add(aba);
         }
-        catch (ErroDeNegocio e)
-        {
-            Principal.MostrarAviso(e.Message, erro: true);
-        }
+        Abas.Remove(aba);
     }
 
     [RelayCommand]
@@ -798,19 +901,23 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
 
     private void MoverAba(AbaEdicao aba, int direcao)
     {
-        var ids = Abas.Select(a => a.Aba.Id).ToList();
-        var i = ids.IndexOf(aba.Aba.Id);
+        var i = Abas.IndexOf(aba);
         var j = i + direcao;
-        if (i < 0 || j < 0 || j >= ids.Count) return;
-        (ids[i], ids[j]) = (ids[j], ids[i]);
-        Sistema.Catalogo.ReordenarAbas(ids);
-        CarregarAbas();
+        if (i < 0 || j < 0 || j >= Abas.Count) return;
+        Abas.Move(i, j);
     }
 
     private void CarregarAbas()
     {
         Abas.Clear();
-        foreach (var a in Sistema.Catalogo.Abas()) Abas.Add(new AbaEdicao(a));
+        foreach (var a in Sistema.Catalogo.Abas()) Abas.Add(Linha(a));
+    }
+
+    private AbaEdicao Linha(Aba? aba)
+    {
+        var linha = new AbaEdicao(aba);
+        linha.PropertyChanged += (_, _) => AtualizarAlteracoes();
+        return linha;
     }
 
     private Configuracao Montar()
@@ -851,6 +958,10 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
 
     private void AoMudar(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(TemAlteracoes) or nameof(Previa) or nameof(Ocupado) or nameof(SituacaoMaquina)
+            or nameof(SituacaoVendas) or nameof(MaquinaPura) or nameof(AbaSelecionada) or nameof(ImprimindoTeste))
+            return;
+        AtualizarAlteracoes();
         switch (e.PropertyName)
         {
             case nameof(TipoImpressora):

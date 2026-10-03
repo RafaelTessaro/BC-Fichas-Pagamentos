@@ -66,6 +66,9 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     [ObservableProperty] private string _mensagem = "";
     [ObservableProperty] private string _formaTexto = "";
     [ObservableProperty] private Avalonia.Media.Geometry? _iconeForma;
+    /// <summary>Cor do ícone: o símbolo do Pix só pode sair no verde oficial dele (manual da marca do Banco Central).</summary>
+    [ObservableProperty] private Avalonia.Media.IBrush? _corForma;
+    [ObservableProperty] private Avalonia.Media.IBrush? _fundoForma;
     [ObservableProperty] private string _resultadoImpressao = "";
     [ObservableProperty] private bool _imprimindo;
     [ObservableProperty] private bool _temTroco;
@@ -125,7 +128,14 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     {
         _forma = forma;
         FormaTexto = Nomes.De(forma);
-        IconeForma = Recursos.Icone(forma == FormaPagamento.Pix ? "IconePix" : "IconeCartao");
+        IconeForma = Recursos.Icone(forma switch
+        {
+            FormaPagamento.Pix => "IconePix",
+            FormaPagamento.Credito => "IconeCartaoChip",
+            _ => "IconeCartao",
+        });
+        CorForma = Recursos.Pincel(forma == FormaPagamento.Pix ? "PixVerde" : "Primaria");
+        FundoForma = Recursos.Pincel(forma == FormaPagamento.Pix ? "GradientePix" : "PrimariaClara");
         Andamento = "Enviando para a maquininha...";
         Etapa = EtapaPagamento.Maquininha;
 

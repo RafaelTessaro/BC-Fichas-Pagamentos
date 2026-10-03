@@ -21,4 +21,7 @@ public static class Conversores
 
     public static readonly IValueConverter Segundos = new FuncValueConverter<int, string>(s =>
         s == 0 ? "Nunca (eu toco em aprovar ou recusar)" : $"{s} segundos");
+
+    /// <summary>Tela com altura para mostrar tudo na barra lateral (em tela baixa, sobra lugar para as abas).</summary>
+    public static readonly IValueConverter TelaAlta = new FuncValueConverter<double, bool>(altura => altura >= 720);
 }

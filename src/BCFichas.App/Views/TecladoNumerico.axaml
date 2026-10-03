@@ -7,7 +7,7 @@
   <Grid x:Name="Grade" RowDefinitions="*,*,*,*" ColumnDefinitions="*,*,*" MinHeight="230">
     <Grid.Styles>
       <Style Selector="Button.tecla">
-        <Setter Property="FontSize" Value="26" />
+        <Setter Property="FontSize" Value="28" />
         <Setter Property="Command" Value="{Binding $parent[v:TecladoNumerico].Comando}" />
       </Style>
       <Style Selector="Button.tecla.especial">

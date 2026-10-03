@@ -143,6 +143,13 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
         Pagina = Venda;
     }
 
+    /// <summary>Volta de uma tela aberta pelo menu: a venda com o menu aberto por cima.</summary>
+    public void VoltarParaMenu()
+    {
+        IrParaVenda();
+        if (Pagina == Venda) AbrirDialogo(new MenuViewModel(this));
+    }
+
     public void Abrir(PaginaViewModel pagina)
     {
         FecharTodosDialogos();
