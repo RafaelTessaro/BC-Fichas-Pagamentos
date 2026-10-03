@@ -101,7 +101,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         new(Core.TipoImpressora.Arquivo, "Salvar em arquivo (testar sem impressora)"),
     ];
 
-    public List<int> Caixas { get; } = Enumerable.Range(1, 30).ToList();
+    public const int MaximoCaixas = 30;
     public List<int> Papeis { get; } = [80, 58];
     public List<int> Velocidades { get; } = [9600, 19200, 38400, 57600, 115200];
     public List<int> Zooms { get; } = [70, 80, 90, 100, 110, 125, 150];
@@ -123,7 +123,10 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     // Geral
     [ObservableProperty] private string _nomeEvento = "";
     [ObservableProperty] private string _rodape = "";
-    [ObservableProperty] private int _numeroCaixa = 1;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NumeroCaixaTexto), nameof(CaixaNaFicha))]
+    [NotifyCanExecuteChangedFor(nameof(CaixaAnteriorCommand), nameof(ProximoCaixaCommand))]
+    private int _numeroCaixa = 1;
     [ObservableProperty] private bool _desligarAoFechar;
     [ObservableProperty] private bool _manterTelaLigada;
     [ObservableProperty] private bool _iniciarComWindows;
@@ -562,6 +565,28 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         return Core.Servicos.ProgramacaoServico.CaminhoDaPasta(texto);
     }
 
+    public string NumeroCaixaTexto => $"{NumeroCaixa:00}";
+    public string CaixaNaFicha => $"Sai na ficha e nos relatórios como CAIXA {NumeroCaixa:00}.";
+
+    private bool TemCaixaAnterior => NumeroCaixa > 1;
+    private bool TemProximoCaixa => NumeroCaixa < MaximoCaixas;
+
+    [RelayCommand(CanExecute = nameof(TemCaixaAnterior))]
+    private void CaixaAnterior() => NumeroCaixa--;
+
+    [RelayCommand(CanExecute = nameof(TemProximoCaixa))]
+    private void ProximoCaixa() => NumeroCaixa++;
+
+    /// <summary>Tocar no número: digita direto no teclado numérico (mais rápido que o + quando é o caixa 15).</summary>
+    [RelayCommand]
+    private async Task DigitarCaixa()
+    {
+        var numero = new NumeroViewModel(Principal, "Número deste caixa (PDV)",
+            "Cada máquina do evento tem um número diferente (sai na ficha e nos relatórios).", NumeroCaixa, MaximoCaixas);
+        Principal.AbrirDialogo(numero);
+        if (await numero.Resposta is { } caixa) NumeroCaixa = caixa;
+    }
+
     [RelayCommand]
     private void EscolherMaquininha(TipoMaquininha tipo) =>
         TipoMaquininha = TiposMaquininha.FirstOrDefault(t => t.Valor == tipo) ?? TipoMaquininha;
@@ -754,7 +779,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
             if (!await Principal.Confirmar("Restaurar este backup?", texto, "Restaurar", "Voltar")) return;
 
             var numero = new NumeroViewModel(Principal, "Número deste caixa (PDV)",
-                "Cada máquina do evento tem um número diferente (sai na ficha e nos relatórios).", Principal.Config.NumeroCaixa);
+                "Cada máquina do evento tem um número diferente (sai na ficha e nos relatórios).", Principal.Config.NumeroCaixa,
+                MaximoCaixas);
             Principal.AbrirDialogo(numero);
             if (await numero.Resposta is not { } caixa) return;
 

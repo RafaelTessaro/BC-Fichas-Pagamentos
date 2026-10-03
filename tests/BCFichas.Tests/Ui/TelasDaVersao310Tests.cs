@@ -182,6 +182,61 @@ public class TelasDaVersao310Tests
     }
 
     [AvaloniaFact]
+    public async Task Numero_do_caixa_com_menos_e_mais_e_salvar_so_na_barra_de_baixo()
+    {
+        using var t = new TelaDeTeste();
+        var tela = new ConfiguracaoViewModel(t.Principal);
+        t.Principal.Abrir(tela);
+        TelaDeTeste.Atualizar();
+        // Sem mudança, nenhum botão de salvar na tela (em cima não tem mais)
+        Assert.Empty(BotoesSalvar(t, tela));
+        Assert.Equal("01", tela.NumeroCaixaTexto);
+        Assert.False(tela.CaixaAnteriorCommand.CanExecute(null)); // não tem caixa 0
+
+        tela.ProximoCaixaCommand.Execute(null);
+        tela.ProximoCaixaCommand.Execute(null);
+        Assert.Equal(3, tela.NumeroCaixa);
+        Assert.Equal("Sai na ficha e nos relatórios como CAIXA 03.", tela.CaixaNaFicha);
+        tela.CaixaAnteriorCommand.Execute(null);
+        Assert.Equal("02", tela.NumeroCaixaTexto);
+        TelaDeTeste.Atualizar();
+        Assert.True(tela.TemAlteracoes);
+        var salvar = Assert.Single(BotoesSalvar(t, tela)); // só o da barra de baixo
+        Assert.True(salvar.TranslatePoint(new Point(0, 0), t.Janela)!.Value.Y > t.Janela.Bounds.Height / 2);
+
+        // Tocar no número abre o teclado para digitar direto
+        var digitar = tela.DigitarCaixaCommand.ExecuteAsync(null);
+        var numero = Assert.IsType<NumeroViewModel>(t.Principal.Dialogo);
+        numero.TeclaCommand.Execute("C");
+        numero.TeclaCommand.Execute("3");
+        numero.TeclaCommand.Execute("1");
+        numero.ConfirmarCommand.Execute(null);
+        Assert.Equal("Digite um número de 1 a 30", numero.Erro);
+        numero.TeclaCommand.Execute("<");
+        numero.TeclaCommand.Execute("<");
+        numero.TeclaCommand.Execute("1");
+        numero.TeclaCommand.Execute("5");
+        numero.ConfirmarCommand.Execute(null);
+        await digitar;
+        Assert.Equal(15, tela.NumeroCaixa);
+        TelaDeTeste.Atualizar();
+        t.Foto("56-config-numero-do-caixa");
+
+        salvar.Command!.Execute(null);
+        Assert.Equal(15, t.Sistema.Config.Atual.NumeroCaixa);
+        TelaDeTeste.Atualizar();
+        Assert.Empty(BotoesSalvar(t, tela));
+
+        // No último número o + para
+        tela.NumeroCaixa = ConfiguracaoViewModel.MaximoCaixas;
+        Assert.False(tela.ProximoCaixaCommand.CanExecute(null));
+    }
+
+    private static List<Avalonia.Controls.Button> BotoesSalvar(TelaDeTeste t, ConfiguracaoViewModel tela) =>
+        t.Janela.GetVisualDescendants().OfType<Avalonia.Controls.Button>()
+            .Where(b => ReferenceEquals(b.Command, tela.SalvarCommand) && b.IsEffectivelyVisible).ToList();
+
+    [AvaloniaFact]
     public void Dinheiro_tem_botao_limpar()
     {
         using var t = new TelaDeTeste();

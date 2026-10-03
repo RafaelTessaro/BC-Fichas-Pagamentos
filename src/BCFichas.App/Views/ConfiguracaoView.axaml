@@ -70,6 +70,29 @@
       <Setter Property="CornerRadius" Value="10" />
       <Setter Property="Padding" Value="12,10" />
     </Style>
+    <!-- Número do caixa: − 01 + -->
+    <Style Selector="Button.numero-caixa">
+      <Setter Property="Width" Value="52" />
+      <Setter Property="Height" Value="52" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="12" />
+    </Style>
+    <Style Selector="Button.numero-caixa.valor">
+      <Setter Property="Width" Value="76" />
+      <Setter Property="Background" Value="{StaticResource FundoLateral}" />
+    </Style>
+    <Style Selector="Button.numero-caixa.valor:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.numero-caixa.valor:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource FundoLateral}" />
+      <Setter Property="Opacity" Value="0.9" />
+    </Style>
+    <Style Selector="Button.numero-caixa.valor TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Marca}" />
+      <Setter Property="FontSize" Value="26" />
+      <Setter Property="FontWeight" Value="ExtraBold" />
+    </Style>
+    <Style Selector="Button.numero-caixa:disabled">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
     <Style Selector="Button.suave.branco">
       <Setter Property="Background" Value="{StaticResource Superficie}" />
     </Style>
@@ -153,7 +176,8 @@
 
   <Grid RowDefinitions="Auto,*,Auto">
     <Border Classes="cabecalho">
-      <Grid ColumnDefinitions="Auto,*,Auto">
+      <!-- Salvar fica só na barra de baixo, que aparece quando algo muda -->
+      <Grid ColumnDefinitions="Auto,*">
         <Button Classes="fantasma" Command="{Binding VoltarCommand}" Height="48" Padding="12,0">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <PathIcon Data="{StaticResource IconeVoltar}" />
@@ -161,26 +185,6 @@
           </StackPanel>
         </Button>
         <TextBlock Grid.Column="1" Text="Configurações" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
-        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
-          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding !TemAlteracoes}">
-            <PathIcon Data="{StaticResource IconeOk}" Width="18" Height="18" Foreground="{StaticResource Primaria}" />
-            <TextBlock Text="Tudo salvo" Foreground="{StaticResource TextoSuave}" FontSize="15" FontWeight="SemiBold"
-                       VerticalAlignment="Center" />
-          </StackPanel>
-          <Border Background="{StaticResource AvisoClara}" CornerRadius="999" Padding="12,5" VerticalAlignment="Center"
-                  IsVisible="{Binding TemAlteracoes}">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <Ellipse Width="9" Height="9" Fill="{StaticResource Aviso}" VerticalAlignment="Center" />
-              <TextBlock Text="Não salvo" Foreground="{StaticResource Aviso}" FontSize="14" FontWeight="Bold" />
-            </StackPanel>
-          </Border>
-          <Button Classes="primario" Command="{Binding SalvarCommand}" Height="52" Padding="30,0">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <PathIcon Data="{StaticResource IconeOk}" Foreground="White" />
-              <TextBlock Text="Salvar" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-        </StackPanel>
       </Grid>
     </Border>
 
@@ -227,13 +231,39 @@
                         <TextBlock Classes="texto-bloco" Text="Cada máquina do evento tem um número diferente." />
                       </StackPanel>
                     </Grid>
-                    <TextBlock Text="Número deste caixa" Classes="rotulo" />
-                    <ComboBox ItemsSource="{Binding Caixas}" SelectedItem="{Binding NumeroCaixa}" />
-                    <TextBlock Text="Pasta dos dados do programa" Classes="rotulo" Margin="2,14,0,4" />
-                    <Border Classes="caminho">
-                      <SelectableTextBlock Text="{Binding PastaDados}" Classes="suave" TextWrapping="Wrap" FontSize="14" />
+                    <Border Classes="opcoes">
+                      <StackPanel>
+                        <!-- Só um número: − 01 + (tocar no número abre o teclado) -->
+                        <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Classes="nome-opcao" Text="Número deste caixa" />
+                            <TextBlock Classes="dica" Text="{Binding CaixaNaFicha}" TextWrapping="Wrap" />
+                          </StackPanel>
+                          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="12,0,0,0"
+                                      VerticalAlignment="Center">
+                            <Button Classes="suave numero-caixa" Command="{Binding CaixaAnteriorCommand}"
+                                    ToolTip.Tip="Caixa anterior">
+                              <PathIcon Data="{StaticResource IconeMenos}" />
+                            </Button>
+                            <Button Classes="numero-caixa valor" Command="{Binding DigitarCaixaCommand}"
+                                    ToolTip.Tip="Digitar o número">
+                              <TextBlock Text="{Binding NumeroCaixaTexto}" />
+                            </Button>
+                            <Button Classes="suave numero-caixa" Command="{Binding ProximoCaixaCommand}"
+                                    ToolTip.Tip="Próximo caixa">
+                              <PathIcon Data="{StaticResource IconeMais}" />
+                            </Button>
+                          </StackPanel>
+                        </Grid>
+                        <Border Classes="separador" />
+                        <StackPanel Margin="16,10,16,12" Spacing="2">
+                          <TextBlock Classes="nome-opcao" Text="Pasta dos dados do programa" />
+                          <SelectableTextBlock Text="{Binding PastaDados}" Classes="suave" TextWrapping="Wrap" FontSize="13" />
+                        </StackPanel>
+                      </StackPanel>
                     </Border>
-                    <TextBlock Classes="dica" Text="Aqui fica tudo do programa. Para passar a programação para outra máquina, use a aba Máquina." />
+                    <TextBlock Classes="dica" Margin="2,6,0,0"
+                               Text="Aqui fica tudo do programa. Para passar a programação para outra máquina, use a aba Máquina." />
                   </StackPanel>
                 </Border>
               </StackPanel>
