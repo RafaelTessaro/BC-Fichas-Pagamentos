@@ -1,0 +1,75 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.Views.FechamentoView"
+             x:DataType="vm:FechamentoViewModel">
+  <Grid RowDefinitions="Auto,*">
+    <Border Classes="cabecalho">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Classes="fantasma" Command="{Binding VoltarCommand}" Height="48" Padding="12,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeVoltar}" />
+            <TextBlock Text="Voltar" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <TextBlock Grid.Column="1" Text="Fechar caixa" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
+        <Button Grid.Column="2" Classes="suave" Command="{Binding ImprimirParcialCommand}" Height="46">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeImpressora}" />
+            <TextBlock Text="Imprimir parcial" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,360" Margin="10">
+      <ScrollViewer>
+        <ContentControl Content="{Binding Resumo}" Margin="0,0,6,0">
+          <ContentControl.ContentTemplate>
+            <DataTemplate x:DataType="vm:ResumoVM"><v:ResumoCaixaView /></DataTemplate>
+          </ContentControl.ContentTemplate>
+        </ContentControl>
+      </ScrollViewer>
+
+      <Border Grid.Column="1" Classes="cartao" Margin="6,5,5,5">
+        <!-- O botão de fechar fica sempre inteiro embaixo; só a conferência rola em telas baixas -->
+        <Grid RowDefinitions="*,Auto">
+          <ScrollViewer>
+            <StackPanel Spacing="10" Margin="0,0,14,0">
+              <TextBlock Text="Conferência da gaveta" Classes="secao" />
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="Contar o dinheiro antes de fechar" TextWrapping="Wrap" VerticalAlignment="Center" FontSize="15" />
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding InformarContado}" />
+              </Grid>
+              <StackPanel IsVisible="{Binding InformarContado}" Spacing="8">
+                <TextBlock Text="Valor contado na gaveta" Classes="rotulo" Margin="2,0,0,0" />
+                <Border Background="{StaticResource Fundo}" CornerRadius="12" Padding="14,6">
+                  <TextBlock Text="{Binding Contado.Texto}" FontSize="32" FontWeight="ExtraBold" TextAlignment="Right" />
+                </Border>
+                <TextBlock Text="{Binding Diferenca}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Right"
+                           Classes.falta="{Binding DiferencaNegativa}" />
+                <v:TecladoNumerico Comando="{Binding Contado.TeclaCommand}" TeclaEsquerda="C" Height="230" />
+              </StackPanel>
+              <TextBlock IsVisible="{Binding DesligaAoFechar}" Classes="dica" TextWrapping="Wrap"
+                         Text="O computador vai desligar depois de fechar o caixa (pode mudar nas configurações)." />
+            </StackPanel>
+          </ScrollViewer>
+          <Button Grid.Row="1" Classes="perigo" Command="{Binding FecharCaixaCommand}" HorizontalAlignment="Stretch"
+                  Height="64" Margin="0,10,0,0" IsEnabled="{Binding !Ocupado}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{StaticResource IconeCadeado}" Foreground="White" Width="24" Height="24" />
+              <TextBlock Text="Fechar caixa e imprimir" Foreground="White" FontSize="19" FontWeight="Bold" />
+            </StackPanel>
+          </Button>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+
+  <UserControl.Styles>
+    <Style Selector="TextBlock.falta">
+      <Setter Property="Foreground" Value="{StaticResource Perigo}" />
+    </Style>
+  </UserControl.Styles>
+</UserControl>

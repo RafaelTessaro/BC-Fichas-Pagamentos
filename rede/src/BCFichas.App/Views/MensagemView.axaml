@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             x:Class="BCFichas.App.Views.MensagemView"
+             x:DataType="vm:MensagemViewModel">
+  <Border Classes="cartao" Width="520" Padding="24">
+    <StackPanel Spacing="14">
+      <TextBlock Text="{Binding Titulo}" Classes="titulo" TextWrapping="Wrap" />
+      <TextBlock Text="{Binding Texto}" FontSize="18" TextWrapping="Wrap" Classes="suave" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,8,0,0">
+        <Button Classes="suave" Content="{Binding TextoNao}" Command="{Binding NaoCommand}" IsVisible="{Binding TemNao}"
+                Height="56" Padding="26,0" />
+        <Button Classes="primario" Content="{Binding TextoSim}" Command="{Binding SimCommand}" IsVisible="{Binding Normal}"
+                Height="56" Padding="30,0" FontSize="18" />
+        <Button Classes="perigo" Content="{Binding TextoSim}" Command="{Binding SimCommand}" IsVisible="{Binding Perigo}"
+                Height="56" Padding="30,0" FontSize="18" />
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</UserControl>

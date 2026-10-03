@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Painel da rede: programa separado do caixa (BCFichasPainel.exe, na mesma pasta). Lê o banco do caixa só para
+    consulta e mostra as vendas de todas as máquinas do evento no navegador do celular. Se ele travar ou cair, a
+    venda continua igual: é outro programa.
+  -->
+  <PropertyGroup>
+    <!-- Sem janela preta: roda escondido, aberto pelo caixa -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>BCFichas.Painel</RootNamespace>
+    <AssemblyName>BCFichasPainel</AssemblyName>
+
+    <!-- Tablet com 1-2 GB de RAM: o mínimo de memória (mesmos ajustes do caixa). -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>false</TieredPGO>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>pt-BR</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- Junto com o caixa: uma pasta só, sem instalar o .NET. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="7" />
+    <RuntimeHostConfigurationOption Include="System.GC.RetainVM" Value="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BCFichas.Core\BCFichas.Core.csproj" />
+  </ItemGroup>
+
+  <!-- A página do celular vai dentro do programa (nada é baixado da internet). -->
+  <ItemGroup>
+    <EmbeddedResource Include="Pagina\**" LogicalName="pagina/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="BCFichas.Tests" />
+  </ItemGroup>
+
+</Project>

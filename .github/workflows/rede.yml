@@ -1,0 +1,57 @@
+name: Build Rede
+
+# Projeto separado (pasta rede/): o caixa com o painel no celular. Não mexe no build do BC Fichas original.
+on:
+  push:
+    paths:
+      - 'rede/**'
+      - '.github/workflows/rede.yml'
+  pull_request:
+    paths:
+      - 'rede/**'
+      - '.github/workflows/rede.yml'
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: rede
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Testes
+        run: dotnet test tests/BCFichas.Tests -c Release
+
+      # O caixa (BCFichasRede.exe) e o painel (BCFichasPainel.exe) vão na mesma pasta: o caixa abre o painel.
+      - name: Gerar pacotes do tablet
+        run: |
+          foreach ($rid in 'win-x86', 'win-x64') {
+            dotnet publish src/BCFichas.App -c Release -r $rid -o publish/BCFichasRede-$rid
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            dotnet publish src/BCFichas.Painel -c Release -r $rid -o publish/BCFichasRede-$rid
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if (-not (Test-Path publish/BCFichasRede-$rid/BCFichasRede.exe)) { throw "Falta o BCFichasRede.exe ($rid)" }
+            if (-not (Test-Path publish/BCFichasRede-$rid/BCFichasPainel.exe)) { throw "Falta o BCFichasPainel.exe ($rid)" }
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BCFichasRede-win-x86
+          path: rede/publish/BCFichasRede-win-x86
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BCFichasRede-win-x64
+          path: rede/publish/BCFichasRede-win-x64
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fotos-das-telas-rede
+          path: rede/tests/BCFichas.Tests/saida

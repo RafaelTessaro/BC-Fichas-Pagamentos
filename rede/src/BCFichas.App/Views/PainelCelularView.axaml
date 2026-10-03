@@ -1,0 +1,99 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             x:Class="BCFichas.App.Views.PainelCelularView"
+             x:DataType="vm:PainelCelularViewModel">
+  <Border Classes="cartao" Width="820" Padding="24">
+    <Grid RowDefinitions="Auto,*,Auto">
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,16">
+        <Border Width="52" Height="52" CornerRadius="14" Background="{StaticResource FundoLateral}">
+          <PathIcon Data="{StaticResource IconeCelular}" Width="28" Height="28" Foreground="{StaticResource Marca}" />
+        </Border>
+        <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center">
+          <TextBlock Text="Painel no celular" Classes="titulo" />
+          <TextBlock Text="As vendas de todas as máquinas do evento, ao vivo, no celular." Classes="suave" FontSize="15" />
+        </StackPanel>
+        <Button Grid.Column="2" Classes="fantasma" Command="{Binding FecharCommand}" Width="52" Height="52" Padding="0"
+                VerticalAlignment="Top">
+          <PathIcon Data="{StaticResource IconeFechar}" Width="24" Height="24" />
+        </Button>
+      </Grid>
+
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
+        <!-- QR code: a câmera do celular lê e já abre o painel com o PIN -->
+        <Border Width="270" Height="270" CornerRadius="16" Background="White" BorderBrush="{StaticResource Borda}"
+                BorderThickness="1" ClipToBounds="True" VerticalAlignment="Top">
+          <Panel>
+            <Image Source="{Binding Qr}" RenderOptions.BitmapInterpolationMode="None" Stretch="Uniform" Margin="6" />
+            <StackPanel IsVisible="{Binding SemRede}" VerticalAlignment="Center" Spacing="8" Margin="20">
+              <PathIcon Data="{StaticResource IconeWifi}" Width="40" Height="40" Foreground="{StaticResource Aviso}" />
+              <TextBlock Text="Este tablet não está na rede do roteador." TextWrapping="Wrap" TextAlignment="Center"
+                         FontSize="16" FontWeight="SemiBold" />
+            </StackPanel>
+          </Panel>
+        </Border>
+
+        <StackPanel Grid.Column="1" Margin="22,0,0,0" Spacing="12">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="2">
+              <TextBlock Text="ENDEREÇO" Classes="suave" FontSize="12" FontWeight="Bold" />
+              <TextBlock Text="{Binding Endereco}" FontSize="24" FontWeight="Bold" IsVisible="{Binding !SemRede}" />
+              <TextBlock Text="Sem rede" FontSize="24" FontWeight="Bold" Foreground="{StaticResource Aviso}"
+                         IsVisible="{Binding SemRede}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="2" Margin="16,0,0,0">
+              <TextBlock Text="PIN" Classes="suave" FontSize="12" FontWeight="Bold" />
+              <Border Background="{StaticResource FundoLateral}" CornerRadius="10" Padding="14,4">
+                <TextBlock Text="{Binding Pin}" FontSize="26" FontWeight="Bold" Foreground="White" LetterSpacing="3" />
+              </Border>
+            </StackPanel>
+          </Grid>
+
+          <Border Background="{StaticResource Fundo}" CornerRadius="12" Padding="16,12">
+            <StackPanel Spacing="8">
+              <TextBlock FontSize="15" TextWrapping="Wrap">
+                <Run Text="1." FontWeight="Bold" />
+                <Run Text="Conecte o celular no Wi-Fi do roteador do evento." />
+              </TextBlock>
+              <TextBlock FontSize="15" TextWrapping="Wrap">
+                <Run Text="2." FontWeight="Bold" />
+                <Run Text="Aponte a câmera para o QR code (ou digite o endereço no navegador)." />
+              </TextBlock>
+              <TextBlock FontSize="15" TextWrapping="Wrap">
+                <Run Text="3." FontWeight="Bold" />
+                <Run Text="Se pedir, digite o PIN. Pronto: as vendas atualizam sozinhas." />
+              </TextBlock>
+            </StackPanel>
+          </Border>
+
+          <StackPanel Spacing="4">
+            <TextBlock FontSize="13" TextWrapping="Wrap" Classes="suave">
+              <Run Text="Android:" FontWeight="Bold" />
+              <Run Text="se aparecer “Wi-Fi sem internet”, toque em “Manter conectado” (ou desligue os dados móveis)." />
+            </TextBlock>
+            <TextBlock FontSize="13" TextWrapping="Wrap" Classes="suave">
+              <Run Text="iPhone:" FontWeight="Bold" />
+              <Run Text="no Safari, toque em Compartilhar → “Adicionar à Tela de Início” para abrir como um aplicativo." />
+            </TextBlock>
+          </StackPanel>
+        </StackPanel>
+      </Grid>
+
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,18,0,0">
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Ellipse Width="12" Height="12" Fill="{StaticResource Primaria}" IsVisible="{Binding Funcionando}" />
+          <TextBlock Text="Painel funcionando nesta máquina" FontWeight="SemiBold" Foreground="{StaticResource Primaria}"
+                     IsVisible="{Binding Funcionando}" FontSize="15" />
+          <Ellipse Width="12" Height="12" Fill="{StaticResource Aviso}" IsVisible="{Binding Parado}" />
+          <TextBlock Text="O painel não respondeu nesta máquina: feche e abra o programa, ou chame o suporte."
+                     FontWeight="SemiBold" Foreground="{StaticResource Aviso}" IsVisible="{Binding Parado}" FontSize="15"
+                     TextWrapping="Wrap" MaxWidth="560" />
+          <TextBlock Text="Conferindo o painel..." Classes="suave" IsVisible="{Binding Conferindo}" FontSize="15" />
+        </StackPanel>
+        <Button Grid.Column="1" Classes="primario" Command="{Binding FecharCommand}" Height="56" Padding="34,0">
+          <TextBlock Text="Fechar" Foreground="White" FontSize="18" FontWeight="Bold" />
+        </Button>
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

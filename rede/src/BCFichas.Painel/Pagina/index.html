@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07110B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BC Fichas">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="icone.png">
+<link rel="apple-touch-icon" href="icone.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>BC Fichas • Painel do evento</title>
+<style>
+  :root {
+    --verde: #16A34A; --verde-escuro: #15803D; --verde-claro: #DCFCE7; --marca: #22C55E;
+    --fundo-marca: #07110B; --fundo-marca-2: #10261A;
+    --fundo: #F1F5F9; --cartao: #FFFFFF; --borda: #E2E8F0; --texto: #0F172A; --suave: #64748B;
+    --aviso: #D97706; --aviso-claro: #FEF3C7; --perigo: #DC2626; --perigo-claro: #FEE2E2;
+    --dinheiro: #16A34A; --pix: #32BCAD; --debito: #2563EB; --credito: #4F46E5;
+    --raio: 16px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--fundo); color: var(--texto); }
+  body {
+    font: 16px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-variant-numeric: tabular-nums; padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  button { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+
+  /* Topo preto e verde, como a barra lateral do caixa */
+  .topo {
+    position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px;
+    padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+    background: linear-gradient(135deg, var(--fundo-marca), var(--fundo-marca-2)); color: #fff;
+  }
+  .topo .logo { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
+    background: rgba(34,197,94,.14); border: 1px solid rgba(34,197,94,.35); flex: none; }
+  .topo .logo svg { width: 24px; height: 24px; fill: var(--marca); }
+  .topo .nome { flex: 1; min-width: 0; }
+  .topo .nome b { display: block; color: var(--marca); font-size: 13px; letter-spacing: .08em; }
+  .topo .nome span { display: block; font-size: 18px; font-weight: 700; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; }
+  .icone-botao { width: 44px; height: 44px; border: 0; border-radius: 12px; background: rgba(255,255,255,.08);
+    display: grid; place-items: center; cursor: pointer; flex: none; }
+  .icone-botao svg { width: 24px; height: 24px; fill: #fff; }
+
+  .status { display: flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 14px; font-weight: 600;
+    background: var(--verde-claro); color: var(--verde-escuro); }
+  .status::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: currentColor; flex: none; }
+  .status.ok::before { animation: pulso 2s infinite; }
+  .status.atraso { background: var(--aviso-claro); color: #92400E; }
+  .status.erro { background: var(--perigo-claro); color: #991B1B; }
+  @keyframes pulso { 50% { opacity: .35; } }
+
+  main { padding: 14px 14px 8px; max-width: 720px; margin: 0 auto; }
+  .segmento { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px;
+    background: #E2E8F0; margin-bottom: 14px; }
+  .segmento button { border: 0; border-radius: 11px; padding: 10px 6px; font-weight: 700; background: transparent;
+    color: var(--suave); cursor: pointer; }
+  .segmento button.ativo { background: #fff; color: var(--texto); box-shadow: 0 1px 3px rgba(15,23,42,.15); }
+
+  .cartao { background: var(--cartao); border-radius: var(--raio); padding: 16px; margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(15,23,42,.06); }
+  .cartao h2 { margin: 0 0 12px; font-size: 17px; }
+  .cartao h2 small { font-weight: 500; color: var(--suave); font-size: 14px; }
+
+  .destaque { background: linear-gradient(135deg, var(--fundo-marca), #123222); color: #fff; }
+  .destaque .rotulo { color: var(--marca); font-size: 13px; font-weight: 800; letter-spacing: .08em; }
+  .destaque .total { font-size: clamp(36px, 11vw, 52px); font-weight: 800; letter-spacing: -.02em; margin: 2px 0; }
+  .destaque .linha { color: #CBD5E1; font-size: 15px; }
+  .selo { display: inline-block; margin-top: 8px; padding: 4px 10px; border-radius: 999px; font-size: 13px;
+    font-weight: 700; background: var(--aviso-claro); color: #92400E; }
+
+  .grade { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .grade .cartao { margin: 0; padding: 14px; }
+  .mini .rotulo { font-size: 13px; color: var(--suave); font-weight: 600; }
+  .mini .valor { font-size: 24px; font-weight: 800; margin-top: 2px; }
+  .mini .nota { font-size: 12px; color: var(--suave); margin-top: 2px; }
+
+  .barra-formas { display: flex; height: 16px; border-radius: 999px; overflow: hidden; background: var(--borda);
+    margin-bottom: 12px; }
+  .barra-formas div { height: 100%; }
+  .linha-lista { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--borda); }
+  .linha-lista:first-of-type { border-top: 0; }
+  .ponto { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+  .linha-lista .nome { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .linha-lista .nome small { display: block; font-weight: 500; color: var(--suave); font-size: 13px; }
+  .linha-lista .num { font-weight: 800; text-align: right; }
+  .linha-lista .num small { display: block; font-weight: 600; color: var(--suave); font-size: 12px; }
+
+  .maquina { cursor: pointer; }
+  .maquina .estado { width: 12px; height: 12px; border-radius: 50%; background: var(--verde); flex: none; }
+  .maquina.fora { opacity: .55; }
+  .maquina.fora .estado { background: var(--perigo); }
+  .barrinha { height: 6px; border-radius: 99px; background: var(--borda); margin-top: 6px; overflow: hidden; }
+  .barrinha div { height: 100%; background: var(--verde); border-radius: 99px; }
+  .detalhe { padding: 4px 0 12px 22px; font-size: 14px; color: var(--suave); }
+  .detalhe .par { display: flex; justify-content: space-between; padding: 3px 0; }
+  .detalhe .par b { color: var(--texto); }
+
+  .ranking .linha-lista { display: block; }
+  .ranking .topo-linha { display: flex; gap: 10px; align-items: baseline; }
+  .ranking .pos { width: 26px; color: var(--suave); font-weight: 800; flex: none; }
+  .ranking .nome { flex: 1; font-weight: 700; }
+
+  .filtros { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .filtros button, .filtros select { border: 1px solid var(--borda); background: #fff; border-radius: 999px;
+    padding: 8px 14px; font-weight: 600; color: var(--texto); font-size: 15px; }
+  .filtros button.ativo { background: var(--texto); color: #fff; border-color: var(--texto); }
+
+  .horas { display: flex; align-items: flex-end; gap: 6px; height: 200px; padding-top: 24px; overflow-x: auto; }
+  .hora { flex: 1 0 34px; display: flex; flex-direction: column; align-items: center; height: 100%;
+    justify-content: flex-end; cursor: pointer; }
+  .hora .coluna { width: 100%; border-radius: 8px 8px 3px 3px; background: #86EFAC; min-height: 3px; }
+  .hora.pico .coluna { background: var(--verde); }
+  .hora.atual .coluna { background: repeating-linear-gradient(45deg, #86EFAC 0 6px, #BBF7D0 6px 12px); }
+  .hora.escolhida .coluna { outline: 3px solid var(--texto); outline-offset: 1px; }
+  .hora span { font-size: 12px; color: var(--suave); margin-top: 6px; white-space: nowrap; }
+
+  .vazio { text-align: center; color: var(--suave); padding: 26px 10px; }
+  .vazio b { display: block; color: var(--texto); font-size: 18px; margin-bottom: 4px; }
+
+  .abas-baixo { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid;
+    grid-template-columns: repeat(4, 1fr); background: #fff; border-top: 1px solid var(--borda);
+    padding-bottom: env(safe-area-inset-bottom); }
+  .abas-baixo button { border: 0; background: none; padding: 9px 2px 10px; display: flex; flex-direction: column;
+    align-items: center; gap: 3px; font-size: 12px; font-weight: 700; color: var(--suave); cursor: pointer; }
+  .abas-baixo svg { width: 26px; height: 26px; fill: currentColor; }
+  .abas-baixo button.ativo { color: var(--verde-escuro); }
+
+  /* Entrada com o PIN */
+  .entrada { max-width: 380px; margin: 30px auto; text-align: center; }
+  .entrada h1 { font-size: 24px; margin: 14px 0 6px; }
+  .entrada p { color: var(--suave); margin: 0 0 18px; }
+  .entrada input { width: 100%; font-size: 32px; letter-spacing: .3em; text-align: center; padding: 14px;
+    border: 2px solid var(--borda); border-radius: 14px; outline: none; font-weight: 800; }
+  .entrada input:focus { border-color: var(--verde); }
+  .botao { width: 100%; margin-top: 14px; border: 0; border-radius: 14px; padding: 16px; font-size: 18px;
+    font-weight: 800; background: var(--verde); color: #fff; cursor: pointer; }
+  .erro-texto { color: var(--perigo); font-weight: 700; min-height: 22px; margin-top: 10px; }
+  .dica { text-align: left; background: #fff; border-radius: 14px; padding: 14px; font-size: 14px; color: var(--suave);
+    margin-top: 22px; }
+  .dica b { color: var(--texto); }
+
+  .folha { position: fixed; inset: 0; z-index: 10; background: rgba(15,23,42,.5); display: flex; align-items: flex-end; }
+  .folha .conteudo { background: #fff; width: 100%; max-width: 720px; margin: 0 auto; border-radius: 20px 20px 0 0;
+    padding: 20px 18px calc(20px + env(safe-area-inset-bottom)); }
+  .folha h2 { margin: 0 0 12px; }
+  .folha .par { display: flex; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--borda); }
+  .folha .botao.claro { background: var(--fundo); color: var(--texto); }
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="logo"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M3,6A2,2 0 0,1 5,4H19A2,2 0 0,1 21,6V9.5A2.5,2.5 0 0,0 21,14.5V18A2,2 0 0,1 19,20H5A2,2 0 0,1 3,18V14.5A2.5,2.5 0 0,0 3,9.5Z M7,8V10H17V8Z M9,14V16H15V14Z"/></svg></div>
+  <div class="nome"><b>BC-FICHAS</b><span id="nome-evento">Painel do evento</span></div>
+  <button class="icone-botao" id="abrir-ajustes" aria-label="Ajustes" hidden>
+    <svg viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg>
+  </button>
+</header>
+<div id="status" class="status" hidden></div>
+
+<main>
+  <!-- Entrada: o PIN do evento (vem junto no QR code da máquina) -->
+  <section id="tela-pin" class="entrada" hidden>
+    <div class="logo" style="margin:0 auto;width:64px;height:64px;border-radius:18px;display:grid;place-items:center;background:var(--fundo-marca)">
+      <svg viewBox="0 0 24 24" style="width:36px;height:36px;fill:var(--marca)"><path fill-rule="evenodd" d="M3,6A2,2 0 0,1 5,4H19A2,2 0 0,1 21,6V9.5A2.5,2.5 0 0,0 21,14.5V18A2,2 0 0,1 19,20H5A2,2 0 0,1 3,18V14.5A2.5,2.5 0 0,0 3,9.5Z M7,8V10H17V8Z M9,14V16H15V14Z"/></svg>
+    </div>
+    <h1>Painel do evento</h1>
+    <p>Digite o PIN do evento (fica nas máquinas, em Menu → Painel no celular).</p>
+    <form id="form-pin">
+      <input id="pin" type="tel" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="••••••">
+      <div class="erro-texto" id="erro-pin"></div>
+      <button class="botao" type="submit">Entrar</button>
+    </form>
+    <div class="dica">
+      <b>Não aparece nada?</b> O celular precisa estar no Wi-Fi do evento. No Android, se aparecer
+      "Wi-Fi sem internet", toque em <b>Manter conectado</b> — ou desligue os dados móveis enquanto olha o painel.
+    </div>
+  </section>
+
+  <section id="conteudo" hidden>
+    <div class="segmento" role="tablist">
+      <button data-periodo="caixaAberto" class="ativo">Caixa aberto</button>
+      <button data-periodo="todoEvento">Evento todo</button>
+    </div>
+
+    <div id="aba-painel"></div>
+    <div id="aba-maquinas" hidden></div>
+    <div id="aba-produtos" hidden></div>
+    <div id="aba-horas" hidden></div>
+  </section>
+</main>
+
+<nav class="abas-baixo" id="abas" hidden>
+  <button data-aba="painel" class="ativo"><svg viewBox="0 0 24 24"><path d="M13,3V9H21V3M13,21H21V11H13M3,21H11V15H3M3,13H11V3H3V13Z"/></svg>Painel</button>
+  <button data-aba="maquinas"><svg viewBox="0 0 24 24"><path d="M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H0V20H24V18H20Z"/></svg>Máquinas</button>
+  <button data-aba="produtos"><svg viewBox="0 0 24 24"><path d="M3,13H5V11H3V13M3,17H5V15H3V17M3,9H5V7H3V9M7,13H21V11H7V13M7,17H21V15H7V17M7,7V9H21V7H7Z"/></svg>Produtos</button>
+  <button data-aba="horas"><svg viewBox="0 0 24 24"><path d="M22,21H2V3H4V19H6V10H10V19H12V6H16V19H18V14H22V21Z"/></svg>Por hora</button>
+</nav>
+
+<div class="folha" id="ajustes" hidden>
+  <div class="conteudo">
+    <h2>Ajustes</h2>
+    <div class="par"><span>Conectado a</span><b id="ajuste-endereco"></b></div>
+    <div class="par"><span>Atualiza a cada</span><b>3 segundos</b></div>
+    <div class="par"><span>Só consulta</span><b>não muda nada nas máquinas</b></div>
+    <button class="botao claro" id="trocar-pin">Sair / trocar o PIN</button>
+    <button class="botao" id="fechar-ajustes">Fechar</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const CORES = { dinheiro: "var(--dinheiro)", pix: "var(--pix)", debito: "var(--debito)", credito: "var(--credito)" };
+  const INTERVALO = 3000;
+
+  let pin = "";
+  try { pin = localStorage.getItem("bcfichas-pin") || ""; } catch (e) { /* navegação privada */ }
+  let periodo = "caixaAberto", aba = "painel", etag = null, dados = null;
+  let ultimoContato = 0, ultimaFalha = 0, falhando = false, timer = null;
+  let ordemProdutos = "quantidade", maquinaProdutos = "todas", maquinaAberta = null, horaEscolhida = null;
+
+  // PIN vindo no QR code (http://192.168.1.10:8765/?pin=123456): guarda e tira da barra de endereço
+  const daUrl = new URLSearchParams(location.search).get("pin");
+  if (daUrl) {
+    pin = daUrl;
+    try { localStorage.setItem("bcfichas-pin", pin); } catch (e) { }
+    history.replaceState(null, "", location.pathname + location.hash);
+  }
+
+  // ---------- Formatação ----------
+  const reais = (c) => {
+    const neg = c < 0; c = Math.abs(Math.round(c));
+    const r = Math.floor(c / 100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return (neg ? "−" : "") + "R$ " + r + "," + String(c % 100).padStart(2, "0");
+  };
+  const numero = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const pct = (p, t) => t > 0 ? Math.round(p * 100 / t) + "%" : "0%";
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const hora = (iso) => iso ? iso.substring(11, 16) : "";
+  const haQuanto = (seg) => seg < 5 ? "agora" : seg < 60 ? `há ${seg} s` : seg < 3600 ? `há ${Math.floor(seg / 60)} min` : `há ${Math.floor(seg / 3600)} h`;
+  const segundosDesde = (iso) => {
+    if (!iso || !dados) return null;
+    const agora = Date.parse(dados.agora), quando = Date.parse(iso);
+    return isNaN(agora) || isNaN(quando) ? null : Math.max(0, Math.round((agora - quando) / 1000));
+  };
+  const caixa = (n) => "Caixa " + String(n).padStart(2, "0");
+
+  // ---------- Telas ----------
+  function mostrarEntrada(erro) {
+    clearTimeout(timer);
+    $("tela-pin").hidden = false; $("conteudo").hidden = true; $("abas").hidden = true;
+    $("status").hidden = true; $("abrir-ajustes").hidden = true;
+    $("erro-pin").textContent = erro || "";
+    $("pin").value = "";
+    setTimeout(() => $("pin").focus(), 50);
+  }
+
+  function mostrarPainel() {
+    $("tela-pin").hidden = true; $("conteudo").hidden = false; $("abas").hidden = false;
+    $("status").hidden = false; $("abrir-ajustes").hidden = false;
+  }
+
+  $("form-pin").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const digitado = $("pin").value.replace(/\D/g, "");
+    if (digitado.length < 4) { $("erro-pin").textContent = "O PIN tem de 4 a 8 números."; return; }
+    pin = digitado;
+    try { localStorage.setItem("bcfichas-pin", pin); } catch (er) { }
+    etag = null; dados = null;
+    atualizar();
+  });
+
+  document.querySelectorAll("[data-periodo]").forEach((b) => b.addEventListener("click", () => {
+    periodo = b.dataset.periodo;
+    document.querySelectorAll("[data-periodo]").forEach((x) => x.classList.toggle("ativo", x === b));
+    desenhar();
+  }));
+  document.querySelectorAll("[data-aba]").forEach((b) => b.addEventListener("click", () => {
+    aba = b.dataset.aba;
+    document.querySelectorAll("[data-aba]").forEach((x) => x.classList.toggle("ativo", x === b));
+    ["painel", "maquinas", "produtos", "horas"].forEach((a) => $("aba-" + a).hidden = a !== aba);
+    window.scrollTo(0, 0);
+    desenhar();
+  }));
+  $("abrir-ajustes").addEventListener("click", () => { $("ajuste-endereco").textContent = location.host; $("ajustes").hidden = false; });
+  $("fechar-ajustes").addEventListener("click", () => $("ajustes").hidden = true);
+  $("trocar-pin").addEventListener("click", () => {
+    try { localStorage.removeItem("bcfichas-pin"); } catch (e) { }
+    pin = ""; $("ajustes").hidden = true; mostrarEntrada();
+  });
+
+  // ---------- Busca (a cada 3 s, só com a tela ligada; sem novidade, a máquina responde "nada mudou") ----------
+  async function atualizar() {
+    clearTimeout(timer);
+    if (!pin) { mostrarEntrada(); return; }
+    if (document.hidden) return;
+    try {
+      const cab = { "X-Pin": pin };
+      if (etag) cab["If-None-Match"] = etag;
+      const ctl = new AbortController();
+      const limite = setTimeout(() => ctl.abort(), 4000);
+      const r = await fetch("/api/v1/evento", { headers: cab, cache: "no-store", signal: ctl.signal });
+      clearTimeout(limite);
+      if (r.status === 401) { pin = ""; try { localStorage.removeItem("bcfichas-pin"); } catch (e) { } mostrarEntrada("PIN errado."); return; }
+      if (r.status === 429) { mostrarEntrada("Muitas tentativas erradas. Espere 5 minutos."); return; }
+      if (r.status === 503) { mostrarEntrada("O painel está desligado nesta máquina."); return; }
+      if (r.status === 200) {
+        dados = await r.json();
+        etag = r.headers.get("ETag");
+        mostrarPainel();
+        desenhar();
+      } else if (r.status !== 304) {
+        throw new Error("HTTP " + r.status);
+      }
+      ultimoContato = Date.now(); falhando = false;
+    } catch (e) {
+      if (!falhando) ultimaFalha = Date.now();
+      falhando = true;
+    }
+    mostrarStatus();
+    timer = setTimeout(atualizar, INTERVALO);
+  }
+
+  function mostrarStatus() {
+    if (!dados) return;
+    const s = $("status");
+    const seg = Math.round((Date.now() - ultimoContato) / 1000);
+    if (falhando) {
+      s.className = "status erro";
+      s.textContent = `Sem conexão com a máquina ${haQuanto(Math.round((Date.now() - ultimaFalha) / 1000))} — confira o Wi-Fi do evento`;
+    } else if (dados.maquinasOnline < dados.maquinasTotal) {
+      s.className = "status atraso";
+      s.textContent = `Ao vivo · ${dados.maquinasOnline} de ${dados.maquinasTotal} máquinas respondendo · ${haQuanto(seg)}`;
+    } else {
+      s.className = "status ok";
+      s.textContent = `Ao vivo · ${dados.maquinasTotal} ${dados.maquinasTotal === 1 ? "máquina" : "máquinas"} · atualizado ${haQuanto(seg)}`;
+    }
+  }
+  setInterval(mostrarStatus, 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) atualizar(); });
+
+  // ---------- Desenho ----------
+  function desenhar() {
+    if (!dados) return;
+    $("nome-evento").textContent = dados.nomeEvento || "Painel do evento";
+    const b = dados[periodo];
+    if (aba === "painel") $("aba-painel").innerHTML = painel(b);
+    if (aba === "maquinas") $("aba-maquinas").innerHTML = maquinas();
+    if (aba === "produtos") $("aba-produtos").innerHTML = produtos();
+    if (aba === "horas") $("aba-horas").innerHTML = horas(b);
+  }
+
+  function semCaixa() {
+    return periodo === "caixaAberto" && dados.caixaAberto.caixasAbertos === 0
+      ? `<div class="cartao vazio"><b>Nenhum caixa aberto agora</b>Toque em "Evento todo" para ver o que já foi vendido.</div>` : "";
+  }
+
+  function painel(b) {
+    const parcial = dados.maquinasOnline < dados.maquinasTotal
+      ? `<div class="selo">Parcial: ${dados.maquinasOnline} de ${dados.maquinasTotal} máquinas respondendo</div>` : "";
+    const devol = b.devolvido > 0 ? ` · devoluções ${reais(b.devolvido)}` : "";
+    const formas = b.formas.filter((f) => f.valor > 0);
+    const totalFormas = formas.reduce((s, f) => s + f.valor, 0);
+    const top = b.produtos.slice(0, 3);
+    const maxTop = top.length ? top[0].quantidade : 1;
+    return semCaixa() + `
+      <div class="cartao destaque">
+        <div class="rotulo">TOTAL VENDIDO</div>
+        <div class="total">${reais(b.liquido)}</div>
+        <div class="linha">${numero(b.pedidos)} vendas · ${numero(b.fichas)} fichas${devol}</div>
+        ${parcial}
+      </div>
+      <div class="grade">
+        <div class="cartao mini"><div class="rotulo">Vendas</div><div class="valor">${numero(b.pedidos)}</div>
+          <div class="nota">${b.ultimaVendaEm ? "última às " + hora(b.ultimaVendaEm) : "nenhuma ainda"}</div></div>
+        <div class="cartao mini"><div class="rotulo">Média por venda</div><div class="valor">${reais(b.ticketMedio)}</div>
+          <div class="nota">ticket médio</div></div>
+        <div class="cartao mini"><div class="rotulo">Dinheiro nos caixas</div><div class="valor">${reais(b.dinheiroNoCaixa)}</div>
+          <div class="nota">${b.caixasAbertos} ${b.caixasAbertos === 1 ? "caixa aberto" : "caixas abertos"} (estimado)</div></div>
+        <div class="cartao mini"><div class="rotulo">Sangrias</div><div class="valor">${reais(b.sangrias)}</div>
+          <div class="nota">${b.devolucoes > 0 ? "devoluções: " + reais(b.devolvido) : "sem devoluções"}</div></div>
+      </div>
+      <div class="cartao">
+        <h2>Formas de pagamento</h2>
+        ${totalFormas > 0 ? `<div class="barra-formas">${formas.map((f) => `<div style="width:${f.valor * 100 / totalFormas}%;background:${CORES[f.chave]}"></div>`).join("")}</div>` : ""}
+        ${b.formas.map((f) => `
+          <div class="linha-lista"><span class="ponto" style="background:${CORES[f.chave]}"></span>
+            <span class="nome">${esc(f.nome)}<small>${numero(f.pedidos)} ${f.pedidos === 1 ? "venda" : "vendas"}</small></span>
+            <span class="num">${reais(f.valor)}<small>${pct(f.valor, totalFormas)}</small></span></div>`).join("")}
+      </div>
+      <div class="cartao">
+        <h2>Máquinas</h2>
+        ${dados.maquinas.map((m) => linhaMaquina(m, false)).join("")}
+      </div>
+      <div class="cartao ranking">
+        <h2>Mais vendidos</h2>
+        ${top.length ? top.map((p, i) => linhaProduto(p, i, maxTop, "quantidade")).join("") : `<div class="vazio">Nenhuma venda ainda</div>`}
+      </div>`;
+  }
+
+  function linhaMaquina(m, comDetalhe) {
+    const b = m.estado[periodo];
+    const ultima = segundosDesde(b.ultimaVendaEm);
+    const sub = !m.online
+      ? `sem conexão ${haQuanto(m.segundosSemResposta)}`
+      : b.caixasAbertos === 0 && periodo === "caixaAberto" ? "caixa fechado"
+      : ultima === null ? "nenhuma venda ainda" : `última venda ${haQuanto(ultima)}`;
+    const total = Math.max(1, ...dados.maquinas.map((x) => x.estado[periodo].liquido));
+    const aberta = comDetalhe && maquinaAberta === m.estado.instancia;
+    return `
+      <div class="linha-lista maquina ${m.online ? "" : "fora"}" data-maquina="${esc(m.estado.instancia)}">
+        <span class="estado"></span>
+        <span class="nome">${caixa(m.estado.caixa)}${m.estaMaquina ? " (esta)" : ""}<small>${sub}</small>
+          ${comDetalhe ? `<div class="barrinha"><div style="width:${b.liquido * 100 / total}%"></div></div>` : ""}</span>
+        <span class="num">${reais(b.liquido)}<small>${numero(b.pedidos)} vendas</small></span>
+      </div>
+      ${aberta ? detalheMaquina(m, b) : ""}`;
+  }
+
+  function detalheMaquina(m, b) {
+    const par = (a, v) => `<div class="par"><span>${a}</span><b>${v}</b></div>`;
+    return `<div class="detalhe">
+      ${b.formas.map((f) => par(esc(f.nome), reais(f.valor))).join("")}
+      ${par("Dinheiro no caixa (estimado)", reais(b.dinheiroNoCaixa))}
+      ${par("Sangrias", reais(b.sangrias))}
+      ${par("Devoluções", b.devolucoes + " · " + reais(b.devolvido))}
+      ${par("Fichas impressas", numero(b.fichas))}
+      ${b.abertoEm ? par("Caixa aberto às", hora(b.abertoEm)) : ""}
+      ${!m.online ? par("Números até", hora(m.estado.agora)) : ""}
+      ${par("Endereço", esc(m.endereco))}
+    </div>`;
+  }
+
+  function maquinas() {
+    const lista = [...dados.maquinas].sort((a, b) => b.estado[periodo].liquido - a.estado[periodo].liquido);
+    return semCaixa() + `<div class="cartao"><h2>Máquinas <small>· toque para ver mais</small></h2>
+      ${lista.map((m) => linhaMaquina(m, true)).join("")}</div>`;
+  }
+
+  function linhaProduto(p, i, max, ordem) {
+    const v = ordem === "valor" ? p.valor : p.quantidade;
+    return `<div class="linha-lista"><div class="topo-linha"><span class="pos">${i + 1}º</span>
+      <span class="nome">${esc(p.nome)}</span>
+      <span class="num">${ordem === "valor" ? reais(p.valor) : numero(p.quantidade) + " un."}<small>${ordem === "valor" ? numero(p.quantidade) + " un." : reais(p.valor)}</small></span></div>
+      <div class="barrinha"><div style="width:${max > 0 ? v * 100 / max : 0}%"></div></div></div>`;
+  }
+
+  function produtos() {
+    const fonte = maquinaProdutos === "todas" ? dados[periodo]
+      : (dados.maquinas.find((m) => m.estado.instancia === maquinaProdutos) || { estado: { [periodo]: dados[periodo] } }).estado[periodo];
+    const lista = [...fonte.produtos].sort((a, b) => ordemProdutos === "valor" ? b.valor - a.valor : b.quantidade - a.quantidade);
+    const max = lista.length ? (ordemProdutos === "valor" ? lista[0].valor : lista[0].quantidade) : 1;
+    const opcoes = [`<option value="todas">Todas as máquinas</option>`].concat(dados.maquinas.map((m) =>
+      `<option value="${esc(m.estado.instancia)}" ${maquinaProdutos === m.estado.instancia ? "selected" : ""}>${caixa(m.estado.caixa)}</option>`));
+    return semCaixa() + `
+      <div class="filtros">
+        <button data-ordem="quantidade" class="${ordemProdutos === "quantidade" ? "ativo" : ""}">Quantidade</button>
+        <button data-ordem="valor" class="${ordemProdutos === "valor" ? "ativo" : ""}">Valor</button>
+        <select id="filtro-maquina">${opcoes.join("")}</select>
+      </div>
+      <div class="cartao ranking">
+        ${lista.length ? lista.map((p, i) => linhaProduto(p, i, max, ordemProdutos)).join("") : `<div class="vazio"><b>Nenhuma venda ainda</b></div>`}
+      </div>`;
+  }
+
+  function rotuloHora(h, varias) {
+    const hh = h.substring(11, 13) + "h";
+    return varias ? h.substring(8, 10) + "/" + h.substring(5, 7) + " " + hh : hh;
+  }
+
+  function horas(b) {
+    const lista = b.porHora;
+    if (!lista.length) return semCaixa() + `<div class="cartao vazio"><b>Nenhuma venda ainda</b>O gráfico aparece com a primeira venda.</div>`;
+    const varias = new Set(lista.map((h) => h.hora.substring(0, 10))).size > 1;
+    const max = Math.max(...lista.map((h) => h.valor));
+    const pico = lista.reduce((a, h) => h.valor > a.valor ? h : a, lista[0]);
+    const atual = (dados.agora || "").substring(0, 13).replace("T", " ");
+    const escolhida = lista.find((h) => h.hora === horaEscolhida) || pico;
+    return semCaixa() + `
+      <div class="cartao">
+        <h2>Vendas por hora</h2>
+        <div class="horas">${lista.map((h) => `
+          <div class="hora ${h === pico ? "pico" : ""} ${h.hora === atual ? "atual" : ""} ${h === escolhida ? "escolhida" : ""}" data-hora="${h.hora}">
+            <div class="coluna" style="height:${Math.max(2, h.valor * 100 / max)}%"></div><span>${rotuloHora(h.hora, varias)}</span></div>`).join("")}
+        </div>
+      </div>
+      <div class="cartao">
+        <h2>${rotuloHora(escolhida.hora, varias)} ${escolhida === pico ? "<small>· horário de pico</small>" : ""}</h2>
+        <div class="linha-lista"><span class="nome">Vendido</span><span class="num">${reais(escolhida.valor)}</span></div>
+        <div class="linha-lista"><span class="nome">Vendas</span><span class="num">${numero(escolhida.pedidos)}</span></div>
+        <div class="linha-lista"><span class="nome">Média por venda</span><span class="num">${reais(escolhida.pedidos ? escolhida.valor / escolhida.pedidos : 0)}</span></div>
+      </div>`;
+  }
+
+  // Toques dentro das abas (as listas são redesenhadas, então o clique é tratado aqui)
+  document.querySelector("main").addEventListener("click", (e) => {
+    const m = e.target.closest("[data-maquina]");
+    if (m && aba === "maquinas") { maquinaAberta = maquinaAberta === m.dataset.maquina ? null : m.dataset.maquina; desenhar(); return; }
+    if (m && aba === "painel") { maquinaAberta = m.dataset.maquina; document.querySelector('[data-aba="maquinas"]').click(); return; }
+    const o = e.target.closest("[data-ordem]");
+    if (o) { ordemProdutos = o.dataset.ordem; desenhar(); return; }
+    const h = e.target.closest("[data-hora]");
+    if (h) { horaEscolhida = h.dataset.hora; desenhar(); }
+  });
+  document.querySelector("main").addEventListener("change", (e) => {
+    if (e.target.id === "filtro-maquina") { maquinaProdutos = e.target.value; desenhar(); }
+  });
+
+  // Endereço com #produtos, #maquinas, #horas (e ",evento") abre direto naquela aba
+  const inicio = location.hash.replace("#", "").split(",");
+  if (inicio.includes("evento")) document.querySelector('[data-periodo="todoEvento"]').click();
+  const abaInicial = inicio.find((x) => ["painel", "maquinas", "produtos", "horas"].includes(x));
+  if (abaInicial) document.querySelector(`[data-aba="${abaInicial}"]`).click();
+
+  atualizar();
+})();
+</script>
+</body>
+</html>

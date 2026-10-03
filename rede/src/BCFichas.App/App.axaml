@@ -1,0 +1,47 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.App"
+             RequestedThemeVariant="Light">
+
+  <Application.DataTemplates>
+    <!-- Venda e pagamento: a mesma tela é usada de novo (montar do zero pesa no tablet) -->
+    <v:TelaDeVenda />
+    <DataTemplate DataType="vm:AberturaViewModel"><v:AberturaView /></DataTemplate>
+    <DataTemplate DataType="vm:FechamentoViewModel"><v:FechamentoView /></DataTemplate>
+    <DataTemplate DataType="vm:ConfiguracaoViewModel"><v:ConfiguracaoView /></DataTemplate>
+    <DataTemplate DataType="vm:ProdutosViewModel"><v:ProdutosView /></DataTemplate>
+    <DataTemplate DataType="vm:ReimpressaoViewModel"><v:ReimpressaoView /></DataTemplate>
+    <DataTemplate DataType="vm:SangriaViewModel"><v:SangriaView /></DataTemplate>
+    <DataTemplate DataType="vm:RelatoriosViewModel"><v:RelatoriosView /></DataTemplate>
+    <v:TelaDePagamento />
+    <DataTemplate DataType="vm:MenuViewModel"><v:MenuView /></DataTemplate>
+    <DataTemplate DataType="vm:SenhaViewModel"><v:SenhaView /></DataTemplate>
+    <DataTemplate DataType="vm:MensagemViewModel"><v:MensagemView /></DataTemplate>
+    <DataTemplate DataType="vm:PainelCelularViewModel"><v:PainelCelularView /></DataTemplate>
+    <DataTemplate DataType="vm:DevolucaoViewModel"><v:DevolucaoView /></DataTemplate>
+    <DataTemplate DataType="vm:NovaSenhaViewModel"><v:NovaSenhaView /></DataTemplate>
+    <DataTemplate DataType="vm:NumeroViewModel"><v:NumeroView /></DataTemplate>
+    <DataTemplate DataType="vm:EscolherBackupViewModel"><v:EscolherBackupView /></DataTemplate>
+    <DataTemplate DataType="vm:GradeAbaViewModel"><v:GradeAbaView /></DataTemplate>
+  </Application.DataTemplates>
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://BCFichasRede/Estilos/Cores.axaml" />
+        <ResourceInclude Source="avares://BCFichasRede/Estilos/Icones.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.Styles>
+    <FluentTheme>
+      <FluentTheme.Palettes>
+        <ColorPaletteResources x:Key="Light" Accent="#16A34A" RegionColor="#FFFFFF" ErrorText="#DC2626" />
+      </FluentTheme.Palettes>
+    </FluentTheme>
+    <StyleInclude Source="avares://BCFichasRede/Estilos/Estilos.axaml" />
+  </Application.Styles>
+</Application>

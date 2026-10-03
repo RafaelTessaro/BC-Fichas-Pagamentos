@@ -1,0 +1,146 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.Views.SangriaView"
+             x:DataType="vm:SangriaViewModel">
+  <Grid RowDefinitions="Auto,*">
+    <Border Classes="cabecalho">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Classes="fantasma" Command="{Binding VoltarCommand}" Height="48" Padding="12,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeVoltar}" />
+            <TextBlock Text="Voltar" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <TextBlock Grid.Column="1" Text="Sangria e suprimento" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,380" Margin="10">
+      <Border Classes="cartao" Margin="5">
+        <ScrollViewer>
+          <Grid ColumnDefinitions="*,280" RowDefinitions="Auto,*,Auto">
+            <UniformGrid Grid.ColumnSpan="2" Columns="2" Margin="0,0,0,12">
+              <Button Classes="opcao" Classes.marcada="{Binding EhSangria}" Command="{Binding TipoCommand}"
+                      CommandParameter="sangria" Height="64" Margin="0,0,6,0">
+                <StackPanel>
+                  <TextBlock Text="Sangria" FontSize="19" FontWeight="Bold" HorizontalAlignment="Center" />
+                  <TextBlock Text="tirar dinheiro do caixa" FontSize="13" HorizontalAlignment="Center" Classes="suave" />
+                </StackPanel>
+              </Button>
+              <Button Classes="opcao" Classes.marcada="{Binding EhSuprimento}" Command="{Binding TipoCommand}"
+                      CommandParameter="suprimento" Height="64" Margin="6,0,0,0">
+                <StackPanel>
+                  <TextBlock Text="Suprimento" FontSize="19" FontWeight="Bold" HorizontalAlignment="Center" />
+                  <TextBlock Text="colocar troco no caixa" FontSize="13" HorizontalAlignment="Center" Classes="suave" />
+                </StackPanel>
+              </Button>
+            </UniformGrid>
+
+            <StackPanel Grid.Row="1" Spacing="8" Margin="0,0,16,0">
+              <TextBlock Text="Valor" Classes="rotulo" Margin="2,0,0,0" />
+              <Border Background="{StaticResource Fundo}" CornerRadius="12" Padding="16,8">
+                <TextBlock Text="{Binding Valor.Texto}" FontSize="38" FontWeight="ExtraBold" TextAlignment="Right" />
+              </Border>
+              <TextBlock Text="{Binding Depois}" FontSize="15" FontWeight="SemiBold" TextAlignment="Right"
+                         Foreground="{StaticResource PrimariaEscura}" Classes.alerta="{Binding DepoisNegativo}"
+                         IsVisible="{Binding Depois, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <ItemsControl ItemsSource="{x:Static vm:SangriaViewModel.Notas}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <Button Classes="suave" Margin="3" HorizontalAlignment="Stretch" Height="48"
+                            Content="{Binding Converter={x:Static v:Conversores.CentavosParaNota}}"
+                            Command="{Binding $parent[UserControl].((vm:SangriaViewModel)DataContext).Valor.SomarCommand}"
+                            CommandParameter="{Binding}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="Motivo (opcional)" Classes="rotulo" />
+              <TextBox Text="{Binding Motivo}" Watermark="Ex.: levar para o cofre" MaxLength="60" />
+              <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                <TextBlock Text="Imprimir comprovante" VerticalAlignment="Center" FontSize="15" />
+                <ToggleSwitch Grid.Column="1" IsChecked="{Binding ImprimirComprovante}" />
+              </Grid>
+            </StackPanel>
+
+            <v:TecladoNumerico Grid.Row="1" Grid.Column="1" Comando="{Binding Valor.TeclaCommand}" TeclaEsquerda="C"
+                               VerticalAlignment="Top" Height="260" />
+
+            <Button Grid.Row="2" Grid.ColumnSpan="2" Classes="primario" Command="{Binding SalvarCommand}"
+                    HorizontalAlignment="Stretch" Height="62" Margin="0,14,0,0" Content="{Binding TextoBotao}"
+                    FontSize="20" />
+          </Grid>
+        </ScrollViewer>
+      </Border>
+
+      <Grid Grid.Column="1" RowDefinitions="Auto,*">
+
+      <!-- Quanto deveria haver na gaveta agora, em destaque -->
+      <Border Background="{StaticResource FundoLateral}" CornerRadius="16" Margin="5" Padding="20,16"
+              BoxShadow="0 2 8 0 #330F172A">
+        <StackPanel Spacing="2">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeDinheiro}" Foreground="{StaticResource Marca}" Width="22" Height="22" />
+            <TextBlock Text="DINHEIRO QUE DEVE ESTAR NO CAIXA" Foreground="{StaticResource Marca}" FontWeight="Bold"
+                       FontSize="13" VerticalAlignment="Center" />
+          </StackPanel>
+          <TextBlock Text="{Binding DinheiroEmCaixa}" Foreground="White" FontSize="46" FontWeight="ExtraBold" />
+          <ItemsControl ItemsSource="{Binding Composicao}" Margin="0,6,0,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:LinhaValor">
+                <Grid ColumnDefinitions="*,Auto" Margin="0,1">
+                  <TextBlock Text="{Binding Nome}" Foreground="{StaticResource MarcaTextoSuave}" FontSize="14" />
+                  <TextBlock Grid.Column="1" Text="{Binding Valor}" Foreground="#D1FAE5" FontSize="14" FontWeight="SemiBold" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Row="1" Classes="cartao" Margin="5">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Text="Movimentos deste caixa" Classes="secao" />
+          <TextBlock Grid.Row="1" Text="Nenhuma sangria ou suprimento ainda." Classes="suave"
+                     IsVisible="{Binding !Movimentos.Count}" />
+          <ScrollViewer Grid.Row="1">
+            <ItemsControl ItemsSource="{Binding Movimentos}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:MovimentoItem">
+                  <Border BorderBrush="{StaticResource Borda}" BorderThickness="0,0,0,1" Padding="2,8">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel>
+                        <TextBlock FontWeight="SemiBold" FontSize="15">
+                          <Run Text="{Binding Hora}" />
+                          <Run Text="•" />
+                          <Run Text="{Binding Tipo}" />
+                        </TextBlock>
+                        <TextBlock Text="{Binding Motivo}" Classes="suave" FontSize="13" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="1" Text="{Binding Valor}" FontSize="17" FontWeight="Bold"
+                                 VerticalAlignment="Center" Classes.saida="{Binding Saida}" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+      </Border>
+      </Grid>
+    </Grid>
+  </Grid>
+
+  <UserControl.Styles>
+    <Style Selector="TextBlock.saida">
+      <Setter Property="Foreground" Value="{StaticResource Perigo}" />
+    </Style>
+    <Style Selector="TextBlock.alerta">
+      <Setter Property="Foreground" Value="{StaticResource Perigo}" />
+    </Style>
+  </UserControl.Styles>
+</UserControl>
