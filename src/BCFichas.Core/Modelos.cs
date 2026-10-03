@@ -52,9 +52,26 @@ public static class Nomes
 
 public sealed class Aba
 {
+    /// <summary>Até quantos botões uma aba automática mostra (a tela se divide entre eles).</summary>
+    public const int MaximoAutomatico = 30;
+
     public long Id { get; set; }
     public string Nome { get; set; } = "";
     public int Ordem { get; set; }
+
+    /// <summary>
+    /// Botões por linha na tela de venda. 0 = automático: o programa escolhe pela quantidade de produtos, para os
+    /// botões ficarem do maior tamanho possível.
+    /// </summary>
+    public int Colunas { get; set; }
+
+    /// <summary>Linhas da grade quando as colunas são escolhidas (colunas × linhas = máximo de botões da aba).</summary>
+    public int Linhas { get; set; }
+
+    public bool Automatica => Colunas <= 0;
+
+    /// <summary>Quantos produtos cabem na aba (as posições vão de 1 até aqui).</summary>
+    public int Capacidade => Automatica ? MaximoAutomatico : Colunas * Math.Max(1, Linhas);
 }
 
 public sealed class Produto

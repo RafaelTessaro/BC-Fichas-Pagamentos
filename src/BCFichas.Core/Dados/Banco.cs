@@ -361,5 +361,44 @@ public sealed class Banco
             Executar(conexao, t, "INSERT INTO versao (v) VALUES (5)");
             t.Commit();
         }
+
+        // Versão 3.10: cada aba tem a sua grade (colunas × linhas) ou é automática (0), sem espaço vazio na tela.
+        // As abas que já existem ficam com a grade que estava nas configurações.
+        if (versao < 6)
+        {
+            using var t = conexao.BeginTransaction();
+            if (Escalar<long>(conexao, t, "SELECT COUNT(*) FROM pragma_table_info('abas') WHERE name = 'colunas'") == 0)
+            {
+                var (colunas, linhas) = GradeDasConfiguracoes(conexao, t);
+                Executar(conexao, t, $"""
+                    ALTER TABLE abas ADD COLUMN colunas INTEGER NOT NULL DEFAULT 0;
+                    ALTER TABLE abas ADD COLUMN linhas INTEGER NOT NULL DEFAULT 0;
+                    UPDATE abas SET colunas = {colunas}, linhas = {linhas};
+                    """);
+            }
+            Executar(conexao, t, "INSERT INTO versao (v) VALUES (6)");
+            t.Commit();
+        }
+    }
+
+    /// <summary>Colunas e linhas que estavam nas configurações (antes da 3.10 a grade era uma só para todas as abas).</summary>
+    private static (int Colunas, int Linhas) GradeDasConfiguracoes(SqliteConnection conexao, SqliteTransaction t)
+    {
+        var json = Escalar<string>(conexao, t, "SELECT valor FROM config WHERE chave = 'geral'");
+        int colunas = 4, linhas = 3;
+        if (!string.IsNullOrEmpty(json))
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("Colunas", out var c) && c.TryGetInt32(out var vc)) colunas = vc;
+                if (doc.RootElement.TryGetProperty("Linhas", out var l) && l.TryGetInt32(out var vl)) linhas = vl;
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // configuração com defeito: fica a grade padrão
+            }
+        }
+        return (Math.Clamp(colunas, 1, 6), Math.Clamp(linhas, 1, 8));
     }
 }

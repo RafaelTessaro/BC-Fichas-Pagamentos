@@ -340,7 +340,7 @@ public class ProgramacaoTests : IDisposable
         // Volta o banco para a versão 4 (a 3.6 não guardava quanto cada venda tirou do estoque)
         a.Banco.Executar("""
             ALTER TABLE itens_pedido DROP COLUMN baixado; ALTER TABLE componentes_item DROP COLUMN baixado;
-            DELETE FROM versao WHERE v = 5;
+            DELETE FROM versao WHERE v >= 5;
             """);
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
 

@@ -18,29 +18,45 @@ public sealed class CatalogoServico
     internal void AvisarAlteracao() => Alterado?.Invoke();
 
     public List<Aba> Abas() =>
-        _banco.Consultar("SELECT id, nome, ordem FROM abas ORDER BY ordem, id", l => new Aba
+        _banco.Consultar("SELECT id, nome, ordem, colunas, linhas FROM abas ORDER BY ordem, id", l => new Aba
         {
             Id = l.GetInt64(0),
             Nome = l.GetString(1),
             Ordem = l.GetInt32(2),
+            Colunas = l.GetInt32(3),
+            Linhas = l.GetInt32(4),
         });
+
+    public const int MaximoColunas = 6;
+    public const int MaximoLinhas = 8;
 
     public Aba SalvarAba(Aba aba)
     {
         aba.Nome = (aba.Nome ?? "").Trim().ToUpperInvariant();
         if (aba.Nome.Length == 0) throw new ErroDeNegocio("Informe o nome da aba.");
+        // Automática (0) ou de 1 a 6 colunas por 1 a 8 linhas
+        if (aba.Colunas <= 0)
+        {
+            aba.Colunas = 0;
+            aba.Linhas = 0;
+        }
+        else
+        {
+            aba.Colunas = Math.Min(aba.Colunas, MaximoColunas);
+            aba.Linhas = Math.Clamp(aba.Linhas, 1, MaximoLinhas);
+        }
 
         if (aba.Id == 0)
         {
             aba.Ordem = (int)(_banco.Escalar<long?>("SELECT MAX(ordem) FROM abas") ?? 0) + 1;
             aba.Id = _banco.Escalar<long>(
-                "INSERT INTO abas (nome, ordem) VALUES ($n, $o) RETURNING id",
-                ("$n", aba.Nome), ("$o", aba.Ordem));
+                "INSERT INTO abas (nome, ordem, colunas, linhas) VALUES ($n, $o, $c, $l) RETURNING id",
+                ("$n", aba.Nome), ("$o", aba.Ordem), ("$c", aba.Colunas), ("$l", aba.Linhas));
         }
         else
         {
-            _banco.Executar("UPDATE abas SET nome = $n, ordem = $o WHERE id = $id",
-                ("$n", aba.Nome), ("$o", aba.Ordem), ("$id", aba.Id));
+            _banco.Executar("UPDATE abas SET nome = $n, ordem = $o, colunas = $c, linhas = $l WHERE id = $id",
+                ("$n", aba.Nome), ("$o", aba.Ordem), ("$c", aba.Colunas), ("$l", aba.Linhas), ("$id", aba.Id));
         }
 
         Alterado?.Invoke();

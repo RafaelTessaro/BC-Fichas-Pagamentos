@@ -174,7 +174,7 @@ public sealed class ProgramacaoServico
             Evento = config.NomeEvento,
             Config = JsonSerializer.Serialize(config, ConfigServico.Json),
             Logo = Guardar(config.Logo),
-            Abas = _catalogo.Abas().Select(a => new AbaArquivo(a.Id, a.Nome, a.Ordem)).ToList(),
+            Abas = _catalogo.Abas().Select(a => new AbaArquivo(a.Id, a.Nome, a.Ordem, a.Colunas, a.Linhas)).ToList(),
             Produtos = produtos.Select(p => new ProdutoArquivo
             {
                 Id = p.Id, Nome = p.Nome, Detalhe = p.Detalhe, AbaId = p.AbaId, Posicao = p.Posicao,
@@ -261,8 +261,13 @@ public sealed class ProgramacaoServico
             ApagarVendas(c, t);
             ApagarCatalogo(c, t);
             foreach (var aba in dados.Abas)
-                Banco.Executar(c, t, "INSERT INTO abas (id, nome, ordem) VALUES ($id, $n, $o)",
-                    ("$id", aba.Id), ("$n", aba.Nome), ("$o", aba.Ordem));
+            {
+                // Backup de antes da 3.10: a grade era a das configurações, igual para todas as abas
+                var colunas = aba.Colunas ?? Math.Clamp(importada.Colunas, 1, CatalogoServico.MaximoColunas);
+                var linhas = aba.Linhas ?? Math.Clamp(importada.Linhas, 1, CatalogoServico.MaximoLinhas);
+                Banco.Executar(c, t, "INSERT INTO abas (id, nome, ordem, colunas, linhas) VALUES ($id, $n, $o, $c, $l)",
+                    ("$id", aba.Id), ("$n", aba.Nome), ("$o", aba.Ordem), ("$c", colunas), ("$l", linhas));
+            }
             if (dados.Abas.Count == 0) Banco.Executar(c, t, "INSERT INTO abas (nome, ordem) VALUES ('ITENS', 1)");
             // Primeiro todos os produtos, depois as fichas dos combos: o combo pode vir antes do produto das fichas.
             var ids = dados.Produtos.Select(p => p.Id).ToHashSet();
@@ -437,7 +442,8 @@ public sealed class ProgramacaoServico
         public List<ProdutoArquivo> Produtos { get; set; } = new();
     }
 
-    private sealed record AbaArquivo(long Id, string Nome, int Ordem);
+    /// <summary>Colunas e linhas vazias: backup de antes da 3.10 (a grade estava nas configurações).</summary>
+    private sealed record AbaArquivo(long Id, string Nome, int Ordem, int? Colunas = null, int? Linhas = null);
 
     private sealed class ProdutoArquivo
     {
