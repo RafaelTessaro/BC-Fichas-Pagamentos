@@ -379,9 +379,17 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
     [RelayCommand]
     private void EscolherCor(OpcaoCor cor) => Cor = cor.Hex;
 
+    /// <summary>Quando o último produto novo foi gravado (para reconhecer o segundo toque de um toque duplo).</summary>
+    private long _novoGravadoEm = long.MinValue / 2;
+
     [RelayCommand]
     private void Salvar()
     {
+        // Toque duplo no Salvar: o primeiro gravou e limpou a tela; o segundo dava "Digite o preço" em vermelho e
+        // parecia que o produto não tinha sido gravado (e ele era cadastrado de novo).
+        if (Id == 0 && string.IsNullOrWhiteSpace(Nome) && string.IsNullOrWhiteSpace(Preco) &&
+            Environment.TickCount64 - _novoGravadoEm < 1000)
+            return;
         if (!Dinheiro.TentarLer(Preco, out var preco))
         {
             Principal.MostrarAviso("Digite o preço, por exemplo 10,00.", erro: true);
@@ -448,6 +456,7 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
             }, TotalPosicoes);
             Principal.MostrarAviso($"{produto.Nome} salvo.");
             var novo = Id == 0;
+            if (novo) _novoGravadoEm = Environment.TickCount64;
             Atualizar();
             if (novo) Novo();
             else Selecionado = Lista.FirstOrDefault(p => p.Produto.Id == produto.Id);

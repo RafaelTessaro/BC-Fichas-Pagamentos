@@ -228,6 +228,45 @@ public class AuditoriaDasTelasTests
     }
 
     [AvaloniaFact]
+    public async Task Toque_duplo_no_salvar_produto_e_no_registrar_sangria_nao_mostra_erro_falso()
+    {
+        using var t = new TelaDeTeste();
+        t.AbrirCaixa();
+        var tela = new ProdutosViewModel(t.Principal);
+        t.Principal.Abrir(tela);
+        TelaDeTeste.Atualizar();
+        tela.Nome = "Milho";
+        tela.Preco = "6,00";
+        var salvar = Centro(t, Botao(t, "Salvar produto"));
+        TocarEm(t, salvar);
+        // O segundo toque achava a tela já limpa e mostrava "Digite o preço" em vermelho: parecia que não tinha gravado
+        TocarEm(t, salvar);
+        Assert.Equal("MILHO salvo.", t.Principal.Aviso);
+        Assert.False(t.Principal.AvisoErro);
+        Assert.Single(t.Sistema.Catalogo.Produtos(), p => p.Nome == "MILHO");
+        // Tocar no Salvar com a tela vazia (depois do instante do toque duplo) continua avisando
+        await Task.Delay(1100);
+        tela.SalvarCommand.Execute(null);
+        Assert.True(t.Principal.AvisoErro);
+
+        // Sangria sem comprovante: o segundo toque dava "Informe um valor maior que zero"
+        var sangria = new SangriaViewModel(t.Principal);
+        t.Principal.Abrir(sangria);
+        sangria.ImprimirComprovante = false;
+        sangria.Valor.Centavos = 1000;
+        TelaDeTeste.Atualizar();
+        var registrar = Centro(t, Botao(t, "Registrar sangria"));
+        TocarEm(t, registrar);
+        TocarEm(t, registrar);
+        Assert.Equal("Sangria de R$ 10,00 registrado.", t.Principal.Aviso);
+        Assert.False(t.Principal.AvisoErro);
+        Assert.Single(t.Sistema.Caixa.Movimentos(t.Principal.Sessao!.Id));
+        await Task.Delay(1100);
+        await sangria.SalvarCommand.ExecuteAsync(null);
+        Assert.Equal("Informe um valor maior que zero.", t.Principal.Aviso);
+    }
+
+    [AvaloniaFact]
     public async Task Produto_de_preco_zero_vende_em_dinheiro_e_no_pix()
     {
         using var t = new TelaDeTeste();
@@ -331,8 +370,17 @@ public class AuditoriaDasTelasTests
         // Sangria: as notas apareciam "R$ 1" para R$ 1, R$ 10 e R$ 100
         var sangria = new SangriaViewModel(t.Principal);
         t.Principal.Abrir(sangria);
-        sangria.Valor.Centavos = 123456;
+        sangria.Valor.Centavos = 1234567;
         Ver("sangria");
+        // Valores grandes digitados na devolução e na conferência do fechamento
+        var devolucao = new DevolucaoViewModel(t.Principal);
+        t.Principal.Abrir(devolucao);
+        devolucao.Valor.Centavos = 1234567;
+        Ver("devolucao-valor-grande");
+        var fechamento = new FechamentoViewModel(t.Principal);
+        t.Principal.Abrir(fechamento);
+        fechamento.Contado.Centavos = 12345678;
+        Ver("fechamento-valor-grande");
         var configuracao = new ConfiguracaoViewModel(t.Principal);
         t.Principal.Abrir(configuracao);
         for (var aba = 0; aba <= ConfiguracaoViewModel.AbaMaquina; aba++)
