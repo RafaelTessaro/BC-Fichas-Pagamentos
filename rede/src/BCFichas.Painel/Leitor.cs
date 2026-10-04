@@ -116,7 +116,7 @@ public sealed class Leitor : IDisposable
             Liquido = resumos.Sum(r => r.VendaLiquida),
             Pedidos = pedidos,
             Fichas = resumos.Sum(r => r.QuantidadeFichas),
-            TicketMedio = pedidos == 0 ? 0 : vendido / pedidos,
+            TicketMedio = ResumoCaixa.Media(vendido, pedidos),
             Sangrias = resumos.Sum(r => r.Sangrias),
             Suprimentos = resumos.Sum(r => r.Suprimentos),
             Devolucoes = resumos.Sum(r => r.QuantidadeDevolucoes),

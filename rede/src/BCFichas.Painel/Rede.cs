@@ -58,11 +58,16 @@ public sealed class Rede : IDisposable
         var (local, _) = _leitor.Ler();
         var agora = DateTime.UtcNow;
         var maquinas = new List<MaquinaNoPainel> { new("Esta máquina", true, true, 0, local) };
-        foreach (var (endereco, v) in _vizinhas.OrderBy(x => x.Value.Estado?.Caixa ?? 999).ThenBy(x => x.Key))
+        // A mesma máquina achada em dois endereços (digitada duas vezes, IP trocado, Wi-Fi e cabo) entra uma vez
+        // só, senão as vendas dela seriam somadas duas vezes: fica o endereço que respondeu por último.
+        var vizinhas = _vizinhas.Select(x => (Endereco: x.Key, Vizinha: x.Value, Estado: x.Value.Estado))
+            .Where(x => x.Estado is not null && x.Estado.Instancia != local.Instancia)
+            .GroupBy(x => x.Estado!.Instancia)
+            .Select(g => g.OrderByDescending(x => x.Vizinha.UltimaResposta).ThenBy(x => x.Endereco).First());
+        foreach (var (endereco, v, estado) in vizinhas)
         {
-            if (v.Estado is null || v.Estado.Instancia == local.Instancia) continue;
             var semResposta = (int)(agora - v.UltimaResposta).TotalSeconds;
-            maquinas.Add(new MaquinaNoPainel(endereco, false, agora - v.UltimaResposta < Tolerancia, semResposta, v.Estado));
+            maquinas.Add(new MaquinaNoPainel(endereco, false, agora - v.UltimaResposta < Tolerancia, semResposta, estado!));
         }
         maquinas = maquinas.OrderBy(m => m.Estado.Caixa).ThenBy(m => m.Endereco).ToList();
         return new EstadoEvento(local.NomeEvento, Leitor.Agora(), maquinas.Count(m => m.Online), maquinas.Count,
@@ -226,7 +231,7 @@ public sealed class Rede : IDisposable
             Liquido = lista.Sum(b => b.Liquido),
             Pedidos = pedidos,
             Fichas = lista.Sum(b => b.Fichas),
-            TicketMedio = pedidos == 0 ? 0 : vendido / pedidos,
+            TicketMedio = ResumoCaixa.Media(vendido, pedidos),
             Sangrias = lista.Sum(b => b.Sangrias),
             Suprimentos = lista.Sum(b => b.Suprimentos),
             Devolucoes = lista.Sum(b => b.Devolucoes),

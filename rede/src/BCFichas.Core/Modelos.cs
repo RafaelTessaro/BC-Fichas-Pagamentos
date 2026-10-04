@@ -305,7 +305,11 @@ public sealed class ResumoCaixa
         Sessao.ValorAberturaCentavos + Total(FormaPagamento.Dinheiro) + Suprimentos - Sangrias
         - Devolvido(FormaPagamento.Dinheiro);
 
-    public long TicketMedio => QuantidadePedidos == 0 ? 0 : TotalVendas / QuantidadePedidos;
+    public long TicketMedio => Media(TotalVendas, QuantidadePedidos);
+
+    /// <summary>Média em centavos arredondada (meio centavo para cima): R$ 20,00 em 3 pedidos dá R$ 6,67, não R$ 6,66.</summary>
+    public static long Media(long total, int quantidade) =>
+        quantidade == 0 ? 0 : (long)Math.Round((decimal)total / quantidade, MidpointRounding.AwayFromZero);
 }
 
 /// <summary>Uma ficha física a ser impressa.</summary>
