@@ -184,8 +184,8 @@ public sealed class Configuracao
 
     /// <summary>
     /// Cópia desta configuração com o que é de cada máquina vindo de <paramref name="maquina"/>: número do caixa,
-    /// impressora (tipo, nome, porta, papel, corte, posição), tela e Windows. Usado ao carregar a programação
-    /// de outra máquina e ao zerar a programação (novo evento).
+    /// impressora (tipo, nome, porta, papel, corte, posição), maquininha, tela e Windows. Usado ao carregar a
+    /// programação de outra máquina e ao zerar a programação (novo evento).
     /// </summary>
     public Configuracao ComDadosDaMaquina(Configuracao maquina)
     {
@@ -207,6 +207,10 @@ public sealed class Configuracao
         c.Corte = maquina.Corte;
         c.PastaArquivo = maquina.PastaArquivo;
         c.AjusteHorizontal = maquina.AjusteHorizontal;
+        // A maquininha é de cada máquina: um simulador que aprova sozinho (usado para treinar) não pode ir pelo
+        // backup para as máquinas do evento e aprovar cartão sem cartão.
+        c.Maquininha = maquina.Maquininha;
+        c.SimuladorAprovarEmSegundos = maquina.SimuladorAprovarEmSegundos;
         c.VersaoConfig = maquina.VersaoConfig;
         return c;
     }

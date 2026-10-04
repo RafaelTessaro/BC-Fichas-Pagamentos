@@ -44,13 +44,17 @@ public abstract class MaquininhaManual : IMaquininha
         var decisao = new TaskCompletionSource<ResultadoCobranca>(TaskCreationOptions.RunContinuationsAsynchronously);
         _decisao = decisao;
         using var registro = cancelar.Register(() => decisao.TrySetCanceled(cancelar));
+        // Termina junto com esta cobrança (aprovada, recusada ou cancelada): o que a preparação deixou esperando
+        // (ex.: o "aprova sozinho" do simulador) não pode decidir a cobrança seguinte.
+        using var desta = CancellationTokenSource.CreateLinkedTokenSource(cancelar);
         try
         {
-            await Preparar(cobranca, andamento, cancelar);
+            await Preparar(cobranca, andamento, desta.Token);
             return await decisao.Task;
         }
         finally
         {
+            desta.Cancel();
             _decisao = null;
         }
     }
