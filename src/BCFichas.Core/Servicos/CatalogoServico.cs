@@ -91,8 +91,11 @@ public sealed class CatalogoServico
         var parametros = new List<(string, object?)>();
         if (!string.IsNullOrWhiteSpace(busca))
         {
-            sql += " WHERE nome LIKE $b OR detalhe LIKE $b";
-            parametros.Add(("$b", "%" + busca.Trim() + "%"));
+            // Os nomes são gravados em maiúsculas e o LIKE do SQLite só ignora maiúscula/minúscula sem acento
+            // ("pão" não achava "PÃO"); % e _ digitados são letras, não curingas.
+            var texto = busca.Trim().ToUpperInvariant().Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_");
+            sql += @" WHERE nome LIKE $b ESCAPE '\' OR detalhe LIKE $b ESCAPE '\'";
+            parametros.Add(("$b", "%" + texto + "%"));
         }
         sql += " ORDER BY aba_id, ativo DESC, posicao, nome";
         return ComComponentes(_banco.Consultar(sql, LerProduto, parametros.ToArray()));

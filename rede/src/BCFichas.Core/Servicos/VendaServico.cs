@@ -36,7 +36,8 @@ public sealed class VendaServico
         if (!sessao.Aberta) throw new ErroDeNegocio("O caixa está fechado. Abra o caixa para vender.");
         if (linhas.Count == 0 || linhas.All(l => l.Quantidade <= 0)) throw new ErroDeNegocio("O pedido está vazio.");
 
-        var total = linhas.Sum(l => l.TotalCentavos);
+        // Só as linhas que viram itens do pedido (quantidade zero ou negativa fica de fora do total também)
+        var total = linhas.Where(l => l.Quantidade > 0).Sum(l => l.TotalCentavos);
         long troco = 0;
         if (forma == FormaPagamento.Dinheiro)
         {

@@ -24,7 +24,8 @@ public sealed class Sistema
         {
             if (Maquininha is MaquininhaSimulada simulador && c.Maquininha == TipoMaquininha.Simulador)
                 simulador.AprovarEmSegundos = c.SimuladorAprovarEmSegundos;
-            else
+            // Só troca quando muda o tipo: uma maquininha nova não conhece a cobrança que está esperando o operador
+            else if (Maquininha is not MaquininhaSeparada || c.Maquininha == TipoMaquininha.Simulador)
                 Maquininha = CriarMaquininha(c);
         };
     }
