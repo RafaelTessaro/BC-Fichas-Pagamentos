@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using BCFichas.Core.Dados;
+using Microsoft.Data.Sqlite;
 
 namespace BCFichas.Core.Servicos;
 
@@ -32,6 +33,32 @@ public sealed class ConfigServico
 
     public void Salvar(Configuracao configuracao)
     {
+        _banco.Executar(SqlGravar, ("$v", Preparar(configuracao)));
+        Aplicar(configuracao);
+    }
+
+    /// <summary>
+    /// Grava junto com outras mudanças, na transação delas (restaurar o backup, zerar a programação): se faltar
+    /// energia no meio, não fica a programação nova com as configurações da antiga. Depois do commit, chame
+    /// <see cref="Aplicar"/>.
+    /// </summary>
+    internal static void Gravar(SqliteConnection c, SqliteTransaction t, Configuracao configuracao) =>
+        Banco.Executar(c, t, SqlGravar, ("$v", Preparar(configuracao)));
+
+    /// <summary>Passa a usar a configuração já gravada e avisa quem depende dela.</summary>
+    internal void Aplicar(Configuracao configuracao)
+    {
+        Atual = configuracao.Clonar();
+        ComDefeito = false;
+        Alterada?.Invoke(Atual);
+    }
+
+    private const string SqlGravar =
+        "INSERT INTO config (chave, valor) VALUES ('geral', $v) ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor";
+
+    /// <summary>Acerta os limites e devolve o JSON a gravar.</summary>
+    private static string Preparar(Configuracao configuracao)
+    {
         configuracao.NumeroCaixa = Math.Clamp(configuracao.NumeroCaixa, 1, 99);
         configuracao.Colunas = Math.Clamp(configuracao.Colunas, 2, 6);
         configuracao.Linhas = Math.Clamp(configuracao.Linhas, 2, 6);
@@ -41,14 +68,7 @@ public sealed class ConfigServico
         configuracao.AjusteHorizontal = Math.Clamp(configuracao.AjusteHorizontal, -Configuracao.AjusteMaximo,
             Configuracao.AjusteMaximo);
         configuracao.VersaoConfig = Configuracao.VersaoAtual;
-
-        var json = JsonSerializer.Serialize(configuracao, Json);
-        _banco.Executar(
-            "INSERT INTO config (chave, valor) VALUES ('geral', $v) ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor",
-            ("$v", json));
-        Atual = configuracao.Clonar();
-        ComDefeito = false;
-        Alterada?.Invoke(Atual);
+        return JsonSerializer.Serialize(configuracao, Json);
     }
 
     private Configuracao Carregar()

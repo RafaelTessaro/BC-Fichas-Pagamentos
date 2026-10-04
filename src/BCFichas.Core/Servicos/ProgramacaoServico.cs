@@ -299,9 +299,11 @@ public sealed class ProgramacaoServico
                         ("$d", x.Detalhe), ("$q", x.Quantidade), ("$v", x.Valor), ("$o", i + 1));
                 }
             }
+            // Na mesma transação: os produtos do backup nunca ficam com o evento e o número de caixa de antes
+            ConfigServico.Gravar(c, t, config);
         });
 
-        _config.Salvar(config);
+        _config.Aplicar(config);
         _catalogo.AvisarAlteracao();
         LimparArquivosSemUso();
         Compactar();
@@ -340,17 +342,18 @@ public sealed class ProgramacaoServico
     public void ZerarProgramacao()
     {
         CopiaDeSeguranca("antes-de-zerar-programacao");
+        var atual = _config.Atual;
+        var nova = new Configuracao { VersaoConfig = Configuracao.VersaoAtual }.ComDadosDaMaquina(atual);
+        nova.SenhaMaster = atual.SenhaMaster;
+        nova.TelasProtegidas = atual.TelasProtegidas;
         _banco.Transacao((c, t) =>
         {
             ApagarVendas(c, t);
             ApagarCatalogo(c, t);
             Banco.Executar(c, t, "INSERT INTO abas (nome, ordem) VALUES ('ITENS', 1)");
+            ConfigServico.Gravar(c, t, nova);
         });
-        var atual = _config.Atual;
-        var nova = new Configuracao { VersaoConfig = Configuracao.VersaoAtual }.ComDadosDaMaquina(atual);
-        nova.SenhaMaster = atual.SenhaMaster;
-        nova.TelasProtegidas = atual.TelasProtegidas;
-        _config.Salvar(nova);
+        _config.Aplicar(nova);
         _catalogo.AvisarAlteracao();
         LimparArquivosSemUso(); // sem produtos e sem logotipo: as fotos e os logos do evento anterior saem todos
         Compactar();
