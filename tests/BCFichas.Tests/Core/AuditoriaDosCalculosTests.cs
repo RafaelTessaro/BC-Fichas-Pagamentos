@@ -138,7 +138,7 @@ public class AuditoriaDosCalculosTests
         {
             tela.Dias = dias;
             var de = dias == 0 ? DateTime.MinValue : DateTime.Today.AddDays(1 - dias);
-            var caixas = festa.Caixas.Where(c => !c.Teste && c.AbertaEm.Date >= de && c.AbertaEm.Date <= DateTime.Today)
+            var caixas = festa.Caixas.Where(c => !c.Teste && c.AbertoNoPeriodo(de, DateTime.Today))
                 .OrderByDescending(c => c.Id).ToList();
             Assert.Equal(caixas.Select(c => c.Id), tela.Sessoes.Select(x => x.Sessao.Id));
             Assert.Equal(caixas.Select(c => Dinheiro.Formatar(c.TotalVendido)), tela.Sessoes.Select(x => x.Total));
@@ -249,7 +249,7 @@ public class AuditoriaDosCalculosTests
         {
             var de = dias[r.Next(dias.Count)];
             var ate = de.AddDays(r.Next(0, 4));
-            var caixas = festa.Caixas.Where(c => !c.Teste && c.AbertaEm.Date >= de && c.AbertaEm.Date <= ate).ToList();
+            var caixas = festa.Caixas.Where(c => !c.Teste && c.AbertoNoPeriodo(de, ate)).ToList();
             Assert.Equal(caixas.Select(c => c.Id).OrderDescending(), festa.Caixa.Sessoes(de, ate).Select(s => s.Id));
             Assert.Equal(caixas.Where(c => c.TotalPedidos > 0).ToDictionary(c => c.Id, c => c.TotalVendido),
                 festa.Caixa.TotaisVendidos(de, ate));
@@ -324,6 +324,10 @@ public sealed class CaixaAnotado
     public int TotalPedidos => Pedidos.Values.Sum();
     public long TotalDevolvido => Devolvido.Values.Sum();
     public bool Aberto => FechadaEm is null;
+
+    /// <summary>Esteve aberto em algum momento entre o começo do dia <paramref name="de"/> e o fim do dia <paramref name="ate"/>.</summary>
+    public bool AbertoNoPeriodo(DateTime de, DateTime ate) =>
+        AbertaEm < ate.Date.AddDays(1) && (FechadaEm is null || FechadaEm >= de.Date);
 
     public static void Somar(Dictionary<string, (int Quantidade, long Valor)> lista, string nome, int quantidade, long valor)
     {
