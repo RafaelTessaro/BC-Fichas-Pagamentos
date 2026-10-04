@@ -1072,6 +1072,18 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         }
     }
 
+    /// <summary>
+    /// Saiu das configurações: a prévia da ficha (uma imagem do tamanho da ficha, fora da área do coletor) é solta
+    /// na hora. Antes ficava presa até o coletor de memória passar, uma a cada vez que a tela era aberta.
+    /// </summary>
+    public override void AoSair()
+    {
+        _timerPrevia.Stop();
+        var previa = Previa;
+        Previa = null;
+        previa?.Dispose();
+    }
+
     private void AtualizarPrevia()
     {
         try

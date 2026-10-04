@@ -114,12 +114,18 @@ internal sealed class Layout
         }));
     }
 
+    /// <summary>
+    /// Tracejado dos separadores: criado uma vez só (antes cada separador criava um e não soltava, e ele ficava na
+    /// memória do Skia até o coletor passar).
+    /// </summary>
+    private static readonly SKPathEffect Tracejado = SKPathEffect.CreateDash([10, 8], 0);
+
     public void Separador(bool tracejado = true, int espessura = 2)
     {
         _blocos.Add((espessura + 8, (canvas, y) =>
         {
             using var p = new SKPaint { Color = SKColors.Black, StrokeWidth = espessura, IsAntialias = false };
-            if (tracejado) p.PathEffect = SKPathEffect.CreateDash([10, 8], 0);
+            if (tracejado) p.PathEffect = Tracejado;
             var meio = y + 4 + espessura / 2f;
             canvas.DrawLine(Margem, meio, Largura - Margem, meio, p);
         }));

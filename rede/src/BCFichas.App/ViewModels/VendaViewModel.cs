@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -19,14 +20,40 @@ public sealed partial class AbaItem(Aba aba) : ObservableObject
 /// <summary>Um quadrado da grade de produtos (pode estar vazio).</summary>
 public sealed class BotaoProduto : ObservableObject
 {
-    public BotaoProduto(Produto? produto, Bitmap? imagem)
+    public BotaoProduto(Produto? produto, Bitmap? imagem) => Preencher(produto, imagem);
+
+    /// <summary>Tudo o que a tela mostra do botão (avisado de uma vez quando o botão passa a mostrar outro produto).</summary>
+    private static readonly PropertyChangedEventArgs[] Mostrados =
+    [
+        new(nameof(Produto)), new(nameof(Vazio)), new(nameof(Disponivel)), new(nameof(Nome)), new(nameof(Detalhe)),
+        new(nameof(TemDetalhe)), new(nameof(Preco)), new(nameof(Fundo)), new(nameof(Texto)), new(nameof(Imagem)),
+        new(nameof(TemImagem)), new(nameof(Esgotado)), new(nameof(MostrarEstoque)), new(nameof(Estoque)),
+        new(nameof(TamanhoNome)), new(nameof(TamanhoNomeFoto)),
+    ];
+
+    private void Preencher(Produto? produto, Bitmap? imagem)
     {
         Produto = produto;
         Imagem = imagem;
-        if (produto is null) return;
+        if (produto is null)
+        {
+            Fundo = Brushes.Transparent;
+            Texto = Brushes.White;
+            return;
+        }
         var cor = Recursos.CorOuPadrao(produto.Cor);
         Fundo = new SolidColorBrush(cor);
         Texto = Recursos.TextoSobre(cor);
+    }
+
+    /// <summary>
+    /// Troca de aba: o mesmo botão (já montado na tela) passa a mostrar outro produto. Antes a grade inteira era
+    /// desmontada e montada de novo a cada troca de aba.
+    /// </summary>
+    public void Mostrar(Produto? produto, Bitmap? imagem)
+    {
+        Preencher(produto, imagem);
+        foreach (var e in Mostrados) OnPropertyChanged(e);
     }
 
     public Produto? Produto { get; private set; }
@@ -39,9 +66,9 @@ public sealed class BotaoProduto : ObservableObject
         : Produto.EhCombo ? $"COMBO • {Produto.FichasPorVenda} FICHAS" : "";
     public bool TemDetalhe => Detalhe.Length > 0;
     public string Preco => Produto is null ? "" : Dinheiro.Formatar(Produto.PrecoCentavos);
-    public IBrush Fundo { get; } = Brushes.Transparent;
-    public IBrush Texto { get; } = Brushes.White;
-    public Bitmap? Imagem { get; }
+    public IBrush Fundo { get; private set; } = Brushes.Transparent;
+    public IBrush Texto { get; private set; } = Brushes.White;
+    public Bitmap? Imagem { get; private set; }
     public bool TemImagem => Imagem is not null;
     public bool Esgotado => Produto?.Esgotado == true;
     public bool MostrarEstoque => Produto is { ControlaEstoque: true, Esgotado: false };
@@ -293,9 +320,15 @@ public sealed partial class VendaViewModel : ViewModelBase
         Colunas = aba.Colunas;
         LinhasGrade = aba.Linhas;
         var produtos = ProdutosDaTela(aba);
-        Botoes.Clear();
-        foreach (var p in produtos)
-            Botoes.Add(new BotaoProduto(p, CacheImagens.Obter(_principal.Sistema.Impressao.CaminhoImagem(p.Imagem))));
+        // Os botões que já estão na tela passam a mostrar os produtos desta aba; só os que sobram ou faltam saem ou
+        // entram. Refazer a grade inteira (botão, foto, textos e estilos de cada um) pesava a cada troca de aba.
+        while (Botoes.Count > produtos.Count) Botoes.RemoveAt(Botoes.Count - 1);
+        for (var i = 0; i < produtos.Count; i++)
+        {
+            var imagem = CacheImagens.Obter(_principal.Sistema.Impressao.CaminhoImagem(produtos[i].Imagem));
+            if (i < Botoes.Count) Botoes[i].Mostrar(produtos[i], imagem);
+            else Botoes.Add(new BotaoProduto(produtos[i], imagem));
+        }
         SemProdutos = Botoes.Count == 0;
     }
 

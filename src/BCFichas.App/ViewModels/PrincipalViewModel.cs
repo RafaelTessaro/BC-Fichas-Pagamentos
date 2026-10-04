@@ -76,6 +76,9 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
 
     partial void OnDialogoChanged(ViewModelBase? value) => OnPropertyChanged(nameof(TemDialogo));
 
+    /// <summary>A tela que saiu solta o que só ela usava (ex.: a prévia da ficha das configurações).</summary>
+    partial void OnPaginaChanged(ViewModelBase? oldValue, ViewModelBase? newValue) => (oldValue as PaginaViewModel)?.AoSair();
+
     /// <summary>
     /// Abre o seletor de imagem do sistema (preenchido pela janela). Recebe a pasta onde começar e se deve
     /// avisar quando ela não existe.
