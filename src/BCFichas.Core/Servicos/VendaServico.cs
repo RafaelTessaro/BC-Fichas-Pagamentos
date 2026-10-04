@@ -204,9 +204,14 @@ public sealed class VendaServico
         return id is null ? null : Ler(c, null, id.Value);
     }
 
+    /// <summary>
+    /// Pedidos que ficaram esperando a maquininha. O status vai escrito na consulta (e não como parâmetro) para o
+    /// banco usar o índice ix_pedidos_pendentes, que só tem esses pedidos, em vez de ler todos os pedidos guardados.
+    /// </summary>
     public List<Pedido> Pendentes() =>
-        _banco.Consultar($"SELECT {ColunasPedido} FROM pedidos WHERE status = $st ORDER BY id",
-            LerPedido, ("$st", (int)StatusPedido.AguardandoPagamento));
+        _banco.Consultar(
+            $"SELECT {ColunasPedido} FROM pedidos WHERE status = {(int)StatusPedido.AguardandoPagamento} ORDER BY id",
+            LerPedido);
 
     /// <summary>
     /// Ao abrir o programa: pergunta à maquininha o que aconteceu com pedidos que ficaram no meio do pagamento.

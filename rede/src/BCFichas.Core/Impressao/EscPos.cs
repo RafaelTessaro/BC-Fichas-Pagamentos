@@ -24,12 +24,26 @@ public static class EscPos
     /// <summary>Imagem em preto e branco (GS v 0), linha por linha, 1 bit por ponto.</summary>
     public static byte[] Imagem(SKBitmap bitmap)
     {
+        var bytesPorLinha = (bitmap.Width + 7) / 8;
+        using var saida = new MemoryStream(bytesPorLinha * bitmap.Height + bitmap.Height / LinhasPorBloco * 8 + 16);
+        EscreverImagem(saida, bitmap);
+        return saida.ToArray();
+    }
+
+    /// <summary>
+    /// Escreve a imagem (GS v 0) direto no trabalho, lendo os pontos da imagem linha por linha. Antes fazia uma cópia
+    /// em tons de cinza do tamanho da ficha (centenas de KB por ficha, na área de objetos grandes) e mais uma cópia
+    /// dos bytes de cada ficha: no tablet o coletor de memória parava o programa a cada poucas fichas.
+    /// </summary>
+    private static void EscreverImagem(Stream saida, SKBitmap bitmap)
+    {
         var largura = bitmap.Width;
         var altura = bitmap.Height;
         var bytesPorLinha = (largura + 7) / 8;
-        var lum = ImagemUtil.Luminancia(bitmap);
+        using var rgba = ImagemUtil.CopiaRgba(bitmap);
+        var pixels = (rgba ?? bitmap).GetPixelSpan();
 
-        using var saida = new MemoryStream(bytesPorLinha * altura + altura / LinhasPorBloco * 8 + 16);
+        var linha = new byte[bytesPorLinha];
         for (var inicio = 0; inicio < altura; inicio += LinhasPorBloco)
         {
             var linhas = Math.Min(LinhasPorBloco, altura - inicio);
@@ -37,20 +51,18 @@ public static class EscPos
                 (byte)(bytesPorLinha & 0xFF), (byte)(bytesPorLinha >> 8),
                 (byte)(linhas & 0xFF), (byte)(linhas >> 8)]);
 
-            var linha = new byte[bytesPorLinha];
             for (var y = inicio; y < inicio + linhas; y++)
             {
                 Array.Clear(linha);
-                var deslocamento = y * largura;
+                var deslocamento = y * largura * 4;
                 for (var x = 0; x < largura; x++)
                 {
-                    if (lum[deslocamento + x] < ImagemUtil.Limiar)
+                    if (ImagemUtil.Luz(pixels, deslocamento + x * 4) < ImagemUtil.Limiar)
                         linha[x >> 3] |= (byte)(0x80 >> (x & 7));
                 }
                 saida.Write(linha);
             }
         }
-        return saida.ToArray();
     }
 
     /// <summary>Monta o trabalho completo: cada página (ficha) é impressa e a guilhotina é acionada.</summary>
@@ -65,7 +77,7 @@ public static class EscPos
         foreach (var pagina in paginas)
         {
             quantidade++;
-            saida.Write(Imagem(pagina));
+            EscreverImagem(saida, pagina);
             if (corte == TipoCorte.Nenhum)
             {
                 saida.Write(Avancar(5));

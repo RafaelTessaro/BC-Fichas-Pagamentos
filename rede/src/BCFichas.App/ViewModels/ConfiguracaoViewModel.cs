@@ -1176,6 +1176,21 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         }
     }
 
+    /// <summary>
+    /// Saiu das configurações: a prévia da ficha e o QR code do painel (imagens fora da área do coletor) são soltos
+    /// na hora. Antes ficavam presos até o coletor de memória passar, a cada vez que a tela era aberta.
+    /// </summary>
+    public override void AoSair()
+    {
+        _timerPrevia.Stop();
+        var previa = Previa;
+        Previa = null;
+        previa?.Dispose();
+        var qr = PainelQr;
+        PainelQr = null;
+        qr?.Dispose();
+    }
+
     private void AtualizarPrevia()
     {
         try

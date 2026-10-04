@@ -92,22 +92,33 @@ public static class ImagemUtil
     /// <summary>Luminância 0-255 de cada ponto, considerando transparência como branco.</summary>
     public static byte[] Luminancia(SKBitmap bitmap)
     {
-        using var rgba = bitmap.ColorType == SKColorType.Rgba8888 && bitmap.AlphaType == SKAlphaType.Premul
-            ? null
-            : bitmap.Copy(SKColorType.Rgba8888);
+        using var rgba = CopiaRgba(bitmap);
         var fonte = rgba ?? bitmap;
         var pixels = fonte.GetPixelSpan();
         var resultado = new byte[fonte.Width * fonte.Height];
         for (int i = 0, p = 0; i < resultado.Length; i++, p += 4)
-        {
-            // Premultiplicado: compõe sobre branco.
-            int a = pixels[p + 3];
-            int r = pixels[p] + (255 - a);
-            int g = pixels[p + 1] + (255 - a);
-            int b = pixels[p + 2] + (255 - a);
-            resultado[i] = (byte)Math.Clamp((r * 299 + g * 587 + b * 114) / 1000, 0, 255);
-        }
+            resultado[i] = Luz(pixels, p);
         return resultado;
+    }
+
+    /// <summary>
+    /// Cópia em RGBA premultiplicado quando a imagem está em outro formato; nulo quando ela já pode ser lida direto
+    /// (as fichas e os relatórios já são desenhados assim).
+    /// </summary>
+    internal static SKBitmap? CopiaRgba(SKBitmap bitmap) =>
+        bitmap.ColorType == SKColorType.Rgba8888 && bitmap.AlphaType == SKAlphaType.Premul
+            ? null
+            : bitmap.Copy(SKColorType.Rgba8888);
+
+    /// <summary>Luminância 0-255 do ponto que começa em <paramref name="p"/> (RGBA premultiplicado, transparente = branco).</summary>
+    internal static byte Luz(ReadOnlySpan<byte> pixels, int p)
+    {
+        // Premultiplicado: compõe sobre branco.
+        int a = pixels[p + 3];
+        int r = pixels[p] + (255 - a);
+        int g = pixels[p + 1] + (255 - a);
+        int b = pixels[p + 2] + (255 - a);
+        return (byte)Math.Clamp((r * 299 + g * 587 + b * 114) / 1000, 0, 255);
     }
 
     /// <summary>Converte uma foto/logo em preto e branco com pontilhado (Floyd-Steinberg).</summary>
@@ -151,20 +162,31 @@ public static class ImagemUtil
     }
 
     /// <summary>Exatamente como a impressora vai imprimir: só preto e branco.</summary>
+    /// <remarks>
+    /// Converte linha por linha, direto dos pontos da imagem: antes montava duas cópias do tamanho da ficha (cerca de
+    /// 1 MB por ficha, na área de objetos grandes), o que fazia o coletor de memória parar o programa a cada poucas
+    /// fichas.
+    /// </remarks>
     public static SKBitmap Monocromatico(SKBitmap origem)
     {
-        var lum = Luminancia(origem);
-        var destino = new SKBitmap(new SKImageInfo(origem.Width, origem.Height, SKColorType.Rgba8888, SKAlphaType.Premul));
-        var saida = new byte[lum.Length * 4];
-        for (var i = 0; i < lum.Length; i++)
+        using var rgba = CopiaRgba(origem);
+        var pixels = (rgba ?? origem).GetPixelSpan();
+        var largura = origem.Width;
+        var destino = new SKBitmap(new SKImageInfo(largura, origem.Height, SKColorType.Rgba8888, SKAlphaType.Premul));
+        var inicio = destino.GetPixels();
+        var linha = new byte[largura * 4];
+        for (var y = 0; y < origem.Height; y++)
         {
-            var v = (byte)(lum[i] < Limiar ? 0 : 255);
-            saida[i * 4] = v;
-            saida[i * 4 + 1] = v;
-            saida[i * 4 + 2] = v;
-            saida[i * 4 + 3] = 255;
+            for (int x = 0, p = y * largura * 4; x < largura; x++, p += 4)
+            {
+                var v = (byte)(Luz(pixels, p) < Limiar ? 0 : 255);
+                linha[x * 4] = v;
+                linha[x * 4 + 1] = v;
+                linha[x * 4 + 2] = v;
+                linha[x * 4 + 3] = 255;
+            }
+            System.Runtime.InteropServices.Marshal.Copy(linha, 0, inicio + y * linha.Length, linha.Length);
         }
-        System.Runtime.InteropServices.Marshal.Copy(saida, 0, destino.GetPixels(), saida.Length);
         return destino;
     }
 }

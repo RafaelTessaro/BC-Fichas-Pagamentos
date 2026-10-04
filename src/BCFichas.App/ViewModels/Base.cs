@@ -22,6 +22,11 @@ public abstract partial class PaginaViewModel(PrincipalViewModel principal) : Vi
     {
     }
 
+    /// <summary>Chamado quando outra tela toma o lugar desta.</summary>
+    public virtual void AoSair()
+    {
+    }
+
     [RelayCommand]
     protected virtual void Voltar()
     {

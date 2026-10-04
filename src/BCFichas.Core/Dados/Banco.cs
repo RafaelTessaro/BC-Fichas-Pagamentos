@@ -381,6 +381,12 @@ public sealed class Banco
             Executar(conexao, t, "INSERT INTO versao (v) VALUES (6)");
             t.Commit();
         }
+
+        // Ao abrir, o programa procura os pedidos que ficaram esperando a maquininha (status 0). Sem índice isso lia a
+        // tabela de pedidos inteira (todas as festas guardadas). O índice só guarda esses poucos pedidos, então não
+        // pesa na venda nem no disco. Conferido a cada abertura (não muda a versão do banco): vale também para um
+        // banco copiado de outra máquina ou restaurado de uma cópia antiga.
+        Executar(conexao, null, "CREATE INDEX IF NOT EXISTS ix_pedidos_pendentes ON pedidos (id) WHERE status = 0");
     }
 
     /// <summary>Colunas e linhas que estavam nas configurações (antes da 3.10 a grade era uma só para todas as abas).</summary>
