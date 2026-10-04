@@ -897,8 +897,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
             var texto = $"Evento: {resumo.Evento}\n{resumo.Produtos} produto(s) em {resumo.Abas} aba(s)" +
                         (resumo.Combos > 0 ? $", {resumo.Combos} combo(s)" : "") +
                         $"\nSalvo em {Formato.DataHora(resumo.SalvoEm)} no Caixa {resumo.Caixa:00}.\nArquivo: {arquivo}\n\n" +
-                        "Os produtos e as configurações desta máquina serão trocados por estes (a impressora e a tela " +
-                        "continuam as desta máquina).";
+                        "Os produtos e as configurações desta máquina serão trocados por estes (a impressora, a maquininha " +
+                        "e a tela continuam as desta máquina).";
             if (!s.Pura) texto += $" Também apaga o que está guardado aqui: {DescreverVendas(s)}.";
             texto += " Fica uma cópia de segurança." + Avisos(s, estoque: false);
             if (!await Principal.Confirmar("Restaurar este backup?", texto, "Restaurar", "Voltar")) return;

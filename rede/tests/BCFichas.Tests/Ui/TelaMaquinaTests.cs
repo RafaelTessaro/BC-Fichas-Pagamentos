@@ -133,15 +133,10 @@ public class TelaMaquinaTests
         var arquivo = Path.Combine(pasta, "BCFichas - QUERMESSE NOVA.bcf");
         Assert.Equal("QUERMESSE NOVA", t.Sistema.Programacao.Resumo(arquivo).Evento);
 
-        // A maquininha também vai no backup; a impressora e a tela são da máquina e não contam
+        // A impressora, a tela e a maquininha são de cada máquina (não vão no backup) e não contam: um simulador de
+        // treino que aprova sozinho não pode ir para as máquinas do evento
         tela.Zoom = 125;
         tela.TipoMaquininha = tela.TiposMaquininha.Single(m => m.Valor == TipoMaquininha.Simulador);
-        backup = tela.FazerBackupCommand.ExecuteAsync(null);
-        salvar = await EsperarMensagem(t);
-        Assert.Equal("Alterações não salvas", salvar.Titulo);
-        salvar.NaoCommand.Execute(null);
-        await backup;
-        tela.TipoMaquininha = tela.TiposMaquininha.Single(m => m.Valor == TipoMaquininha.Separada);
         backup = tela.FazerBackupCommand.ExecuteAsync(null);
         feito = await EsperarMensagem(t);
         Assert.Equal("Backup feito", feito.Titulo);

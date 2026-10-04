@@ -1056,7 +1056,7 @@
                   <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="8">
                     <TextBlock Text="Backup da programação" FontSize="18" FontWeight="Bold" />
                     <TextBlock Classes="dica" Margin="0" FontSize="14"
-                               Text="Faça o backup na máquina programada e restaure nas outras: só muda o número do caixa (PDV). Vai tudo num arquivo só (produtos, abas, combos, imagens, logotipo, evento, ficha e senha) e nunca vão as vendas, então quem restaura chega pura para o cliente. A impressora e a tela continuam as de cada máquina." />
+                               Text="Faça o backup na máquina programada e restaure nas outras: só muda o número do caixa (PDV). Vai tudo num arquivo só (produtos, abas, combos, imagens, logotipo, evento, ficha e senha) e nunca vão as vendas, então quem restaura chega pura para o cliente. A impressora, a maquininha e a tela continuam as de cada máquina." />
                     <TextBlock Text="Pasta do backup" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0" />
                     <Grid ColumnDefinitions="*,Auto">
                       <TextBox Text="{Binding PastaBackup}" MaxLength="250" Watermark="C:\Sistema_New\backup" />

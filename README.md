@@ -95,7 +95,8 @@ mostra o valor para passar na maquininha e, quando ela aprova, o operador toca e
 fichas saem. A forma de pagamento fica registrada nos relatórios e no fechamento. Se o programa fechar no meio
 de um pagamento, ao abrir de novo ele pergunta se a maquininha aprovou.
 
-Para treinar sem maquininha existe o modo **simulador** (Configurações → Maquininha). A ligação de verdade
+Para treinar sem maquininha existe o modo **simulador** (Configurações → Maquininha). O tipo de maquininha é de
+cada máquina e não vai no backup da programação: um simulador de treino nunca chega às máquinas do evento. A ligação de verdade
 (tablet → Bluetooth/cabo → maquininha) entra como mais uma opção nessa mesma tela: o programa conversa com a
 maquininha por uma interface única (`IMaquininha`), então essa etapa não mexe nas outras telas.
 
