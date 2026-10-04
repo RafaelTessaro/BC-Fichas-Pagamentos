@@ -52,10 +52,13 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="x:String">
-                    <Button Classes="suave" Margin="3" HorizontalAlignment="Stretch" Height="48"
-                            Content="{Binding Converter={x:Static v:Conversores.CentavosParaNota}}"
+                    <!-- Em tela pequena o valor da nota diminui para caber (cortava: "R$ 1" servia para 1, 10 e 100) -->
+                    <Button Classes="suave" Margin="3" HorizontalAlignment="Stretch" Height="48" Padding="2,0"
                             Command="{Binding $parent[UserControl].((vm:SangriaViewModel)DataContext).Valor.SomarCommand}"
-                            CommandParameter="{Binding}" />
+                            CommandParameter="{Binding}">
+                      <v:TextoQueCabe Text="{Binding Converter={x:Static v:Conversores.CentavosParaNota}}" TamanhoMaximo="16"
+                                      LinhaUnica="True" />
+                    </Button>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>

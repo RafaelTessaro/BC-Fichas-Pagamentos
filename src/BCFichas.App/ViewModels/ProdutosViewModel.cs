@@ -393,7 +393,16 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
             Principal.MostrarAviso("Custo inválido.", erro: true);
             return;
         }
-        if (!int.TryParse(Estoque, out var estoque)) estoque = 0;
+        if (!int.TryParse(Estoque, out var estoque))
+        {
+            // Com o estoque controlado, "1.000" ou "10,5" não podem virar 0 (o produto aparecia ESGOTADO na venda).
+            if (ControlaEstoque)
+            {
+                Principal.MostrarAviso("Digite a quantidade em estoque só com números, por exemplo 100.", erro: true);
+                return;
+            }
+            estoque = 0;
+        }
         // Produto escondido da tela de venda (ex.: vale usado só em combos) não precisa de posição.
         if (Ativo && Posicao is null)
         {
