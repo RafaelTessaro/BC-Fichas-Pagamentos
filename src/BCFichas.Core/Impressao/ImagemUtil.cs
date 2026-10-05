@@ -98,6 +98,8 @@ public static class ImagemUtil
         var resultado = new byte[fonte.Width * fonte.Height];
         for (int i = 0, p = 0; i < resultado.Length; i++, p += 4)
             resultado[i] = Luz(pixels, p);
+        // Os pontos foram lidos direto da memória da imagem: ela não pode ser solta pelo coletor antes do fim
+        GC.KeepAlive(bitmap);
         return resultado;
     }
 
@@ -187,6 +189,7 @@ public static class ImagemUtil
             }
             System.Runtime.InteropServices.Marshal.Copy(linha, 0, inicio + y * linha.Length, linha.Length);
         }
+        GC.KeepAlive(origem); // os pontos foram lidos direto da memória dela
         return destino;
     }
 }

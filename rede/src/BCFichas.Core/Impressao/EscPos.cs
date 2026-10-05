@@ -63,6 +63,8 @@ public static class EscPos
                 saida.Write(linha);
             }
         }
+        // Os pontos foram lidos direto da memória da ficha: ela não pode ser solta pelo coletor antes do fim
+        GC.KeepAlive(bitmap);
     }
 
     /// <summary>Monta o trabalho completo: cada página (ficha) é impressa e a guilhotina é acionada.</summary>
