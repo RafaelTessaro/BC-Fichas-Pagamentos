@@ -266,6 +266,47 @@ public class AuditoriaDasTelasTests
         Assert.Equal("Informe um valor maior que zero.", t.Principal.Aviso);
     }
 
+    /// <summary>O campo fica inteiro na parte da tela que sobra em cima do teclado da tela.</summary>
+    private static void VisivelSobreOTeclado(TelaDeTeste t, Control campo, string tela)
+    {
+        var teclado = t.Achar<TecladoVirtual>();
+        var topoDoTeclado = teclado.TranslatePoint(default, t.Janela)!.Value.Y;
+        var inicio = campo.TranslatePoint(default, t.Janela)!.Value.Y;
+        var fim = campo.TranslatePoint(new Point(0, campo.Bounds.Height), t.Janela)!.Value.Y;
+        Assert.True(inicio >= 0 && fim <= topoDoTeclado + 1,
+            $"{tela}: o campo ficou em {inicio:0} a {fim:0} e o teclado começa em {topoDoTeclado:0}");
+    }
+
+    [AvaloniaFact]
+    public void Em_1024x600_o_campo_com_o_teclado_aberto_fica_visivel()
+    {
+        using var t = new TelaDeTeste(1024, 600);
+        t.AbrirCaixa();
+
+        // Aba Máquina: o cursor já vai para a senha técnica e o teclado abre; o campo e o Entrar ficavam embaixo dele
+        var configuracao = new ConfiguracaoViewModel(t.Principal);
+        t.Principal.Abrir(configuracao);
+        TelaDeTeste.Atualizar();
+        configuracao.AbaSelecionada = ConfiguracaoViewModel.AbaMaquina;
+        TelaDeTeste.Atualizar();
+        TelaDeTeste.Atualizar();
+        Assert.True(t.Principal.TecladoVisivel);
+        var senha = t.Achar<TextBox>(x => x.Name == "CampoSenhaTecnica");
+        Assert.True(senha.IsFocused);
+        VisivelSobreOTeclado(t, senha, "senha técnica");
+
+        // Motivo da sangria
+        var sangria = new SangriaViewModel(t.Principal);
+        t.Principal.Abrir(sangria);
+        TelaDeTeste.Atualizar();
+        var motivo = t.Achar<TextBox>();
+        TocarEm(t, Centro(t, motivo));
+        TelaDeTeste.Atualizar();
+        TelaDeTeste.Atualizar();
+        Assert.True(t.Principal.TecladoVisivel);
+        VisivelSobreOTeclado(t, motivo, "motivo da sangria");
+    }
+
     [AvaloniaFact]
     public async Task Produto_de_preco_zero_vende_em_dinheiro_e_no_pix()
     {
@@ -322,18 +363,15 @@ public class AuditoriaDasTelasTests
     public async Task Valores_e_botoes_aparecem_inteiros_em_todas_as_telas(int largura, int altura, int zoom)
     {
         var cortados = new List<string>();
-        var foto = largura == 1024;
         using var t = new TelaDeTeste(largura, altura, c =>
         {
             c.Zoom = zoom;
             c.LiberarDevolucao = true;
             c.LiberarReimpressao = true;
         });
-        void Ver(string tela)
-        {
-            cortados.AddRange(Cortados(t).Select(x => tela + ": " + x));
-            if (foto) t.Foto("auditoria-1024x600-" + tela);
-        }
+        // Sem fotos: capturar a tela muitas vezes seguidas derruba o processo de teste de vez em quando (falha do
+        // Skia na captura sem janela de verdade, que já acontecia antes; não acontece no programa).
+        void Ver(string tela) => cortados.AddRange(Cortados(t).Select(x => tela + ": " + x));
 
         // Abertura: o troco de R$ 100,00 aparecia "R$ 100,0" e os botões rápidos todos como "+ R$"
         var abertura = Assert.IsType<AberturaViewModel>(t.Principal.Pagina);

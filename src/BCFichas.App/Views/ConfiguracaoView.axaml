@@ -867,9 +867,10 @@
         <!-- MÁQUINA: programar várias máquinas, começar de novo e liberar opções (só com a senha técnica) -->
         <TabItem Header="Máquina">
           <Panel>
-          <!-- Cadeado: a senha técnica da BC Fichas (no modo teste não pede) -->
-          <Border Classes="bloco" Width="460" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="28,24"
-                  IsVisible="{Binding !MaquinaLiberada}">
+          <!-- Cadeado: a senha técnica da BC Fichas (no modo teste não pede). Com rolagem: em tela pequena, com o
+               teclado da tela aberto, o campo da senha e o Entrar ficavam escondidos embaixo do teclado. -->
+          <ScrollViewer IsVisible="{Binding !MaquinaLiberada}">
+          <Border Classes="bloco" Width="460" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="28,24">
             <StackPanel Spacing="12">
               <Border Width="64" Height="64" CornerRadius="18" Background="{StaticResource FundoLateral}"
                       HorizontalAlignment="Center">
@@ -896,6 +897,7 @@
               </Button>
             </StackPanel>
           </Border>
+          </ScrollViewer>
 
           <ScrollViewer IsVisible="{Binding MaquinaLiberada}">
             <StackPanel Margin="6,6,6,24" MaxWidth="900" HorizontalAlignment="Left" Spacing="14">
