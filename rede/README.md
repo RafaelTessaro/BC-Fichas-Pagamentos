@@ -70,7 +70,8 @@ configurações, e o painel fecha sozinho quando o caixa fecha.
    Já vem um PIN de 6 números (pode trocar: de 4 a 8 números).
 2. **Endereços das máquinas** (opcional): com IP fixo, ponha a lista de todas, por exemplo
    `192.168.1.10 192.168.1.11 192.168.1.12 192.168.1.14` (a mesma lista em todas; pode incluir a própria). Em
-   branco, o painel procura as outras máquinas sozinho na rede (demora um pouco mais para achar).
+   branco, o painel procura as outras máquinas sozinho na rede (a primeira vez que alguém abre o painel leva uns
+   segundos a mais).
 3. **Liberar no firewall**: toque uma vez em cada máquina. O Windows pede permissão de administrador; a regra só
    aceita aparelhos da rede local. Sem isso, o Windows bloqueia o celular.
 4. **Salvar.**

@@ -268,6 +268,60 @@ public class PainelTests : IAsyncLifetime
         parar.Cancel();
     }
 
+    [Fact]
+    public async Task Sem_lista_so_a_primeira_procura_na_rede_faz_o_celular_esperar()
+    {
+        // Lista de endereços em branco numa rede grande sem as outras máquinas: cada procura pergunta a 64 endereços
+        // que aceitam a conexão e não respondem (uns 1,5 s por procura, como os 6 s de uma rede de verdade).
+        Ligar(_a.Sistema, 1);
+        using var parar = new CancellationTokenSource();
+        var mudo = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+        mudo.Start();
+        var presos = new System.Collections.Concurrent.ConcurrentBag<System.Net.Sockets.TcpClient>();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (true) presos.Add(await mudo.AcceptTcpClientAsync(parar.Token));
+            }
+            catch (Exception)
+            {
+                // fim do teste
+            }
+        });
+        var enderecoMudo = $"127.0.0.1:{((IPEndPoint)mudo.LocalEndpoint).Port}";
+        using var leitor = new Leitor(_a.Pasta, "teste-procura");
+        using var rede = new Rede(leitor, Rede.PortaPadrao)
+        {
+            Candidatos = () => Enumerable.Repeat(enderecoMudo, 64),
+            IntervaloDaProcura = TimeSpan.Zero,
+            Reaproveitar = TimeSpan.Zero,
+        };
+        try
+        {
+            // Primeira vez: espera a procura, para já vir com as outras máquinas (se houvesse)
+            var relogio = System.Diagnostics.Stopwatch.StartNew();
+            await rede.Atualizar();
+            Assert.True(relogio.ElapsedMilliseconds >= 1000, $"não esperou a primeira procura ({relogio.ElapsedMilliseconds} ms)");
+
+            // Depois: a procura continua por trás (no máximo uma vez por minuto), sem ninguém esperar por ela. Antes,
+            // com uma máquina só no evento, todo Atualizar esperava a procura inteira.
+            for (var i = 0; i < 3; i++)
+            {
+                relogio.Restart();
+                await rede.Atualizar();
+                Assert.True(relogio.ElapsedMilliseconds < 500, $"o Atualizar esperou {relogio.ElapsedMilliseconds} ms");
+            }
+            Assert.Single(rede.Evento().Maquinas);
+        }
+        finally
+        {
+            parar.Cancel();
+            mudo.Stop();
+            foreach (var c in presos) c.Dispose();
+        }
+    }
+
     /// <summary>Um "tablet" que conta as perguntas que recebe e responde sempre os mesmos números.</summary>
     private static int Contador(byte[] numeros, int[] contador, CancellationToken parar)
     {

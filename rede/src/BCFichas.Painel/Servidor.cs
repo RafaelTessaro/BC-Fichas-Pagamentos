@@ -79,7 +79,7 @@ public sealed class Servidor : IAsyncDisposable
         });
         var app = builder.Build();
         var leitor = new Leitor(pastaDados, Guid.NewGuid().ToString("N")[..12]);
-        var rede = new Rede(leitor, porta == 0 ? Rede.PortaPadrao : porta);
+        var rede = new Rede(leitor, porta == 0 ? Rede.PortaPadrao : porta) { ProcurarNaRede = !soLocal };
         var servidor = new Servidor(app, leitor, rede);
         servidor.Configurar();
         await app.StartAsync();

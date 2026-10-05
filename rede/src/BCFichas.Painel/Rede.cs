@@ -27,8 +27,8 @@ public sealed class Rede : IDisposable
     internal static readonly TimeSpan EsperaOutroPin = TimeSpan.FromMinutes(6);
 
     /// <summary>
-    /// Sem a lista de endereços e sem nenhuma máquina achada ainda, o primeiro Atualizar espera a procura na rede
-    /// (perguntar aos 253 vizinhos leva uns 6 s) para já vir com as outras máquinas.
+    /// Sem a lista de endereços, quem abre o painel pela primeira vez espera a primeira procura na rede (perguntar aos
+    /// 253 vizinhos leva uns 6 s) para já ver as outras máquinas. As procuras seguintes não fazem ninguém esperar.
     /// </summary>
     internal static readonly TimeSpan EsperaPelaProcura = TimeSpan.FromSeconds(8);
 
@@ -44,6 +44,7 @@ public sealed class Rede : IDisposable
     private string? _pinUsado;
     private Task? _rodada;
     private Task _procura = Task.CompletedTask;
+    private Task? _primeiraProcura;
 
     private sealed class Vizinha
     {
@@ -69,6 +70,18 @@ public sealed class Rede : IDisposable
     /// máquinas, em vez de perguntar tudo de novo.
     /// </summary>
     public TimeSpan Reaproveitar { get; init; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// Procura as outras máquinas na rede quando a lista de endereços está em branco. Desligada com o painel ouvindo
+    /// só o próprio computador (testes): ninguém da rede chegaria nele.
+    /// </summary>
+    public bool ProcurarNaRede { get; init; } = true;
+
+    /// <summary>Endereços perguntados na procura (os testes trocam por uma rede de mentira).</summary>
+    internal Func<IEnumerable<string>>? Candidatos { get; init; }
+
+    /// <summary>Uma procura na rede a cada tanto tempo, no máximo.</summary>
+    internal TimeSpan IntervaloDaProcura { get; init; } = TimeSpan.FromMinutes(1);
 
     /// <summary>
     /// Pergunta agora às outras máquinas como estão as vendas (o celular abriu o painel ou tocou em Atualizar).
@@ -159,18 +172,18 @@ public sealed class Rede : IDisposable
 
     /// <summary>
     /// Uma consulta a todas as outras máquinas, ao mesmo tempo. Sem a lista de endereços, procura as máquinas na rede
-    /// (no máximo uma vez por minuto) e, se ainda não achou nenhuma, espera a procura para já vir com elas.
+    /// (no máximo uma vez por minuto); só a primeira procura faz o celular esperar.
     /// </summary>
     private async Task Rodada(CancellationToken parar)
     {
         try
         {
             Procurar(parar);
-            if (_vizinhas.IsEmpty && !_procura.IsCompleted)
+            if (_primeiraProcura is { IsCompleted: false } primeira)
             {
                 try
                 {
-                    await _procura.WaitAsync(EsperaPelaProcura, parar);
+                    await primeira.WaitAsync(EsperaPelaProcura, parar);
                 }
                 catch (TimeoutException)
                 {
@@ -219,17 +232,19 @@ public sealed class Rede : IDisposable
             var fica = digitadas.Count > 0 ? digitadas.Contains(e, StringComparer.OrdinalIgnoreCase) : !v.Digitada;
             if (!fica) _vizinhas.TryRemove(e, out _);
         }
-        if (digitadas.Count > 0 || !_procura.IsCompleted || DateTime.UtcNow - _ultimaProcura < TimeSpan.FromMinutes(1)) return;
+        if (!ProcurarNaRede || digitadas.Count > 0 || !_procura.IsCompleted ||
+            DateTime.UtcNow - _ultimaProcura < IntervaloDaProcura) return;
         _ultimaProcura = DateTime.UtcNow;
-        _procura = Task.Run(() => ProcurarNaRede(parar), parar);
+        _procura = Task.Run(() => ProcurarVizinhos(parar), parar);
+        _primeiraProcura ??= _procura;
     }
 
     /// <summary>Pergunta "quem é você?" aos 253 vizinhos de cada rede deste tablet (32 de cada vez).</summary>
-    private async Task ProcurarNaRede(CancellationToken parar)
+    private async Task ProcurarVizinhos(CancellationToken parar)
     {
         try
         {
-            var candidatos = RedeLocal().SelectMany(ip => Vizinhos(ip).Select(v => $"{v}:{_porta}"))
+            var candidatos = (Candidatos?.Invoke() ?? RedeLocal().SelectMany(ip => Vizinhos(ip).Select(v => $"{v}:{_porta}")))
                 .Where(e => !_vizinhas.ContainsKey(e) && !_recusadas.ContainsKey(e)).ToList();
             using var limite = new SemaphoreSlim(32);
             using var rapido = new HttpClient { Timeout = TimeSpan.FromMilliseconds(700), MaxResponseContentBufferSize = 64 * 1024 };
