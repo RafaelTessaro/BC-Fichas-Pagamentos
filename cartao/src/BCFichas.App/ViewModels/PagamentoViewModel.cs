@@ -33,6 +33,13 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     private FormaPagamento _forma;
     private bool _fechada;
     private DateTime? _cobrandoDesde;
+    /// <summary>Cancelar tocado enquanto o pedido ainda estava sendo gravado (antes de ir para a maquininha).</summary>
+    private bool _desistiu;
+    /// <summary>
+    /// Consultar de novo, Aprovou ou Não foi pago em andamento (com a confirmação aberta): um segundo toque não faz
+    /// nada (imprimiria as fichas duas vezes).
+    /// </summary>
+    private bool _resolvendo;
 
     public PagamentoViewModel(PrincipalViewModel principal, SessaoCaixa sessao, IReadOnlyList<LinhaCarrinho> linhas,
         Action aoConcluir)
@@ -169,6 +176,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
         CorForma = Recursos.Pincel(forma == FormaPagamento.Pix ? "PixVerde" : "Primaria");
         FundoForma = Recursos.Pincel(forma == FormaPagamento.Pix ? "GradientePix" : "PrimariaClara");
         Andamento = "Enviando para a maquininha...";
+        _desistiu = false;
         Etapa = EtapaPagamento.Maquininha;
 
         try
@@ -183,6 +191,8 @@ public sealed partial class PagamentoViewModel : ViewModelBase
         }
 
         _cancelar = new CancellationTokenSource();
+        // Tocou em Cancelar enquanto o pedido era gravado: nem manda para a maquininha
+        if (_desistiu) _cancelar.Cancel();
         var andamento = new Progress<string>(texto => Andamento = texto);
         _cobrandoDesde = DateTime.UtcNow;
         ResultadoCobranca resultado;
@@ -243,73 +253,135 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     [RelayCommand]
     private async Task ConsultarDeNovo()
     {
-        if (_pedido is null || Consultando) return;
+        if (!PodeResolver()) return;
+        _resolvendo = true;
         Consultando = true;
-        ResultadoCobranca? resultado;
         try
         {
-            resultado = await _principal.Sistema.Maquininha.ConsultarAsync(VendaServico.IdCobranca(_pedido), CancellationToken.None);
-        }
-        catch (MaquininhaSemResposta e)
-        {
-            Mensagem = e.Message;
-            return;
-        }
-        catch (Exception e)
-        {
-            Log.Erro("Consultar a maquininha", e);
-            Mensagem = "Não consegui falar com a maquininha: " + e.Message;
-            return;
+            var pedido = _pedido!;
+            ResultadoCobranca? resultado;
+            try
+            {
+                resultado = await _principal.Sistema.Maquininha.ConsultarAsync(VendaServico.IdCobranca(pedido),
+                    pedido.TotalCentavos, CancellationToken.None);
+            }
+            catch (MaquininhaSemResposta e)
+            {
+                Mensagem = e.Message;
+                return;
+            }
+            catch (Exception e)
+            {
+                Log.Erro("Consultar a maquininha", e);
+                Mensagem = "Não consegui falar com a maquininha: " + e.Message;
+                return;
+            }
+            finally
+            {
+                Consultando = false;
+            }
+            if (!AindaSemResposta()) return;
+
+            if (resultado is { Aprovado: true })
+                await Pago(resultado.Autorizacao);
+            else
+                NaoPago(resultado?.Mensagem ?? "A cobrança não chegou na maquininha: nada foi cobrado. Tente de novo.");
         }
         finally
         {
-            Consultando = false;
+            _resolvendo = false;
         }
-
-        var pedidoId = _pedido.Id;
-        if (resultado is { Aprovado: true })
-        {
-            _pedido = await Task.Run(() => _principal.Sistema.Vendas.ConfirmarPagamento(pedidoId, resultado.Autorizacao));
-            await Concluir();
-            return;
-        }
-        _principal.Sistema.Vendas.Cancelar(pedidoId);
-        _pedido = null;
-        Mensagem = resultado?.Mensagem ?? "A cobrança não chegou na maquininha: nada foi cobrado. Tente de novo.";
-        Etapa = EtapaPagamento.Recusado;
     }
 
     /// <summary>A maquininha mostrou APROVADO (o operador viu nela): imprime as fichas.</summary>
     [RelayCommand]
     private async Task FoiAprovado()
     {
-        if (_pedido is null || Consultando) return;
-        if (!await _principal.Confirmar("A maquininha aprovou?",
-                $"Só confirme se a maquininha mostrou o pagamento de {Total} APROVADO. As fichas vão sair.",
-                "Sim, aprovou", "Voltar"))
-            return;
-        var pedidoId = _pedido.Id;
-        _pedido = await Task.Run(() => _principal.Sistema.Vendas.ConfirmarPagamento(pedidoId, "aprovado na maquininha (conferido pelo operador)"));
-        await Concluir();
+        if (!PodeResolver()) return;
+        _resolvendo = true;
+        try
+        {
+            if (!await _principal.Confirmar("A maquininha aprovou?",
+                    $"Só confirme se a maquininha mostrou o pagamento de {Total} APROVADO. As fichas vão sair.",
+                    "Sim, aprovou", "Voltar"))
+                return;
+            if (!AindaSemResposta()) return;
+            await Pago("aprovado na maquininha (conferido pelo operador)");
+        }
+        finally
+        {
+            _resolvendo = false;
+        }
     }
 
     /// <summary>A maquininha mostrou que não foi pago (ou o cliente desistiu): cancela o pedido.</summary>
     [RelayCommand]
     private async Task NaoFoiPago()
     {
-        if (_pedido is null || Consultando) return;
-        if (!await _principal.Confirmar("Não foi pago?",
-                "Só confirme se a maquininha mostrou que o pagamento NÃO foi aprovado. O pedido será cancelado e nenhuma ficha sai.",
-                "Não foi pago", "Voltar", perigo: true))
+        if (!PodeResolver()) return;
+        _resolvendo = true;
+        try
+        {
+            if (!await _principal.Confirmar("Não foi pago?",
+                    "Só confirme se a maquininha mostrou que o pagamento NÃO foi aprovado. O pedido será cancelado e nenhuma ficha sai.",
+                    "Não foi pago", "Voltar", perigo: true))
+                return;
+            if (!AindaSemResposta()) return;
+            var pedido = _pedido!;
+            if (!NaoPago("Pedido cancelado: nenhuma ficha saiu.")) return;
+            // Se a maquininha aparecer depois com esse pagamento aprovado, o operador fica sabendo
+            (_principal.Sistema.Maquininha as MaquininhaPagBank)?.ConferirDepois(VendaServico.IdCobranca(pedido),
+                pedido.TotalCentavos);
+        }
+        finally
+        {
+            _resolvendo = false;
+        }
+    }
+
+    private bool PodeResolver() => !_resolvendo && AindaSemResposta();
+
+    /// <summary>Ainda na tela "A maquininha não respondeu" (a confirmação pode ter ficado aberta enquanto algo mudou).</summary>
+    private bool AindaSemResposta() => !_fechada && _pedido is not null && Etapa == EtapaPagamento.SemResposta;
+
+    private async Task Pago(string? autorizacao)
+    {
+        var pedidoId = _pedido!.Id;
+        try
+        {
+            _pedido = await Task.Run(() => _principal.Sistema.Vendas.ConfirmarPagamento(pedidoId, autorizacao));
+        }
+        catch (ErroDeNegocio e)
+        {
+            Mensagem = e.Message;
             return;
-        _principal.Sistema.Vendas.Cancelar(_pedido.Id);
+        }
+        await Concluir();
+    }
+
+    private bool NaoPago(string mensagem)
+    {
+        try
+        {
+            _principal.Sistema.Vendas.Cancelar(_pedido!.Id);
+        }
+        catch (ErroDeNegocio e)
+        {
+            Mensagem = e.Message;
+            return false;
+        }
         _pedido = null;
-        Mensagem = "Pedido cancelado: nenhuma ficha saiu.";
+        Mensagem = mensagem;
         Etapa = EtapaPagamento.Recusado;
+        return true;
     }
 
     [RelayCommand]
-    private void CancelarMaquininha() => _cancelar?.Cancel();
+    private void CancelarMaquininha()
+    {
+        if (_cancelar is { } cancelar) cancelar.Cancel();
+        else if (Etapa == EtapaPagamento.Maquininha) _desistiu = true;
+    }
 
     [RelayCommand]
     private void SimularAprovar() => (_principal.Sistema.Maquininha as MaquininhaSimulada)?.Aprovar();
@@ -346,7 +418,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     [RelayCommand]
     private void Fechar()
     {
-        if (Etapa == EtapaPagamento.Maquininha || Gravando) return;
+        if (Etapa is EtapaPagamento.Maquininha or EtapaPagamento.SemResposta || Gravando) return;
         FecharJanela();
     }
 
@@ -358,6 +430,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
         _principal.FecharDialogo(this);
         if (_pedido is { Forma: FormaPagamento.Dinheiro, TrocoCentavos: > 0 } pago)
             _principal.Venda.MostrarUltimoTroco(pago.TrocoCentavos, pago.RecebidoCentavos);
+        _ = _principal.AvisarAprovadasDepois();
     }
 
     /// <summary>Pago: limpa o pedido da tela e imprime as fichas.</summary>

@@ -6,13 +6,19 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Os resultados das cobranças num arquivo da memória do app (não usa cartão de memória). Guarda as últimas
- * [MAXIMO]: o tablet só pergunta das cobranças recentes.
+ * Os resultados das cobranças na memória do app (não usa cartão de memória). Guarda as últimas [MAXIMO]: o tablet
+ * só pergunta das cobranças recentes.
+ *
+ * Grava em dois arquivos, um de cada vez, cada gravação com um número maior que a anterior. Se a maquininha desligar
+ * no meio de uma gravação, o outro arquivo continua inteiro e é ele que vale ao abrir.
  */
-class ArmazemArquivo(private val arquivo: File) : Armazem {
+class ArmazemArquivo(arquivo: File) : Armazem {
+    private val vagas = arrayOf(File(arquivo.path + ".a"), File(arquivo.path + ".b"))
     private val trava = Any()
     private val resultados = LinkedHashMap<String, ResultadoPagamento>()
     private var emAndamento: PedidoPagamento? = null
+    private var sequencia = 0L
+    private var proximaVaga = 0
 
     init {
         ler()
@@ -37,9 +43,8 @@ class ArmazemArquivo(private val arquivo: File) : Armazem {
     override fun ultimas(quantas: Int): List<Pair<String, ResultadoPagamento>> =
         synchronized(trava) { resultados.entries.reversed().take(quantas).map { it.key to it.value } }
 
-    /** Grava num arquivo novo e troca: se a maquininha desligar no meio, fica o arquivo antigo inteiro. */
     private fun gravar() {
-        val json = JSONObject()
+        val json = JSONObject().put("sequencia", sequencia + 1)
         val lista = JSONArray()
         for ((id, r) in resultados) lista.put(paraJson(r).put("id", id))
         json.put("resultados", lista)
@@ -49,22 +54,31 @@ class ArmazemArquivo(private val arquivo: File) : Armazem {
                     .put("forma", it.forma).put("comprovante", it.comprovante)
             )
         }
-        val novo = File(arquivo.path + ".novo")
-        FileOutputStream(novo).use { saida ->
+        // Escreve por cima do arquivo mais velho e só então passa a valer (o mais novo fica intacto até a próxima)
+        FileOutputStream(vagas[proximaVaga]).use { saida ->
             saida.write(json.toString().toByteArray(Charsets.UTF_8))
             saida.fd.sync()
         }
-        if (!novo.renameTo(arquivo)) {
-            arquivo.delete()
-            novo.renameTo(arquivo)
-        }
+        sequencia++
+        proximaVaga = 1 - proximaVaga
     }
 
     private fun ler() {
-        val origem = if (arquivo.exists()) arquivo else File(arquivo.path + ".novo")
-        if (!origem.exists()) return
+        var melhor: JSONObject? = null
+        for ((vaga, arquivo) in vagas.withIndex()) {
+            val json = try {
+                JSONObject(arquivo.readText(Charsets.UTF_8))
+            } catch (e: Exception) {
+                continue // não existe ou ficou pela metade
+            }
+            if (melhor == null || json.optLong("sequencia") > melhor.optLong("sequencia")) {
+                melhor = json
+                proximaVaga = 1 - vaga
+            }
+        }
+        val json = melhor ?: return
         try {
-            val json = JSONObject(origem.readText(Charsets.UTF_8))
+            sequencia = json.optLong("sequencia")
             val lista = json.optJSONArray("resultados") ?: JSONArray()
             for (i in 0 until lista.length()) {
                 val r = lista.getJSONObject(i)
@@ -77,7 +91,7 @@ class ArmazemArquivo(private val arquivo: File) : Armazem {
                 )
             }
         } catch (e: Exception) {
-            // Arquivo estragado: começa vazio (o tablet confere o que ficou sem resposta)
+            // Arquivo estragado: começa com o que deu para ler (o tablet confere o que ficou sem resposta)
         }
     }
 
@@ -87,12 +101,15 @@ class ArmazemArquivo(private val arquivo: File) : Armazem {
         private fun paraJson(r: ResultadoPagamento) = JSONObject()
             .put("aprovado", r.aprovado).put("cancelado", r.cancelado).put("mensagem", r.mensagem)
             .putOpt("autorizacao", r.autorizacao).putOpt("nsu", r.nsu).putOpt("bandeira", r.bandeira)
-            .putOpt("codigo", r.codigo).putOpt("referencia", r.referencia)
+            .putOpt("codigo", r.codigo).putOpt("referencia", r.referencia).putOpt("valor", r.valor)
+            .put("indefinido", r.indefinido)
 
         private fun deJson(j: JSONObject) = ResultadoPagamento(
             aprovado = j.optBoolean("aprovado"), cancelado = j.optBoolean("cancelado"), mensagem = j.optString("mensagem"),
             autorizacao = j.opcional("autorizacao"), nsu = j.opcional("nsu"), bandeira = j.opcional("bandeira"),
             codigo = j.opcional("codigo"), referencia = j.opcional("referencia"),
+            valor = if (j.has("valor") && !j.isNull("valor")) j.optLong("valor") else null,
+            indefinido = j.optBoolean("indefinido"),
         )
 
         private fun JSONObject.opcional(chave: String): String? = if (has(chave) && !isNull(chave)) optString(chave) else null

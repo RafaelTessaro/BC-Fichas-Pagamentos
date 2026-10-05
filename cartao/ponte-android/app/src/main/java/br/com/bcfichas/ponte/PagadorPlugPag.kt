@@ -63,7 +63,10 @@ class PagadorPlugPag(context: Context) : Pagador {
 
     override fun ultimaAprovada(): ResultadoPagamento? {
         val r = plugPag.getLastApprovedTransaction()
-        return if (r.result == PlugPag.RET_OK) converter(r) else null
+        // Sem resposta boa do PagBank não dá para saber: quem chamou trata como "não sei" (nunca como recusada)
+        if (r.result != PlugPag.RET_OK)
+            throw IllegalStateException("O PagBank não informou a última venda aprovada (código ${r.errorCode ?: r.result}).")
+        return converter(r)
     }
 
     private fun converter(r: PlugPagTransactionResult): ResultadoPagamento {
@@ -78,6 +81,7 @@ class PagadorPlugPag(context: Context) : Pagador {
             bandeira = r.cardBrand,
             codigo = r.transactionCode,
             referencia = r.userReference,
+            valor = Mensagem.centavos(r.amount),
         )
     }
 

@@ -1,4 +1,4 @@
-using System.Net.Sockets;
+using System.Collections.Concurrent;
 using System.Text;
 using System.Threading.Channels;
 
@@ -32,7 +32,8 @@ public sealed record TemposMaquininha(TimeSpan EsperaLigar, TimeSpan IntervaloPi
 /// <remarks>
 /// Nunca cobra duas vezes: cada pedido tem um identificador fixo e o app ponte guarda o resultado de cada um. Se a
 /// ligação cair no meio, o tablet liga de novo e pergunta pelo mesmo identificador. Cancelar no tablet só pede para a
-/// maquininha cancelar: se o cliente já tinha pago, vale o pagamento.
+/// maquininha cancelar: se o cliente já tinha pago, vale o pagamento. Quando a maquininha não sabe dizer se a
+/// cobrança foi paga ("indefinida"), o tablet não decide: o operador confere na maquininha.
 /// </remarks>
 public sealed class MaquininhaPagBank : IMaquininha, IDisposable
 {
@@ -40,6 +41,8 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
     private readonly SemaphoreSlim _uso = new(1, 1);
     private Ligacao? _ligacao;
     private volatile bool _descartada;
+    private readonly ConcurrentQueue<string> _aprovadasDepois = new();
+    private readonly ConcurrentDictionary<string, long> _conferirDepois = new();
 
     /// <param name="conexao">Nulo: a maquininha ainda não foi escolhida nas configurações.</param>
     public MaquininhaPagBank(IConexaoPonte? conexao, int caixa, bool comprovante, string programa = "BC Fichas Cartão")
@@ -61,6 +64,21 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
 
     /// <summary>O que o app ponte contou na última vez que ligou.</summary>
     public InfoMaquininha? Info { get; private set; }
+
+    /// <summary>
+    /// Uma cobrança que a maquininha contou como aprovada quando o tablet já não esperava por ela (o operador tinha
+    /// desistido de esperar e tocado em "Não foi pago"). Quem mostra o aviso tira daqui e confere o pedido.
+    /// </summary>
+    public bool TirarAprovadaDepois(out string id) => _aprovadasDepois.TryDequeue(out id!);
+
+    /// <summary>
+    /// O operador decidiu, sem a maquininha responder, que uma cobrança não foi paga. Nas próximas vezes que ligar, o
+    /// tablet pergunta por ela à maquininha: se aparecer aprovada, vira um aviso (<see cref="TirarAprovadaDepois"/>).
+    /// </summary>
+    public void ConferirDepois(string id, long valorCentavos)
+    {
+        if (_conferirDepois.Count < 20) _conferirDepois[id] = valorCentavos;
+    }
 
     // Tempos (os testes usam tempos curtos)
     /// <summary>Quanto espera a ligação Bluetooth abrir e o app ponte responder.</summary>
@@ -89,7 +107,7 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
             await Ligar(cancelar);
             return Info!;
         }
-        catch (Exception e) when (e is not OperationCanceledException)
+        catch (Exception e) when (!cancelar.IsCancellationRequested)
         {
             throw new ErroDeNegocio(Explicar(e));
         }
@@ -112,13 +130,14 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
             {
                 ligacao = await Ligar(cancelar);
             }
-            catch (Exception e) when (e is not OperationCanceledException)
+            catch (Exception e) when (!cancelar.IsCancellationRequested)
             {
                 // Nada foi para a maquininha: o pedido pode ser cancelado sem medo
                 throw new ErroDeNegocio(Explicar(e));
             }
             if (Info is { Pronta: false } info)
                 throw new ErroDeNegocio(info.Mensagem.Length > 0 ? info.Mensagem : "A maquininha não está pronta para cobrar.");
+            PerguntarPelasDesistidas(ligacao, cobranca.Id);
 
             var pedido = new MensagemPonte
             {
@@ -133,27 +152,31 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
             {
                 ligacao.Enviar(pedido);
             }
-            catch (Exception)
+            catch (LigacaoPerdida)
             {
                 // Pode ter chegado ou não: liga de novo e pergunta (o app ponte nunca cobra o mesmo pedido duas vezes)
-                ligacao = await Religar(cobranca.Id, andamento);
+                ligacao = await Religar(cobranca.Id, cobranca.ValorCentavos, andamento);
             }
             andamento?.Report(cobranca.Forma == FormaPagamento.Pix
                 ? "Mostrando o QR Code do PIX na maquininha..."
                 : "Insira, passe ou aproxime o cartão na maquininha");
 
             var pediuCancelar = false;
+            var proximoCancelar = 0L;
             while (true)
             {
-                if (cancelar.IsCancellationRequested && !pediuCancelar)
+                // Pede de novo de tempos em tempos até a resposta chegar: o pedido pode chegar antes de o PagBank
+                // abrir a tela de pagamento (e aí não teria o que cancelar)
+                if (cancelar.IsCancellationRequested && Environment.TickCount64 >= proximoCancelar)
                 {
+                    if (!pediuCancelar) andamento?.Report("Pedindo para a maquininha cancelar...");
                     pediuCancelar = true;
-                    andamento?.Report("Pedindo para a maquininha cancelar...");
+                    proximoCancelar = Environment.TickCount64 + (long)IntervaloPing.TotalMilliseconds;
                     try
                     {
                         ligacao.Enviar(new MensagemPonte { Tipo = "cancelar", Id = cobranca.Id });
                     }
-                    catch (Exception)
+                    catch (LigacaoPerdida)
                     {
                         // A ligação caiu: a espera abaixo percebe, liga de novo e pede de novo
                     }
@@ -166,12 +189,17 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
                 }
                 catch (LigacaoPerdida)
                 {
-                    ligacao = await Religar(cobranca.Id, andamento);
+                    ligacao = await Religar(cobranca.Id, cobranca.ValorCentavos, andamento);
                     // Pediu para cancelar na ligação que caiu: pede de novo na nova
-                    pediuCancelar = false;
+                    proximoCancelar = 0;
                     continue;
                 }
-                if (m is null || (m.Id is not null && m.Id != cobranca.Id)) continue;
+                if (m is null) continue;
+                if (m.Id is not null && m.Id != cobranca.Id)
+                {
+                    OutraCobranca(m);
+                    continue;
+                }
 
                 switch (m.Tipo)
                 {
@@ -180,10 +208,14 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
                             andamento?.Report(cancelar.IsCancellationRequested ? "Cancelando... " + m.Texto : m.Texto);
                         break;
                     case "resultado":
+                        ConferirValor(m, cobranca.ValorCentavos);
                         // Cancelado como o operador pediu. Se o cliente pagou antes de o cancelamento chegar, vale o pagamento.
                         if (m.Aprovado != true && m.Cancelado == true && cancelar.IsCancellationRequested)
                             throw new OperationCanceledException(cancelar);
                         return Resultado(m);
+                    case "indefinida":
+                        throw new MaquininhaSemResposta(Texto(m.Mensagem,
+                            "A maquininha não conseguiu saber se o pagamento foi aprovado. Confira nela."));
                     case "ocupada":
                         return new ResultadoCobranca(false, Texto(m.Mensagem,
                             "A maquininha está ocupada com outro pagamento. Termine o outro pagamento nela e tente de novo."));
@@ -203,9 +235,9 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
     /// <summary>
     /// Pergunta o que aconteceu com uma cobrança: o resultado, nulo se ela nunca chegou na maquininha, ou
     /// <see cref="MaquininhaSemResposta"/> se não deu para saber (maquininha fora do alcance, pagamento ainda em
-    /// andamento).
+    /// andamento, a maquininha não sabe dizer).
     /// </summary>
-    public async Task<ResultadoCobranca?> ConsultarAsync(string id, CancellationToken cancelar)
+    public async Task<ResultadoCobranca?> ConsultarAsync(string id, long valorCentavos, CancellationToken cancelar)
     {
         await _uso.WaitAsync(cancelar);
         try
@@ -214,9 +246,10 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
             try
             {
                 ligacao = await Ligar(cancelar);
-                ligacao.Enviar(new MensagemPonte { Tipo = "consultar", Id = id });
+                PerguntarPelasDesistidas(ligacao, id);
+                ligacao.Enviar(new MensagemPonte { Tipo = "consultar", Id = id, Valor = valorCentavos });
             }
-            catch (Exception e) when (e is not OperationCanceledException)
+            catch (Exception e) when (!cancelar.IsCancellationRequested)
             {
                 throw new MaquininhaSemResposta(Explicar(e));
             }
@@ -236,13 +269,22 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
                 {
                     throw new MaquininhaSemResposta("A ligação com a maquininha caiu.");
                 }
-                if (m is null || (m.Id is not null && m.Id != id)) continue;
+                if (m is null) continue;
+                if (m.Id is not null && m.Id != id)
+                {
+                    OutraCobranca(m);
+                    continue;
+                }
                 switch (m.Tipo)
                 {
                     case "resultado":
+                        ConferirValor(m, valorCentavos);
                         return Resultado(m);
                     case "desconhecida":
                         return null;
+                    case "indefinida":
+                        throw new MaquininhaSemResposta(Texto(m.Mensagem,
+                            "A maquininha não conseguiu saber se o pagamento foi aprovado. Confira nela."));
                     case "erro":
                         throw new MaquininhaSemResposta(Texto(m.Mensagem, "A maquininha não conseguiu consultar o pagamento."));
                 }
@@ -272,7 +314,8 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
             throw new ErroDeNegocio("Escolha a maquininha em Configurações → Maquininha.");
         if (_ligacao is { } atual)
         {
-            if (await atual.Responde(TimeSpan.FromSeconds(3), cancelar)) return atual;
+            // Não estava pronta (não ativada no PagBank): liga de novo para saber se já está
+            if (Info?.Pronta != false && await atual.Responde(TimeSpan.FromSeconds(3), cancelar)) return atual;
             atual.Dispose();
             _ligacao = null;
         }
@@ -310,7 +353,7 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
     /// A ligação caiu depois de a cobrança ter sido enviada: liga de novo e pergunta pela mesma cobrança. Se não
     /// conseguir em <see cref="EsperaReligar"/>, não dá para saber se o cliente pagou.
     /// </summary>
-    private async Task<Ligacao> Religar(string id, IProgress<string>? andamento)
+    private async Task<Ligacao> Religar(string id, long valorCentavos, IProgress<string>? andamento)
     {
         _ligacao?.Dispose();
         _ligacao = null;
@@ -321,7 +364,7 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
             try
             {
                 var ligacao = await Ligar(CancellationToken.None);
-                ligacao.Enviar(new MensagemPonte { Tipo = "consultar", Id = id });
+                ligacao.Enviar(new MensagemPonte { Tipo = "consultar", Id = id, Valor = valorCentavos });
                 andamento?.Report("Ligado de novo. Esperando a maquininha...");
                 return ligacao;
             }
@@ -357,6 +400,50 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
         return new ResultadoCobranca(true, mensagem, autorizacao.Length == 0 ? null : autorizacao[..Math.Min(200, autorizacao.Length)]);
     }
 
+    /// <summary>
+    /// O resultado é de outra cobrança com o mesmo identificador (não devia acontecer): não vale nem como aprovado
+    /// nem como recusado. O operador confere na maquininha.
+    /// </summary>
+    private static void ConferirValor(MensagemPonte m, long valorCentavos)
+    {
+        if (m.Valor is { } valor && valor != valorCentavos)
+            throw new MaquininhaSemResposta(
+                $"A maquininha respondeu com outro valor ({Dinheiro.Formatar(valor)}). Confira nela se o pagamento de {Dinheiro.Formatar(valorCentavos)} foi aprovado.");
+    }
+
+    private void PerguntarPelasDesistidas(Ligacao ligacao, string atual)
+    {
+        foreach (var (id, valor) in _conferirDepois)
+        {
+            if (id == atual) continue;
+            try
+            {
+                ligacao.Enviar(new MensagemPonte { Tipo = "consultar", Id = id, Valor = valor });
+            }
+            catch (LigacaoPerdida)
+            {
+                return;
+            }
+        }
+    }
+
+    /// <summary>Resposta sobre outra cobrança (uma das desistidas, ou um resultado que chegou atrasado).</summary>
+    private void OutraCobranca(MensagemPonte m)
+    {
+        if (m.Id is not { Length: > 0 } id) return;
+        switch (m.Tipo)
+        {
+            case "resultado":
+                var conferindo = _conferirDepois.TryRemove(id, out var valor);
+                if (m.Aprovado == true && !(conferindo && m.Valor is { } v && v != valor)) _aprovadasDepois.Enqueue(id);
+                break;
+            case "desconhecida" or "indefinida" or "erro":
+                // A maquininha não tem nada a acrescentar: fica como o operador decidiu
+                _conferirDepois.TryRemove(id, out _);
+                break;
+        }
+    }
+
     /// <summary>Sem a referência pronta: as últimas 10 letras e números do identificador.</summary>
     internal static string ReferenciaDe(string id)
     {
@@ -380,14 +467,15 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
 
     /// <summary>
     /// Uma ligação aberta com o app ponte. Uma linha (thread) só lê o que chega, linha por linha, e guarda as
-    /// mensagens; quem espera a resposta pega dali.
+    /// mensagens; quem espera a resposta pega dali. Outra só escreve, na ordem: quem envia não espera o Bluetooth
+    /// (a tela nunca trava numa ligação lenta).
     /// </summary>
     private sealed class Ligacao : IDisposable
     {
         private readonly Stream _fluxo;
         private readonly Channel<MensagemPonte> _entrada =
             Channel.CreateUnbounded<MensagemPonte>(new UnboundedChannelOptions { SingleReader = true });
-        private readonly object _escrita = new();
+        private readonly BlockingCollection<byte[]> _saida = new();
         private long _ultimaMensagem = Environment.TickCount64;
         private long _ultimoPing = Environment.TickCount64;
         /// <summary>Quantas vezes chegou alguma coisa (o relógio do sistema anda de poucos em poucos milissegundos).</summary>
@@ -397,28 +485,41 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
         public Ligacao(Stream fluxo)
         {
             _fluxo = fluxo;
-            new Thread(Ler) { IsBackground = true, Name = "Maquininha" }.Start();
+            new Thread(Ler) { IsBackground = true, Name = "Maquininha (leitura)" }.Start();
+            new Thread(Escrever) { IsBackground = true, Name = "Maquininha (envio)" }.Start();
         }
 
         private long Silencio => Environment.TickCount64 - Interlocked.Read(ref _ultimaMensagem);
 
+        /// <summary>Põe na fila de envio. Se a ligação cair antes de enviar, quem espera a resposta percebe.</summary>
         public void Enviar(MensagemPonte mensagem)
         {
             if (_caiu) throw new LigacaoPerdida();
-            var bytes = ProtocoloPonte.Linha(mensagem);
             try
             {
-                lock (_escrita)
+                _saida.Add(ProtocoloPonte.Linha(mensagem));
+            }
+            catch (InvalidOperationException)
+            {
+                // A fila já foi fechada (a ligação caiu)
+                throw new LigacaoPerdida();
+            }
+        }
+
+        private void Escrever()
+        {
+            try
+            {
+                foreach (var bytes in _saida.GetConsumingEnumerable())
                 {
                     _fluxo.Write(bytes, 0, bytes.Length);
                     _fluxo.Flush();
                 }
             }
-            catch (Exception e) when (e is IOException or ObjectDisposedException or SocketException or InvalidOperationException
-                                          or TimeoutException or UnauthorizedAccessException)
+            catch (Exception)
             {
-                _caiu = true;
-                throw new LigacaoPerdida();
+                // Ligação fechada ou caiu: fecha tudo (a leitura para e quem espera a resposta liga de novo)
+                Dispose();
             }
         }
 
@@ -429,7 +530,12 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
             while (true)
             {
                 if (_entrada.Reader.TryRead(out var m)) return m;
-                if (_caiu || Silencio > silencio.TotalMilliseconds) throw new LigacaoPerdida();
+                if (_caiu || Silencio > silencio.TotalMilliseconds)
+                {
+                    // O que chegou logo antes de a ligação fechar ainda vale (a leitura guarda antes de marcar que caiu)
+                    if (_entrada.Reader.TryRead(out m)) return m;
+                    throw new LigacaoPerdida();
+                }
                 var agora = Environment.TickCount64;
                 if (agora - Interlocked.Read(ref _ultimoPing) >= intervaloPing.TotalMilliseconds)
                 {
@@ -514,12 +620,20 @@ public sealed class MaquininhaPagBank : IMaquininha, IDisposable
             {
                 _caiu = true;
                 _entrada.Writer.TryComplete();
+                _saida.CompleteAdding();
             }
         }
 
         public void Dispose()
         {
             _caiu = true;
+            try
+            {
+                _saida.CompleteAdding();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
             try
             {
                 _fluxo.Dispose();

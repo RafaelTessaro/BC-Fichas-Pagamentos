@@ -70,15 +70,22 @@ public sealed class ConexaoSerial(string porta) : IConexaoPonte
             // Leitura sem limite: quem decide que a ligação caiu é o "ping" (a maquininha responde em segundos)
             ReadTimeout = SerialPort.InfiniteTimeout,
         };
+        // Abrir a porta de um link Bluetooth já liga na maquininha (e espera por ela): fora da tela
+        var abrir = Task.Run(serial.Open, CancellationToken.None);
         try
         {
-            // Abrir a porta de um link Bluetooth já liga na maquininha (e espera por ela): fora da tela
-            await Task.Run(serial.Open, cancelar).WaitAsync(espera, cancelar);
+            await abrir.WaitAsync(espera, cancelar);
             return serial.BaseStream;
         }
         catch (Exception)
         {
-            serial.Dispose();
+            // Desistiu de esperar: a porta ainda pode abrir depois e ficaria presa (a próxima tentativa daria "acesso
+            // negado"). Fecha quando a abertura terminar, abrindo ou não.
+            _ = abrir.ContinueWith(t =>
+            {
+                _ = t.Exception;
+                serial.Dispose();
+            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
             throw;
         }
     }
@@ -98,6 +105,12 @@ public sealed class ConexaoTcp(string host, int porta) : IConexaoPonte
             limite.CancelAfter(espera);
             await cliente.ConnectAsync(host, porta, limite.Token);
             return new FluxoQueFechaJunto(cliente.GetStream(), cliente);
+        }
+        catch (OperationCanceledException) when (!cancelar.IsCancellationRequested)
+        {
+            // Passou o tempo (não foi quem chamou que desistiu)
+            cliente.Dispose();
+            throw new TimeoutException($"Ninguém atendeu em {Descricao} a tempo.");
         }
         catch (Exception)
         {

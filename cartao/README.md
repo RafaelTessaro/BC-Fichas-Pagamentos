@@ -35,25 +35,33 @@ Tablet Windows (BC Fichas Cartão)              Moderninha Smart 2 (app BC Ficha
 4. A resposta volta sozinha e as fichas saem. No tablet, enquanto isso, aparece o que está acontecendo ("Aproxime,
    insira ou passe o cartão", "O cliente está digitando a senha", "Autorizando...").
 
-No PagBank, cada venda aparece com o código `C01P000123` (caixa 01, pedido 123). O BC Fichas guarda junto do pedido a
-bandeira, a autorização, o NSU e o código da transação do PagBank.
+No PagBank, cada venda aparece com um código de 10 letras e números que começa pelo número do pedido: `P0123K7Q2X` é o
+pedido 123. O resto do código muda de um pedido para outro, mesmo quando o número se repete (modo teste, vendas
+apagadas, outro caixa). O BC Fichas guarda junto do pedido a bandeira, a autorização, o NSU e o código da transação do
+PagBank.
 
 ## As regras do dinheiro
 
-- **Nunca cobra duas vezes.** Cada pedido tem um identificador fixo e o app da maquininha guarda o resultado de cada um.
-  Se o mesmo pedido chegar de novo, ela devolve o resultado guardado, sem cobrar.
+- **Nunca cobra duas vezes.** Cada pedido tem um identificador fixo (que leva a hora em que o pedido foi feito, para
+  nunca se repetir) e o app da maquininha guarda o resultado e o valor de cada um. Se o mesmo pedido chegar de novo,
+  ela devolve o resultado guardado, sem cobrar. Os dois lados conferem o valor: um "aprovado" de outro valor não vale.
 - **Uma cobrança por vez.** Se a maquininha ainda está cobrando outro pedido, o tablet avisa "A maquininha está fazendo
   outro pagamento" e não cobra.
-- **Cancelar no tablet só pede para a maquininha cancelar.** Se o cliente já tinha pago, vale o pagamento e as fichas
-  saem.
+- **Cancelar no tablet só pede para a maquininha cancelar** (o tablet repete o pedido a cada 3 segundos até ela
+  responder). Se o cliente já tinha pago, vale o pagamento e as fichas saem.
 - **A ligação caiu no meio?** O tablet liga de novo sozinho (por até 1 minuto e meio) e pergunta pelo mesmo pedido. O
   cliente pode continuar pagando na maquininha nesse tempo.
 - **A maquininha sumiu de vez?** O pedido **não é cancelado sozinho**: aparece "A maquininha não respondeu", com
   **Consultar a maquininha de novo** e, se ela não voltar, o operador confere na tela dela e escolhe **Não foi pago**
-  ou **Aprovou na maquininha** (os dois pedem confirmação).
-- **O programa do tablet fechou no meio de um pagamento?** Ao abrir, ele pergunta à maquininha. Se ela não responder,
-  pergunta ao operador, pedido por pedido.
-- **O app da maquininha fechou no meio?** Ao abrir, ele confere no PagBank se a última venda aprovada era aquela.
+  ou **Aprovou na maquininha** (os dois pedem confirmação; um segundo toque não imprime as fichas de novo).
+- **O programa do tablet fechou no meio de um pagamento?** Ao abrir, ele pergunta à maquininha. Se ela não responder
+  (ou der qualquer erro), pergunta ao operador, pedido por pedido. Nunca cancela sozinho.
+- **O app da maquininha fechou (ou deu erro) no meio?** Ele confere no PagBank se a última venda aprovada é aquela
+  (mesmo código e mesmo valor). Se o PagBank não confirmar, ele **não decide**: o tablet mostra "A maquininha não
+  respondeu" e o operador confere na tela dela.
+- **A maquininha aprovou depois de o operador tocar em "Não foi pago"?** Nas próximas vendas o tablet pergunta por
+  aquele pedido; se aparecer aprovado, avisa: "Pagamento aprovado depois", com o número do pedido, para devolver o
+  dinheiro ao cliente (estorno no PagBank).
 - **A cobrança nem chegou na maquininha** (Bluetooth desligado, maquininha longe ou desligada): o tablet avisa em
   alguns segundos e o pedido é cancelado. Nada foi cobrado.
 
@@ -118,6 +126,7 @@ O app da maquininha sai no mesmo lugar: **BCFichasPonte-apk-teste** (para o term
 | "A maquininha não está ativada no PagBank" | Abra o app do PagBank na maquininha e faça a ativação com a conta da BC Fichas. |
 | "A maquininha está fazendo outro pagamento" | Termine (ou cancele) o pagamento que está na tela da maquininha e cobre de novo. |
 | "A maquininha não respondeu" | Toque em **Consultar a maquininha de novo**. Se ela não voltar, confira na tela dela e escolha **Não foi pago** ou **Aprovou na maquininha**. |
+| "Pagamento aprovado depois" | O cliente pagou um pedido que tinha sido cancelado no tablet e não levou as fichas. Confira no app do PagBank e faça o estorno. |
 | O Bluetooth direto não funciona num tablet | Alternativa: no Windows, crie uma porta COM de saída para a maquininha ("Mais opções de Bluetooth → Portas COM → Adicionar → Saída") e digite a porta (ex.: `COM7`) no campo **Endereço Bluetooth (ou porta COM)**. |
 
 ## O que falta (precisa da maquininha de verdade)
@@ -143,8 +152,11 @@ cartao/
 ```
 
 - **Mensagens:** uma linha de JSON por mensagem. Tablet → maquininha: `ola`, `cobrar`, `consultar`, `cancelar`,
-  `ping`. Maquininha → tablet: `ola`, `andamento`, `resultado`, `desconhecida`, `ocupada`, `erro`, `pong`. O formato
-  está em `src/BCFichas.Core/Pagamento/ProtocoloPonte.cs` e em `ponte-android/.../Protocolo.kt`.
+  `ping`. Maquininha → tablet: `ola`, `andamento`, `resultado`, `desconhecida` (nunca chegou), `indefinida` (chegou,
+  mas não dá para saber se foi paga), `ocupada`, `erro`, `pong`. O formato está em
+  `src/BCFichas.Core/Pagamento/ProtocoloPonte.cs` e em `ponte-android/.../Protocolo.kt`.
+- **No app da maquininha,** os resultados ficam em dois arquivos gravados um de cada vez: se a maquininha desligar no
+  meio de uma gravação, o outro continua inteiro.
 - **Bluetooth:** RFCOMM direto pelo socket do Windows (sem porta COM), no serviço
   `b7c1f00d-5f1c-4d2e-9a3b-2f6c8e4a1b10`. O app também atende na porta serial padrão (SPP), para quem usar porta COM.
   Para testar sem Bluetooth, a ligação pode ser `tcp://endereço:porta`.

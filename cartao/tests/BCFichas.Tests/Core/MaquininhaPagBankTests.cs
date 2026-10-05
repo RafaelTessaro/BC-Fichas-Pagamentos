@@ -41,7 +41,7 @@ public class MaquininhaPagBankTests : IDisposable
     }
 
     private static Cobranca Cobranca(string id = "C01-P000005-12", FormaPagamento forma = FormaPagamento.Credito,
-        long valor = 2350) => new(id, valor, forma, "FESTA - pedido 5", ProtocoloPonte.Referencia(1, 5));
+        long valor = 2350) => new(id, valor, forma, "FESTA - pedido 5", ProtocoloPonte.Referencia(id, 5));
 
     private sealed class Anotador : IProgress<string>
     {
@@ -63,7 +63,7 @@ public class MaquininhaPagBankTests : IDisposable
         Assert.Equal("VISA • aut 123456 • NSU 000987 • cód ABC123XYZ", r.Autorizacao);
         Assert.Contains("Aproxime, insira ou passe o cartão", andamento.Textos);
         var cobrar = _ponte.Recebidas.Single(x => x.Tipo == "cobrar");
-        Assert.Equal(("C01-P000005-12", "C01P000005", 2350L, "credito", true),
+        Assert.Equal(("C01-P000005-12", ProtocoloPonte.Referencia("C01-P000005-12", 5), 2350L, "credito", true),
             (cobrar.Id, cobrar.Referencia, cobrar.Valor, cobrar.Forma, cobrar.Comprovante));
         var ola = _ponte.Recebidas.First();
         Assert.Equal(("ola", ProtocoloPonte.Versao, 1), (ola.Tipo, ola.Versao, ola.Caixa));
@@ -215,7 +215,7 @@ public class MaquininhaPagBankTests : IDisposable
 
         // O cliente da anterior pagou: ao consultar (o que o programa faz ao abrir), ela aparece paga
         _ponte.Concluir(true);
-        await Esperar(() => _ponte.Recebidas.Count > 0 && depois.ConsultarAsync("C01-P000005-12", CancellationToken.None).Result?.Aprovado == true);
+        await Esperar(() => _ponte.Recebidas.Count > 0 && depois.ConsultarAsync("C01-P000005-12", 2350, CancellationToken.None).Result?.Aprovado == true);
 
         // Maquininha que ainda não foi ativada no PagBank
         _ponte.Pronta = false;
@@ -232,15 +232,15 @@ public class MaquininhaPagBankTests : IDisposable
         var m = Maquininha();
         _ponte.Guardar("C01-P000001-1", aprovado: true);
         _ponte.Guardar("C01-P000002-2", aprovado: false);
-        var aprovado = await m.ConsultarAsync("C01-P000001-1", CancellationToken.None);
+        var aprovado = await m.ConsultarAsync("C01-P000001-1", 1000, CancellationToken.None);
         Assert.True(aprovado!.Aprovado);
         Assert.Contains("NSU 000987", aprovado.Autorizacao);
-        Assert.False((await m.ConsultarAsync("C01-P000002-2", CancellationToken.None))!.Aprovado);
-        Assert.Null(await m.ConsultarAsync("C01-P000003-3", CancellationToken.None));
+        Assert.False((await m.ConsultarAsync("C01-P000002-2", 1000, CancellationToken.None))!.Aprovado);
+        Assert.Null(await m.ConsultarAsync("C01-P000003-3", 1000, CancellationToken.None));
 
         _ponte.Desligada = true;
         _ponte.DerrubarLigacao();
-        await Assert.ThrowsAsync<MaquininhaSemResposta>(() => m.ConsultarAsync("C01-P000001-1", CancellationToken.None));
+        await Assert.ThrowsAsync<MaquininhaSemResposta>(() => m.ConsultarAsync("C01-P000001-1", 1000, CancellationToken.None));
     }
 
     [Fact]
@@ -259,6 +259,12 @@ public class MaquininhaPagBankTests : IDisposable
         var nuncaChegou = Novo();
         _ponte.Guardar(VendaServico.IdCobranca(pago), aprovado: true);
 
+        // O identificador da cobrança leva a hora do pedido: não se repete nem quando o número e o id recomeçam
+        Assert.Matches(@"^C01-P000001-\d+-\d{12}$", VendaServico.IdCobranca(pago));
+        Assert.Equal(pago.Id, s.Vendas.PedidoDaCobranca(VendaServico.IdCobranca(pago))!.Id);
+        Assert.Null(s.Vendas.PedidoDaCobranca($"C01-P000001-{pago.Id}-990101000000"));
+        Assert.Null(s.Vendas.PedidoDaCobranca("C01-P000005-12"));
+
         var pagos = await s.Vendas.ResolverPendentesAsync(Maquininha(), CancellationToken.None);
         Assert.Equal([pago.Id], pagos.Select(p => p.Id));
         Assert.Equal(StatusPedido.Pago, s.Vendas.Pedido(pago.Id)!.Status);
@@ -273,6 +279,107 @@ public class MaquininhaPagBankTests : IDisposable
         Assert.Empty(await s.Vendas.ResolverPendentesAsync(Maquininha(), CancellationToken.None, semResposta));
         Assert.Equal([talvez.Id], semResposta.Select(p => p.Id));
         Assert.Equal(StatusPedido.AguardandoPagamento, s.Vendas.Pedido(talvez.Id)!.Status);
+
+        // A maquininha não sabe dizer (o app dela reiniciou no meio) ou deu um erro qualquer ao perguntar: também
+        // fica esperando o operador, nunca é cancelado sozinho
+        _ponte.Desligada = false;
+        _ponte.GuardarSemSaber(VendaServico.IdCobranca(talvez));
+        semResposta.Clear();
+        Assert.Empty(await s.Vendas.ResolverPendentesAsync(Maquininha(), CancellationToken.None, semResposta));
+        Assert.Equal([talvez.Id], semResposta.Select(p => p.Id));
+        semResposta.Clear();
+        Assert.Empty(await s.Vendas.ResolverPendentesAsync(new MaquininhaComDefeito(), CancellationToken.None, semResposta));
+        Assert.Equal([talvez.Id], semResposta.Select(p => p.Id));
+        Assert.Equal(StatusPedido.AguardandoPagamento, s.Vendas.Pedido(talvez.Id)!.Status);
+    }
+
+    private sealed class MaquininhaComDefeito : IMaquininha
+    {
+        public string Nome => "com defeito";
+        public Task<ResultadoCobranca> CobrarAsync(Cobranca cobranca, IProgress<string>? andamento, CancellationToken cancelar) =>
+            throw new InvalidOperationException("defeito");
+        public Task<ResultadoCobranca?> ConsultarAsync(string id, long valorCentavos, CancellationToken cancelar) =>
+            throw new InvalidOperationException("defeito");
+    }
+
+    [Fact]
+    public async Task Maquininha_que_nao_sabe_dizer_se_foi_pago_deixa_para_o_operador()
+    {
+        var m = Maquininha();
+        _ponte.DecidirSozinhaEm = null;
+        var cobranca = m.CobrarAsync(Cobranca(), null, CancellationToken.None);
+        await Esperar(() => _ponte.Cobrancas == 1);
+        _ponte.ConcluirSemSaber();
+        var erro = await Assert.ThrowsAsync<MaquininhaSemResposta>(() => cobranca.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Contains("Confira na maquininha", erro.Message);
+
+        // Perguntar de novo (ou mandar cobrar de novo) não decide nada nem cobra outra vez
+        await Assert.ThrowsAsync<MaquininhaSemResposta>(() => m.ConsultarAsync("C01-P000005-12", 2350, CancellationToken.None));
+        await Assert.ThrowsAsync<MaquininhaSemResposta>(() => m.CobrarAsync(Cobranca(), null, CancellationToken.None));
+        Assert.Equal(1, _ponte.Cobrancas);
+    }
+
+    [Fact]
+    public async Task Resultado_de_outro_valor_nao_vale_nem_como_aprovado()
+    {
+        var m = Maquininha();
+        _ponte.Guardar("C01-P000005-12", aprovado: true, valor: 990);
+        // A maquininha confere: o pedido guardado com outro valor não é este
+        Assert.False((await m.CobrarAsync(Cobranca(), null, CancellationToken.None)).Aprovado);
+        await Assert.ThrowsAsync<MaquininhaSemResposta>(() => m.ConsultarAsync("C01-P000005-12", 2350, CancellationToken.None));
+        Assert.Equal(0, _ponte.Cobrancas);
+
+        // Um app que não confere: o tablet confere sozinho
+        _ponte.ConfereValor = false;
+        var erro = await Assert.ThrowsAsync<MaquininhaSemResposta>(() => m.CobrarAsync(Cobranca(), null, CancellationToken.None));
+        Assert.Contains("outro valor (R$ 9,90)", erro.Message);
+        await Assert.ThrowsAsync<MaquininhaSemResposta>(() => m.ConsultarAsync("C01-P000005-12", 2350, CancellationToken.None));
+        Assert.True((await m.ConsultarAsync("C01-P000005-12", 990, CancellationToken.None))!.Aprovado);
+        Assert.Equal(0, _ponte.Cobrancas);
+    }
+
+    [Fact]
+    public async Task Cancelar_pede_de_novo_ate_a_maquininha_cancelar()
+    {
+        var m = Maquininha();
+        _ponte.DecidirSozinhaEm = null;
+        // Os primeiros pedidos chegam antes de o PagBank abrir a tela de pagamento: não há o que cancelar
+        _ponte.CancelamentosPerdidos = 2;
+        using var cancelar = new CancellationTokenSource();
+        var cobranca = m.CobrarAsync(Cobranca(), null, cancelar.Token);
+        await Esperar(() => _ponte.Cobrancas == 1);
+        cancelar.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cobranca.WaitAsync(TimeSpan.FromSeconds(5)));
+        Assert.Equal(3, _ponte.Cancelamentos);
+    }
+
+    [Fact]
+    public async Task Aprovado_que_chega_depois_de_desistir_fica_para_o_aviso()
+    {
+        var m = Maquininha();
+        _ponte.DecidirSozinhaEm = null;
+        var cobranca = m.CobrarAsync(Cobranca("C01-P000006-13"), null, CancellationToken.None);
+        await Esperar(() => _ponte.Cobrancas == 1);
+        // Uma cobrança anterior, de que o operador já tinha desistido, foi aprovada na maquininha
+        _ponte.AvisarAprovada("C01-P000005-12");
+        _ponte.Concluir(aprovado: true);
+        Assert.True((await cobranca.WaitAsync(TimeSpan.FromSeconds(5))).Aprovado);
+        Assert.True(m.TirarAprovadaDepois(out var id));
+        Assert.Equal("C01-P000005-12", id);
+        Assert.False(m.TirarAprovadaDepois(out _));
+    }
+
+    [Fact]
+    public async Task Maquininha_ativada_depois_cobra_sem_reabrir_o_programa()
+    {
+        var m = Maquininha();
+        _ponte.Pronta = false;
+        _ponte.MensagemDoOla = "Ative a maquininha no PagBank antes de usar.";
+        await Assert.ThrowsAsync<ErroDeNegocio>(() => m.CobrarAsync(Cobranca(), null, CancellationToken.None));
+        // Ativou no PagBank: a próxima venda liga de novo e pergunta outra vez se ela está pronta
+        _ponte.Pronta = true;
+        Assert.True((await m.CobrarAsync(Cobranca(), null, CancellationToken.None)).Aprovado);
+        Assert.Equal(2, _ponte.Ligacoes);
     }
 
     [Fact]
@@ -296,12 +403,19 @@ public class MaquininhaPagBankTests : IDisposable
     }
 
     [Fact]
-    public void Referencia_para_o_PagBank_tem_no_maximo_10_letras_e_numeros()
+    public void Referencia_para_o_PagBank_tem_10_letras_e_numeros_e_nao_se_repete()
     {
-        Assert.Equal("C01P000005", ProtocoloPonte.Referencia(1, 5));
-        Assert.Equal("C12P234567", ProtocoloPonte.Referencia(12, 1_234_567));
-        Assert.All(new[] { ProtocoloPonte.Referencia(99, 999_999_999), ProtocoloPonte.Referencia(150, -3) },
-            r => Assert.Matches("^[A-Z0-9]{10}$", r));
+        var a = ProtocoloPonte.Referencia("C01-P000005-12-261005201500", 5);
+        Assert.Matches("^P0005[A-Z0-9]{5}$", a);
+        Assert.Equal(a, ProtocoloPonte.Referencia("C01-P000005-12-261005201500", 5));
+        // O mesmo número de pedido em outro dia, outro caixa ou depois de apagar as vendas: outro código
+        Assert.NotEqual(a, ProtocoloPonte.Referencia("C01-P000005-12-261006201500", 5));
+        Assert.NotEqual(a, ProtocoloPonte.Referencia("C02-P000005-12-261005201500", 5));
+        Assert.Matches("^P4567[A-Z0-9]{5}$", ProtocoloPonte.Referencia("x", 1_234_567));
+        Assert.All(new[] { ProtocoloPonte.Referencia("", 999_999_999), ProtocoloPonte.Referencia("ç", -3) },
+            r => Assert.Matches("^P[0-9]{4}[A-Z0-9]{5}$", r));
+        var codigos = Enumerable.Range(1, 5000).Select(n => ProtocoloPonte.Referencia($"C01-P{n:000000}-{n}-261005201500", n));
+        Assert.Equal(5000, codigos.Distinct().Count());
         Assert.Equal("1P00000512", MaquininhaPagBank.ReferenciaDe("C01-P000005-12"));
     }
 

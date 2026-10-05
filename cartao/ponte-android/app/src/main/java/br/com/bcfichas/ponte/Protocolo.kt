@@ -8,7 +8,8 @@ import java.util.UUID
  * (cartao/src/BCFichas.Core/Pagamento/ProtocoloPonte.cs).
  *
  * Tablet → maquininha: ola, cobrar, consultar, cancelar, ping.
- * Maquininha → tablet: ola, andamento, resultado, desconhecida, ocupada, erro, pong.
+ * Maquininha → tablet: ola, andamento, resultado, desconhecida (nunca chegou), indefinida (chegou, mas não dá para
+ * saber se foi paga: o operador confere), ocupada, erro, pong.
  */
 class Mensagem(val campos: JSONObject) {
     val tipo: String get() = campos.optString("tipo")
@@ -51,11 +52,13 @@ class Mensagem(val campos: JSONObject) {
             return Mensagem(json)
         }
 
-        fun resultado(id: String, r: ResultadoPagamento) = de(
-            "tipo" to "resultado", "id" to id, "aprovado" to r.aprovado, "cancelado" to r.cancelado,
-            "mensagem" to r.mensagem, "autorizacao" to r.autorizacao, "nsu" to r.nsu, "bandeira" to r.bandeira,
-            "codigo" to r.codigo,
-        )
+        fun resultado(id: String, r: ResultadoPagamento) =
+            if (r.indefinido) de("tipo" to "indefinida", "id" to id, "mensagem" to r.mensagem, "valor" to r.valor)
+            else de(
+                "tipo" to "resultado", "id" to id, "aprovado" to r.aprovado, "cancelado" to r.cancelado,
+                "mensagem" to r.mensagem, "autorizacao" to r.autorizacao, "nsu" to r.nsu, "bandeira" to r.bandeira,
+                "codigo" to r.codigo, "valor" to r.valor,
+            )
 
         fun andamento(id: String, texto: String) = de("tipo" to "andamento", "id" to id, "texto" to texto)
 
@@ -63,6 +66,14 @@ class Mensagem(val campos: JSONObject) {
          * Código da venda para o PagBank: só letras (sem acento) e números, até 10. O tablet já manda pronto; se não
          * vier, usa as últimas 10 letras e números do identificador.
          */
+        /**
+         * O valor que o PagBank devolve vem como texto ("2350", "23,50"): só os dígitos, em centavos. Nulo se não
+         * houver. Um formato diferente dá um valor errado, e aí a cobrança fica para o operador conferir (nunca vira
+         * aprovada por engano).
+         */
+        fun centavos(texto: String?): Long? =
+            texto?.filter { it in '0'..'9' }?.takeIf { it.isNotEmpty() && it.length <= 15 }?.toLong()
+
         fun referenciaLimpa(referencia: String?, id: String): String {
             val pronta = (referencia ?: "").filter { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' }
             if (pronta.isNotEmpty()) return pronta.take(10)

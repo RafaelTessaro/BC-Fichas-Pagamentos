@@ -37,16 +37,15 @@ class ServicoPonte : Service() {
         val armazem = ArmazemArquivo(File(filesDir, "cobrancas.json"))
         ponte = Ponte(
             PagadorPlugPag(applicationContext), armazem, Executors.newSingleThreadExecutor(),
-            Executors.newCachedThreadPool(),
-        ) { situacao -> mudou(situacao, armazem) }
+            Executors.newCachedThreadPool(), aoMudar = { situacao -> mudou(situacao, armazem) },
+        )
         instancia = this
         ultimoArmazem = armazem
-        // Cobrança que ficou pela metade (app ou maquininha reiniciou): resolve antes de atender o tablet
-        thread(name = "ponte-recuperar") {
-            ponte.recuperar()
-            aceitar(Mensagem.SERVICO, "BC Fichas")
-            aceitar(Mensagem.SERIAL_PADRAO, "BC Fichas (porta serial)")
-        }
+        // Cobrança que ficou pela metade (app ou maquininha reiniciou): resolve enquanto já atende o tablet (até
+        // terminar, ele recebe "andamento" por ela e "ocupada" pelas outras)
+        thread(name = "ponte-recuperar", isDaemon = true) { ponte.recuperar() }
+        aceitar(Mensagem.SERVICO, "BC Fichas")
+        aceitar(Mensagem.SERIAL_PADRAO, "BC Fichas (porta serial)")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -72,18 +71,36 @@ class ServicoPonte : Service() {
                 Thread.sleep(3000)
                 continue
             }
+            var servidor: BluetoothServerSocket? = null
             try {
-                val servidor = adaptador.listenUsingRfcommWithServiceRecord(nome, servico)
+                servidor = adaptador.listenUsingRfcommWithServiceRecord(nome, servico)
                 synchronized(servidores) { servidores += servidor }
                 while (ligado) {
                     val socket = servidor.accept()
-                    val ligacao = LigacaoFluxo(socket.inputStream, socket.outputStream, socket, ponte)
-                    ponte.conectou(ligacao)
-                    ligacao.iniciar()
+                    try {
+                        val ligacao = LigacaoFluxo(socket.inputStream, socket.outputStream, socket, ponte)
+                        ponte.conectou(ligacao)
+                        ligacao.iniciar()
+                    } catch (e: IOException) {
+                        fechar(socket)
+                    }
                 }
-            } catch (e: IOException) {
+            } catch (e: Exception) {
+                // Bluetooth desligou ou a espera falhou: fecha este e abre outro
                 if (ligado) Thread.sleep(2000)
+            } finally {
+                servidor?.let {
+                    synchronized(servidores) { servidores -= it }
+                    fechar(it)
+                }
             }
+        }
+    }
+
+    private fun fechar(algo: java.io.Closeable) {
+        try {
+            algo.close()
+        } catch (_: IOException) {
         }
     }
 

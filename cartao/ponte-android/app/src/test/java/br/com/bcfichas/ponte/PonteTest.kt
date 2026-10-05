@@ -10,6 +10,7 @@ import org.junit.rules.TemporaryFolder
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
@@ -27,28 +28,48 @@ class PonteTest {
     private class PagadorFalso : Pagador {
         val cobrancas = AtomicInteger()
         val cancelamentos = AtomicInteger()
+        val consultas = AtomicInteger()
         val decisoes = LinkedBlockingQueue<ResultadoPagamento>()
         var pronta = true
+        @Volatile
         var ultima: ResultadoPagamento? = null
         var erroAoPagar = false
+        /** Quantas vezes "a última aprovada" falha antes de responder (o serviço do PagBank ainda subindo). */
+        @Volatile
+        var falhasNaUltima = 0
+        @Volatile
+        private var pagando = false
 
         override fun info() = InfoTerminal("PagBank Moderninha Smart (P2)", "PB0123456", pronta,
             if (pronta) "" else "Ative a maquininha")
 
         override fun pagar(pedido: PedidoPagamento, avisar: (String) -> Unit): ResultadoPagamento {
             cobrancas.incrementAndGet()
-            avisar("Aproxime, insira ou passe o cartão na maquininha")
-            if (erroAoPagar) throw IllegalStateException("serviço do PagBank caiu")
-            return decisoes.poll(5, TimeUnit.SECONDS)?.copy(referencia = pedido.referencia)
-                ?: ResultadoPagamento(false, mensagem = "tempo esgotado")
+            pagando = true
+            try {
+                avisar("Aproxime, insira ou passe o cartão na maquininha")
+                if (erroAoPagar) throw IllegalStateException("serviço do PagBank caiu")
+                return decisoes.poll(5, TimeUnit.SECONDS)?.copy(referencia = pedido.referencia)
+                    ?: ResultadoPagamento(false, mensagem = "tempo esgotado")
+            } finally {
+                pagando = false
+            }
         }
 
+        /** Como o PagBank: cancelar só faz efeito com a tela de pagamento aberta. */
         override fun cancelar() {
             cancelamentos.incrementAndGet()
-            decisoes.offer(ResultadoPagamento(false, cancelado = true, mensagem = "Operação cancelada"))
+            if (pagando) decisoes.offer(ResultadoPagamento(false, cancelado = true, mensagem = "Operação cancelada"))
         }
 
-        override fun ultimaAprovada() = ultima
+        override fun ultimaAprovada(): ResultadoPagamento? {
+            consultas.incrementAndGet()
+            if (falhasNaUltima > 0) {
+                falhasNaUltima--
+                throw IllegalStateException("serviço do PagBank ainda não respondeu")
+            }
+            return ultima
+        }
     }
 
     /** Uma ligação de mentira: guarda o que a maquininha mandou para o tablet. */
@@ -73,16 +94,18 @@ class PonteTest {
 
     private val pagador = PagadorFalso()
     private val armazem by lazy { ArmazemArquivo(pasta.root.resolve("cobrancas.json")) }
-    private val ponte by lazy {
-        Ponte(pagador, armazem, Executors.newSingleThreadExecutor(), Executors.newCachedThreadPool())
-    }
+    private val ponte by lazy { novaPonte() }
 
-    private fun cobrar(id: String = "C01-P000005-12", valor: Long = 2350, forma: String = "credito") =
-        """{"tipo":"cobrar","id":"$id","referencia":"C01P000005","valor":$valor,"forma":"$forma","comprovante":false}"""
+    private fun novaPonte(cobrancas: Executor = Executors.newSingleThreadExecutor(), guardar: Armazem = armazem) =
+        Ponte(pagador, guardar, cobrancas, Executors.newCachedThreadPool(), tentativasRecuperar = 3, intervaloRecuperar = 10)
 
-    private fun ligar(): Tablet {
+    private fun cobrar(id: String = "C01-P000005-12", valor: Long = 2350, forma: String = "credito",
+                       referencia: String = "P0005AB12C") =
+        """{"tipo":"cobrar","id":"$id","referencia":"$referencia","valor":$valor,"forma":"$forma","comprovante":false}"""
+
+    private fun ligar(p: Ponte = ponte): Tablet {
         val t = Tablet()
-        ponte.conectou(t)
+        p.conectou(t)
         return t
     }
 
@@ -110,11 +133,22 @@ class PonteTest {
         assertTrue(r.campos.getBoolean("aprovado"))
         assertEquals("C01-P000005-12", r.id)
         assertEquals("987", r.texto("nsu"))
+        assertEquals(2350L, r.valor)
         assertTrue(armazem.resultado("C01-P000005-12")!!.aprovado)
+        assertEquals(2350L, armazem.resultado("C01-P000005-12")!!.valor)
         assertNull(armazem.emAndamento())
 
         // O mesmo pedido de novo: devolve o guardado, sem cobrar
         ponte.recebeu(t, cobrar())
+        assertTrue(t.esperar("resultado").campos.getBoolean("aprovado"))
+        assertEquals(1, pagador.cobrancas.get())
+
+        // O mesmo identificador com outro valor não é esta cobrança: nem cobra, nem devolve o aprovado
+        ponte.recebeu(t, cobrar(valor = 990))
+        assertEquals("Este pedido foi cobrado com outro valor na maquininha.", t.esperar("erro").texto("mensagem"))
+        ponte.recebeu(t, """{"tipo":"consultar","id":"C01-P000005-12","valor":990}""")
+        t.esperar("erro")
+        ponte.recebeu(t, """{"tipo":"consultar","id":"C01-P000005-12","valor":2350}""")
         assertTrue(t.esperar("resultado").campos.getBoolean("aprovado"))
         assertEquals(1, pagador.cobrancas.get())
     }
@@ -179,6 +213,20 @@ class PonteTest {
     }
 
     @Test
+    fun cancelar_que_chega_antes_de_o_pagbank_comecar_nao_se_perde() {
+        // A cobrança fica na fila (o PagBank ainda não abriu a tela) quando o tablet pede para cancelar
+        val fila = LinkedBlockingQueue<Runnable>()
+        val p = novaPonte(cobrancas = Executor { fila.offer(it) })
+        val t = ligar(p)
+        p.recebeu(t, cobrar())
+        p.recebeu(t, """{"tipo":"cancelar","id":"C01-P000005-12"}""")
+        fila.take().run()
+        val r = t.esperar("resultado")
+        assertTrue(r.campos.getBoolean("cancelado"))
+        assertEquals(0, pagador.cobrancas.get()) // nem abriu a tela de pagamento
+    }
+
+    @Test
     fun cobranca_invalida_nao_chega_no_pagbank() {
         val t = ligar()
         ponte.recebeu(t, """{"tipo":"cobrar","id":"X","valor":0,"forma":"credito"}""")
@@ -190,43 +238,135 @@ class PonteTest {
     }
 
     @Test
-    fun erro_no_meio_so_vale_como_aprovado_se_o_pagbank_disser() {
+    fun erro_no_meio_so_vale_como_aprovado_se_o_pagbank_disser_e_se_nao_o_operador_confere() {
         val t = ligar()
         pagador.erroAoPagar = true
         ponte.recebeu(t, cobrar())
-        assertFalse(t.esperar("resultado").campos.getBoolean("aprovado"))
+        // O PagBank não diz que foi esta: não dá para saber (o cliente pode ter pago)
+        assertTrue(t.esperar("indefinida").texto("mensagem")!!.contains("Confira na tela da maquininha"))
+        assertTrue(armazem.resultado("C01-P000005-12")!!.indefinido)
+        // Pedir de novo não cobra de novo nem decide nada
+        ponte.recebeu(t, cobrar())
+        t.esperar("indefinida")
+        assertEquals(1, pagador.cobrancas.get())
 
-        pagador.ultima = ResultadoPagamento(true, mensagem = "Aprovado", referencia = "C01P000006")
-        ponte.recebeu(t, """{"tipo":"cobrar","id":"C01-P000006-13","referencia":"C01P000006","valor":100,"forma":"debito"}""")
+        // A última aprovada é esta (mesmo código e mesmo valor): vale
+        pagador.ultima = ResultadoPagamento(true, mensagem = "Aprovado", referencia = "P0006XYZ12", valor = 100)
+        ponte.recebeu(t, cobrar(id = "C01-P000006-13", valor = 100, referencia = "P0006XYZ12"))
         assertTrue(t.esperar("resultado").campos.getBoolean("aprovado"))
+
+        // Mesmo código, outro valor: não é esta
+        pagador.ultima = ResultadoPagamento(true, mensagem = "Aprovado", referencia = "P0007XYZ12", valor = 999)
+        ponte.recebeu(t, cobrar(id = "C01-P000007-14", valor = 100, referencia = "P0007XYZ12"))
+        t.esperar("indefinida")
+
+        // O PagBank nem responde
+        pagador.falhasNaUltima = 10
+        ponte.recebeu(t, cobrar(id = "C01-P000008-15", valor = 100, referencia = "P0008XYZ12"))
+        t.esperar("indefinida")
     }
 
     @Test
     fun app_que_fechou_no_meio_resolve_a_cobranca_ao_abrir() {
-        armazem.marcarEmAndamento(PedidoPagamento("C01-P000007-20", "C01P000007", 1000, "debito", false))
-        pagador.ultima = ResultadoPagamento(true, mensagem = "Aprovado", referencia = "C01P000007", nsu = "555")
-        ponte.recuperar()
+        armazem.marcarEmAndamento(PedidoPagamento("C01-P000007-20", "P0007AAAAA", 1000, "debito", false))
+        pagador.ultima = ResultadoPagamento(true, mensagem = "Aprovado", referencia = "P0007AAAAA", nsu = "555", valor = 1000)
+        // O serviço do PagBank demora a subir: pergunta de novo
+        pagador.falhasNaUltima = 2
+        val p = novaPonte()
+        // Até resolver, o tablet não cobra outra coisa e ouve "andamento" sobre ela
+        val t = ligar(p)
+        p.recebeu(t, cobrar(id = "C01-P000009-30"))
+        t.esperar("ocupada")
+        p.recebeu(t, """{"tipo":"consultar","id":"C01-P000007-20"}""")
+        t.esperar("andamento")
+        p.recuperar()
+        assertEquals(3, pagador.consultas.get())
         assertEquals("555", armazem.resultado("C01-P000007-20")!!.nsu)
         assertNull(armazem.emAndamento())
+        assertTrue(t.esperar("resultado").campos.getBoolean("aprovado"))
+    }
 
-        // Outra interrompida que o PagBank não aprovou
-        armazem.marcarEmAndamento(PedidoPagamento("C01-P000008-21", "C01P000008", 1000, "debito", false))
-        ponte.recuperar()
-        assertFalse(armazem.resultado("C01-P000008-21")!!.aprovado)
+    @Test
+    fun app_que_fechou_no_meio_sem_confirmacao_do_pagbank_deixa_para_o_operador() {
+        // A última aprovada no PagBank é outra (de antes): esta pode ainda ser aprovada pelo PagBank, que termina o
+        // pagamento mesmo com o app fechado. Não decide.
+        armazem.marcarEmAndamento(PedidoPagamento("C01-P000008-21", "P0008BBBBB", 1000, "debito", false))
+        pagador.ultima = ResultadoPagamento(true, mensagem = "Aprovado", referencia = "P0001CCCCC", valor = 1000)
+        novaPonte().recuperar()
+        assertTrue(armazem.resultado("C01-P000008-21")!!.indefinido)
+        assertNull(armazem.emAndamento())
+
+        // O PagBank não responde nunca: não vira "não aprovado", fica para o operador
+        armazem.marcarEmAndamento(PedidoPagamento("C01-P000009-22", "P0009DDDDD", 1000, "debito", false))
+        pagador.falhasNaUltima = 100
+        pagador.consultas.set(0)
+        novaPonte().recuperar()
+        assertEquals(3, pagador.consultas.get())
+        val r = armazem.resultado("C01-P000009-22")!!
+        assertTrue(r.indefinido)
+        assertFalse(r.aprovado)
+        assertEquals(1000L, r.valor)
+    }
+
+    @Test
+    fun sem_conseguir_gravar_nao_cobra() {
+        val quebrado = object : Armazem by armazem {
+            override fun marcarEmAndamento(pedido: PedidoPagamento?) {
+                if (pedido != null) throw java.io.IOException("memória cheia")
+                armazem.marcarEmAndamento(null)
+            }
+        }
+        val p = novaPonte(guardar = quebrado)
+        val t = ligar(p)
+        p.recebeu(t, cobrar())
+        assertTrue(t.esperar("erro").texto("mensagem")!!.contains("Nada foi cobrado"))
+        assertEquals(0, pagador.cobrancas.get())
+        assertNull(p.situacao.cobrando)
     }
 
     @Test
     fun armazem_guarda_no_arquivo_e_le_de_novo() {
         val arquivo = pasta.root.resolve("guardado.json")
         val a = ArmazemArquivo(arquivo)
-        a.guardar("A", ResultadoPagamento(true, mensagem = "Aprovado", nsu = "1"))
+        a.guardar("A", ResultadoPagamento(true, mensagem = "Aprovado", nsu = "1", valor = 2350))
+        a.guardar("I", ResultadoPagamento(false, mensagem = "confira", valor = 100, indefinido = true))
         a.marcarEmAndamento(PedidoPagamento("B", "REFB", 500, "pix", true))
         val b = ArmazemArquivo(arquivo)
         assertEquals("1", b.resultado("A")!!.nsu)
+        assertEquals(2350L, b.resultado("A")!!.valor)
+        assertTrue(b.resultado("I")!!.indefinido)
         assertEquals(PedidoPagamento("B", "REFB", 500, "pix", true), b.emAndamento())
         repeat(ArmazemArquivo.MAXIMO + 10) { b.guardar("X$it", ResultadoPagamento(false, mensagem = "não")) }
         assertNull(b.resultado("A")) // só as últimas ficam
         assertEquals(ArmazemArquivo.MAXIMO, b.ultimas(1000).size)
+    }
+
+    @Test
+    fun maquininha_que_desliga_no_meio_da_gravacao_fica_com_a_gravacao_anterior() {
+        val arquivo = pasta.root.resolve("guardado.json")
+        val a = ArmazemArquivo(arquivo)
+        a.guardar("A", ResultadoPagamento(true, mensagem = "Aprovado", nsu = "1"))   // 1ª gravação: arquivo .a
+        a.marcarEmAndamento(PedidoPagamento("B", "REFB", 500, "pix", true))         // 2ª: arquivo .b
+        // A 2ª ficou pela metade (desligou no meio): vale a 1ª, inteira
+        val b2 = pasta.root.resolve("guardado.json.b")
+        b2.writeText(b2.readText().take(30))
+        val b = ArmazemArquivo(arquivo)
+        assertEquals("1", b.resultado("A")!!.nsu)
+        assertNull(b.emAndamento())
+        // E continua gravando por cima da estragada, sem perder a boa
+        b.guardar("C", ResultadoPagamento(false, mensagem = "não"))
+        val c = ArmazemArquivo(arquivo)
+        assertEquals("1", c.resultado("A")!!.nsu)
+        assertFalse(c.resultado("C")!!.aprovado)
+    }
+
+    @Test
+    fun valor_do_pagbank_vira_centavos() {
+        assertEquals(2350L, Mensagem.centavos("2350"))
+        assertEquals(2350L, Mensagem.centavos("23,50"))
+        assertEquals(123456L, Mensagem.centavos("R$ 1.234,56"))
+        assertNull(Mensagem.centavos(null))
+        assertNull(Mensagem.centavos("sem valor"))
     }
 
     @Test

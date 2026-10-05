@@ -19,10 +19,12 @@ public interface IMaquininha
     Task<ResultadoCobranca> CobrarAsync(Cobranca cobranca, IProgress<string>? andamento, CancellationToken cancelar);
 
     /// <summary>
-    /// Pergunta o resultado de uma cobrança já enviada. Nulo se a cobrança não chegou na maquininha (ou ela não sabe
-    /// dizer). <see cref="MaquininhaSemResposta"/>: não deu para perguntar, o pedido continua esperando.
+    /// Pergunta o resultado de uma cobrança já enviada. Nulo se a cobrança não chegou na maquininha.
+    /// <see cref="MaquininhaSemResposta"/>: não deu para perguntar ou a maquininha não sabe dizer se foi paga; o
+    /// pedido continua esperando o operador conferir.
     /// </summary>
-    Task<ResultadoCobranca?> ConsultarAsync(string id, CancellationToken cancelar);
+    /// <param name="valorCentavos">O valor da cobrança: a resposta só vale se for daquele valor.</param>
+    Task<ResultadoCobranca?> ConsultarAsync(string id, long valorCentavos, CancellationToken cancelar);
 }
 
 /// <summary>
@@ -63,7 +65,7 @@ public abstract class MaquininhaManual : IMaquininha
         }
     }
 
-    public virtual Task<ResultadoCobranca?> ConsultarAsync(string id, CancellationToken cancelar) =>
+    public virtual Task<ResultadoCobranca?> ConsultarAsync(string id, long valorCentavos, CancellationToken cancelar) =>
         Task.FromResult<ResultadoCobranca?>(null);
 
     public void Aprovar(string? autorizacao = null) =>

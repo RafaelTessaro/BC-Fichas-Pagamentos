@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -10,8 +11,9 @@ namespace BCFichas.Core.Pagamento;
 /// </summary>
 /// <remarks>
 /// Tablet → ponte: ola, cobrar, consultar, cancelar, ping.
-/// Ponte → tablet: ola, andamento, resultado, desconhecida (consulta de uma cobrança que nunca chegou), ocupada
-/// (já está cobrando outra), erro, pong.
+/// Ponte → tablet: ola, andamento, resultado, desconhecida (consulta de uma cobrança que nunca chegou), indefinida
+/// (a cobrança chegou, mas a maquininha não sabe dizer se foi paga: o operador confere nela), ocupada (já está
+/// cobrando outra), erro, pong.
 /// </remarks>
 public sealed class MensagemPonte
 {
@@ -24,7 +26,10 @@ public sealed class MensagemPonte
     /// <summary>Código da venda que vai para o PagBank: até 10 letras e números.</summary>
     public string? Referencia { get; set; }
 
-    /// <summary>Valor em centavos.</summary>
+    /// <summary>
+    /// Valor em centavos. Vai no "cobrar" e no "consultar", e volta no "resultado": a maquininha e o tablet conferem
+    /// que o resultado é mesmo da cobrança daquele valor.
+    /// </summary>
     public long? Valor { get; set; }
 
     /// <summary>"debito", "credito" ou "pix".</summary>
@@ -98,9 +103,28 @@ public static class ProtocoloPonte
     };
 
     /// <summary>
-    /// Código da venda para o PagBank (até 10 letras e números, sem acento): "C01P000123" (caixa e número do pedido).
-    /// Pedido acima de 999.999 usa só os últimos 6 dígitos; o identificador completo vai junto no "id".
+    /// Código da venda para o PagBank (até 10 letras e números): "P0123" (os últimos 4 dígitos do número do pedido) e
+    /// mais 5 letras e números tirados do identificador completo da cobrança. O número do pedido se repete (modo
+    /// teste, vendas apagadas, outro caixa), o código não: o app da maquininha usa ele para saber se a última venda
+    /// aprovada no PagBank é mesmo aquela cobrança.
     /// </summary>
-    public static string Referencia(int caixa, long numeroPedido) =>
-        $"C{Math.Clamp(caixa, 0, 99):00}P{Math.Abs(numeroPedido) % 1_000_000:000000}";
+    public static string Referencia(string idCobranca, long numeroPedido)
+    {
+        // FNV-1a (64 bits) do identificador, escrito em base 36
+        var h = 14695981039346656037UL;
+        foreach (var b in Encoding.UTF8.GetBytes(idCobranca))
+        {
+            h ^= b;
+            h *= 1099511628211UL;
+        }
+        const string digitos = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        Span<char> sufixo = stackalloc char[5];
+        for (var i = 0; i < sufixo.Length; i++)
+        {
+            sufixo[i] = digitos[(int)(h % 36)];
+            h /= 36;
+        }
+        var numero = (numeroPedido % 10_000 + 10_000) % 10_000;
+        return string.Create(CultureInfo.InvariantCulture, $"P{numero:0000}{new string(sufixo)}");
+    }
 }

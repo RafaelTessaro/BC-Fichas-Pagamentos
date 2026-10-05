@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using BCFichas.Core;
 using BCFichas.Core.Impressao;
 using BCFichas.Core.Pagamento;
+using BCFichas.Core.Servicos;
 using BCFichas.Core.Vendas;
 
 namespace BCFichas.App.ViewModels;
@@ -428,10 +429,35 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
                     $"{pagos.Count} pedido(s) foram pagos antes do programa fechar. Imprima as fichas em Menu > " +
                     (Config.LiberarReimpressao ? "Reimprimir fichas." : "Fichas não impressas."));
             foreach (var pendente in semResposta) await PerguntarAoOperador(pendente, maquininhaSemResposta: true);
+            await AvisarAprovadasDepois();
         }
         catch (Exception e)
         {
             Log.Erro("Pendentes", e);
+        }
+    }
+
+    /// <summary>
+    /// A Moderninha avisou que aprovou um pedido que já tinha sido cancelado aqui (o operador desistiu de esperar e
+    /// tocou em "Não foi pago"): o cliente pagou e não levou as fichas.
+    /// </summary>
+    internal async Task AvisarAprovadasDepois()
+    {
+        if (Sistema.Maquininha is not MaquininhaPagBank smart) return;
+        try
+        {
+            while (smart.TirarAprovadaDepois(out var id))
+            {
+                if (Sistema.Vendas.PedidoDaCobranca(id) is not { Status: StatusPedido.Cancelado } pedido) continue;
+                await Mensagem("Pagamento aprovado depois",
+                    $"A maquininha aprovou o pedido {pedido.Numero} ({Dinheiro.Formatar(pedido.TotalCentavos)} no " +
+                    $"{Nomes.De(pedido.Forma)}) depois de ele ter sido cancelado aqui. As fichas desse pedido não saíram." +
+                    "\n\nConfira no app do PagBank e devolva o dinheiro ao cliente (estorno).");
+            }
+        }
+        catch (Exception e)
+        {
+            Log.Erro("Aprovadas depois", e);
         }
     }
 
@@ -446,6 +472,8 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
         if (!aprovou)
         {
             Sistema.Vendas.Cancelar(pendente.Id);
+            if (maquininhaSemResposta)
+                (Sistema.Maquininha as MaquininhaPagBank)?.ConferirDepois(VendaServico.IdCobranca(pendente), pendente.TotalCentavos);
             return;
         }
         var pago = Sistema.Vendas.ConfirmarPagamento(pendente.Id,

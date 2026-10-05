@@ -303,7 +303,7 @@ public class AjustesDaVersao32Tests : IDisposable
         maquininha.Aprovar();
         Assert.True((await cobranca).Aprovado);
         Assert.False(maquininha.AguardandoDecisao);
-        Assert.Null(await maquininha.ConsultarAsync("C1", CancellationToken.None));
+        Assert.Null(await maquininha.ConsultarAsync("C1", 100, CancellationToken.None));
     }
 
     private sealed class Progresso(Action<string> acao) : IProgress<string>

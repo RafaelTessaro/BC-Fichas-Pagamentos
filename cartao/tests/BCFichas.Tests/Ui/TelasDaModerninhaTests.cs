@@ -133,7 +133,10 @@ public class TelasDaModerninhaTests : IDisposable
         await TelaDeTeste.Esperar(() => _ponte.Cobrancas == 1 && pagamento.Andamento == "Aproxime, insira ou passe o cartão");
         Assert.True(pagamento.EmMaquininha);
         var cobrar = _ponte.Recebidas.Single(m => m.Tipo == "cobrar");
-        Assert.Equal((3200L, "credito", "C01P000001"), (cobrar.Valor!.Value, cobrar.Forma, cobrar.Referencia));
+        var pedidoNovo = UltimoPedido(t);
+        Assert.Equal((3200L, "credito", VendaServico.IdCobranca(pedidoNovo), VendaServico.ReferenciaCobranca(pedidoNovo)),
+            (cobrar.Valor!.Value, cobrar.Forma, cobrar.Id, cobrar.Referencia));
+        Assert.Matches("^P0001[A-Z0-9]{5}$", cobrar.Referencia);
         t.Foto("81-pagamento-smart-esperando");
 
         _ponte.Concluir(aprovado: true);
@@ -207,6 +210,87 @@ public class TelasDaModerninhaTests : IDisposable
         Assert.True(pagamento.EmRecusado);
         Assert.Equal(StatusPedido.Cancelado, UltimoPedido(t).Status);
         Assert.False(t.Venda.Vazio); // o pedido continua na tela para cobrar de outro jeito
+    }
+
+    [AvaloniaFact]
+    public async Task Toques_seguidos_na_tela_sem_resposta_imprimem_as_fichas_uma_vez_so()
+    {
+        using var t = Tela();
+        t.AbrirCaixa();
+        _ponte.DecidirSozinhaEm = null;
+        var pagamento = Pagar(t, "PASTEL");
+        var debito = pagamento.DebitoCommand.ExecuteAsync(null);
+        await TelaDeTeste.Esperar(() => _ponte.Cobrancas == 1);
+        _ponte.Desligada = true;
+        _ponte.DerrubarLigacao();
+        await debito.WaitAsync(TimeSpan.FromSeconds(20));
+        Assert.True(pagamento.EmSemResposta);
+        _ponte.Concluir(aprovado: true);
+        _ponte.Desligada = false;
+
+        // "Aprovou na maquininha" com a confirmação aberta: outro toque (nele ou em Consultar) não faz nada
+        var aprovou = pagamento.FoiAprovadoCommand.ExecuteAsync(null);
+        var pergunta = Assert.IsType<MensagemViewModel>(t.Principal.Dialogo);
+        var consultasAntes = _ponte.Recebidas.Count(m => m.Tipo == "consultar");
+        await pagamento.ConsultarDeNovoCommand.ExecuteAsync(null);
+        await pagamento.NaoFoiPagoCommand.ExecuteAsync(null);
+        Assert.Same(pergunta, t.Principal.Dialogo);
+        Assert.Equal(consultasAntes, _ponte.Recebidas.Count(m => m.Tipo == "consultar"));
+
+        pergunta.SimCommand.Execute(null);
+        await aprovou;
+        Assert.True(pagamento.EmConcluido);
+        Assert.Single(t.EsperarImpressoes(1));
+        await Task.Delay(300);
+        Assert.Single(t.EsperarImpressoes(1));
+        Assert.Equal(StatusPedido.Pago, UltimoPedido(t).Status);
+    }
+
+    [AvaloniaFact]
+    public async Task Cancelar_tocado_enquanto_o_pedido_e_gravado_nem_manda_para_a_maquininha()
+    {
+        using var t = Tela();
+        t.AbrirCaixa();
+        var pagamento = Pagar(t, "PASTEL");
+        // O toque em Cancelar chega antes de o pedido terminar de ser gravado (disco lento do tablet)
+        var credito = pagamento.CreditoCommand.ExecuteAsync(null);
+        pagamento.CancelarMaquininhaCommand.Execute(null);
+        await credito.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.True(pagamento.EmEscolher);
+        Assert.Equal(0, _ponte.Cobrancas);
+        Assert.Equal(StatusPedido.Cancelado, UltimoPedido(t).Status);
+    }
+
+    [AvaloniaFact]
+    public async Task Aprovado_depois_de_o_operador_dizer_que_nao_foi_pago_mostra_um_aviso()
+    {
+        using var t = Tela();
+        t.AbrirCaixa();
+        _ponte.DecidirSozinhaEm = null;
+        var pagamento = Pagar(t, "PASTEL");
+        var credito = pagamento.CreditoCommand.ExecuteAsync(null);
+        await TelaDeTeste.Esperar(() => _ponte.Cobrancas == 1);
+        _ponte.Muda = true;
+        await credito.WaitAsync(TimeSpan.FromSeconds(20));
+        Assert.True(pagamento.EmSemResposta);
+        var desistiu = pagamento.NaoFoiPagoCommand.ExecuteAsync(null);
+        Assert.IsType<MensagemViewModel>(t.Principal.Dialogo).SimCommand.Execute(null);
+        await desistiu;
+        var cancelado = UltimoPedido(t);
+        Assert.Equal(StatusPedido.Cancelado, cancelado.Status);
+        pagamento.FecharCommand.Execute(null);
+
+        // O cliente pagou mesmo assim: a maquininha avisa quando volta, na venda seguinte
+        _ponte.Muda = false;
+        _ponte.Concluir(aprovado: true);
+        _ponte.DecidirSozinhaEm = TimeSpan.FromMilliseconds(100);
+        var seguinte = Pagar(t, "PASTEL");
+        await seguinte.DebitoCommand.ExecuteAsync(null);
+        Assert.True(seguinte.EmConcluido);
+        await TelaDeTeste.Esperar(() => t.Principal.Dialogo is MensagemViewModel, 10000);
+        var aviso = (MensagemViewModel)t.Principal.Dialogo!;
+        Assert.Contains($"aprovou o pedido {cancelado.Numero}", aviso.Texto);
+        Assert.Contains("estorno", aviso.Texto);
     }
 
     [AvaloniaFact]

@@ -59,6 +59,7 @@ class TelaPrincipal : Activity() {
             val pedido = id.substringAfter("-P").substringBefore("-").trimStart('0').ifEmpty { "0" }
             "Pedido $pedido: " + when {
                 r.aprovado -> "aprovado" + (r.bandeira?.let { " ($it)" } ?: "")
+                r.indefinido -> "sem confirmação do PagBank (conferir)"
                 r.cancelado -> "cancelado"
                 else -> "não aprovado"
             }

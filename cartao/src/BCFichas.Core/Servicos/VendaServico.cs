@@ -1,3 +1,4 @@
+using System.Globalization;
 using BCFichas.Core.Dados;
 using BCFichas.Core.Pagamento;
 using BCFichas.Core.Vendas;
@@ -218,8 +219,9 @@ public sealed class VendaServico
     /// Retorna os pedidos que estavam pagos (para reimprimir as fichas).
     /// </summary>
     /// <param name="semResposta">
-    /// Recebe os pedidos que a maquininha não conseguiu dizer se foram pagos (<see cref="MaquininhaSemResposta"/>):
-    /// eles continuam esperando, para o operador conferir na maquininha. Sem a lista, também ficam esperando.
+    /// Recebe os pedidos que a maquininha não conseguiu dizer se foram pagos (<see cref="MaquininhaSemResposta"/> ou
+    /// outro erro ao perguntar): eles continuam esperando, para o operador conferir na maquininha. Sem a lista,
+    /// também ficam esperando.
     /// </param>
     public async Task<List<Pedido>> ResolverPendentesAsync(IMaquininha maquininha, CancellationToken cancelar,
         List<Pedido>? semResposta = null)
@@ -227,20 +229,16 @@ public sealed class VendaServico
         var pagos = new List<Pedido>();
         foreach (var pendente in Pendentes())
         {
-            ResultadoCobranca? resultado = null;
+            ResultadoCobranca? resultado;
             try
             {
-                resultado = await maquininha.ConsultarAsync(IdCobranca(pendente), cancelar);
-            }
-            catch (MaquininhaSemResposta)
-            {
-                // A cobrança pode ter sido paga: não cancela sozinho
-                semResposta?.Add(pendente);
-                continue;
+                resultado = await maquininha.ConsultarAsync(IdCobranca(pendente), pendente.TotalCentavos, cancelar);
             }
             catch (Exception) when (!cancelar.IsCancellationRequested)
             {
-                // Sem resposta da maquininha: deixa como cancelado; o operador confere no extrato.
+                // Não deu para saber se a cobrança foi paga: nunca cancela sozinho (o cliente pode ter pago)
+                semResposta?.Add(pendente);
+                continue;
             }
 
             if (resultado?.Aprovado == true)
@@ -251,10 +249,26 @@ public sealed class VendaServico
         return pagos;
     }
 
-    public static string IdCobranca(Pedido pedido) => $"C{pedido.Caixa:00}-P{pedido.Numero:000000}-{pedido.Id}";
+    /// <summary>
+    /// Identificador da cobrança na maquininha: o mesmo em todas as tentativas do mesmo pedido, e diferente para
+    /// qualquer outro pedido, mesmo de outro banco de dados (por isso vai junto a hora em que o pedido foi criado:
+    /// o número e o id do pedido recomeçam no modo teste e quando as vendas são apagadas).
+    /// </summary>
+    public static string IdCobranca(Pedido pedido) => string.Create(CultureInfo.InvariantCulture,
+        $"C{pedido.Caixa:00}-P{pedido.Numero:000000}-{pedido.Id}-{pedido.CriadoEm:yyMMddHHmmss}");
+
+    /// <summary>O pedido de um identificador de cobrança (<see cref="IdCobranca"/>); nulo se não for deste banco.</summary>
+    public Pedido? PedidoDaCobranca(string idCobranca)
+    {
+        var partes = idCobranca.Split('-');
+        if (partes.Length != 4 || !long.TryParse(partes[2], NumberStyles.None, CultureInfo.InvariantCulture, out var id))
+            return null;
+        var pedido = Pedido(id);
+        return pedido is not null && IdCobranca(pedido) == idCobranca ? pedido : null;
+    }
 
     /// <summary>Código da venda que aparece no PagBank (até 10 letras e números).</summary>
-    public static string ReferenciaCobranca(Pedido pedido) => ProtocoloPonte.Referencia(pedido.Caixa, pedido.Numero);
+    public static string ReferenciaCobranca(Pedido pedido) => ProtocoloPonte.Referencia(IdCobranca(pedido), pedido.Numero);
 
     /// <summary>
     /// Confere se os produtos existem, estão à venda e têm estoque — somando o que os combos usam (um combo
