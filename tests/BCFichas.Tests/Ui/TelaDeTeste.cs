@@ -1,11 +1,14 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using BCFichas.App.ViewModels;
 using BCFichas.App.Views;
 using BCFichas.Core;
 using BCFichas.Tests.Core;
+using SkiaSharp;
 using Xunit;
 
 namespace BCFichas.Tests.Ui;
@@ -117,8 +120,16 @@ public sealed class TelaDeTeste : IDisposable
         Atualizar();
         Directory.CreateDirectory(PastaFotos);
         var caminho = Path.Combine(PastaFotos, nome + ".png");
-        var quadro = Janela.CaptureRenderedFrame() ?? throw new InvalidOperationException("Sem quadro renderizado.");
-        quadro.Save(caminho);
+        // Copia os pontos do quadro para uma imagem nossa antes de gravar o PNG: gravar direto o quadro da tela às
+        // vezes derrubava o processo dos testes (erro de memória dentro do SkiaSharp), sem nada a ver com o programa.
+        using var quadro = Janela.CaptureRenderedFrame() ?? throw new InvalidOperationException("Sem quadro renderizado.");
+        var tamanho = quadro.PixelSize;
+        var tipo = quadro.Format == PixelFormat.Rgba8888 ? SKColorType.Rgba8888 : SKColorType.Bgra8888;
+        using var copia = new SKBitmap(new SKImageInfo(tamanho.Width, tamanho.Height, tipo, SKAlphaType.Premul));
+        quadro.CopyPixels(new PixelRect(tamanho), copia.GetPixels(), copia.ByteCount, copia.RowBytes);
+        using var imagem = SKImage.FromBitmap(copia);
+        using var png = imagem.Encode(SKEncodedImageFormat.Png, 100);
+        using (var arquivo = File.Create(caminho)) png.SaveTo(arquivo);
         return caminho;
     }
 
