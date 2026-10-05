@@ -1,0 +1,297 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.Views.PagamentoView"
+             x:DataType="vm:PagamentoViewModel">
+
+  <Border Classes="cartao" Width="760" MaxWidth="{Binding $parent[Window].Bounds.Width}" Padding="0">
+    <Grid RowDefinitions="Auto,*">
+
+      <!-- Cabeçalho com total -->
+      <Border Background="{StaticResource Escuro}" CornerRadius="16,16,0,0" Padding="22,14,10,14">
+        <Grid ColumnDefinitions="*,Auto,Auto">
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="Pagamento" Foreground="White" FontSize="22" FontWeight="Bold" />
+            <TextBlock Text="{Binding ResumoItens}" Foreground="#94A3B8" FontSize="14" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+            <TextBlock Text="TOTAL" Foreground="#94A3B8" FontSize="13" FontWeight="Bold" HorizontalAlignment="Right" />
+            <TextBlock Text="{Binding Total}" Foreground="White" FontSize="36" FontWeight="ExtraBold" />
+          </StackPanel>
+          <Button Grid.Column="2" Classes="topo" Command="{Binding FecharCommand}" IsVisible="{Binding PodeFechar}"
+                  Width="52" Height="52" Padding="0" VerticalAlignment="Center">
+            <PathIcon Data="{StaticResource IconeFechar}" Width="24" Height="24" Foreground="White" />
+          </Button>
+        </Grid>
+      </Border>
+
+      <Panel Grid.Row="1" Margin="18">
+
+        <!-- 1. Escolher a forma -->
+        <Grid IsVisible="{Binding EmEscolher}" RowDefinitions="Auto,*">
+          <TextBlock Text="Como o cliente vai pagar?" Classes="secao" Margin="6,0,0,8" />
+          <UniformGrid Grid.Row="1" Columns="2" Rows="2" Height="330">
+            <Button Classes="forma" Background="{StaticResource GradienteDinheiro}" Command="{Binding EscolherDinheiroCommand}">
+              <Panel>
+                <!-- Ícone grande e apagado no canto, como marca d'água -->
+                <PathIcon Data="{StaticResource IconeNotas}" Width="130" Height="130" Foreground="#1FFFFFFF"
+                          HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-8,-10" />
+                <Grid RowDefinitions="*,Auto,Auto">
+                  <Border Width="62" Height="62" CornerRadius="18" Background="#2EFFFFFF" HorizontalAlignment="Left"
+                          VerticalAlignment="Top">
+                    <PathIcon Data="{StaticResource IconeNotas}" Width="34" Height="34" Foreground="White" />
+                  </Border>
+                  <TextBlock Grid.Row="1" Text="Dinheiro" FontSize="28" FontWeight="ExtraBold" Foreground="White" />
+                  <TextBlock Grid.Row="2" Text="Calcula o troco na hora" FontSize="14" FontWeight="SemiBold" Foreground="#D9FFFFFF" />
+                </Grid>
+              </Panel>
+            </Button>
+            <Button Classes="forma" Background="{StaticResource GradientePix}" Command="{Binding PixCommand}">
+              <Panel>
+                <!-- Ícone grande e apagado no canto, como marca d'água -->
+                <PathIcon Data="{StaticResource IconePix}" Width="130" Height="130" Foreground="#1A77B6A8"
+                          HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-8,-10" />
+                <Grid RowDefinitions="*,Auto,Auto">
+                  <Border Width="62" Height="62" CornerRadius="18" Background="#2677B6A8" HorizontalAlignment="Left"
+                          VerticalAlignment="Top">
+                    <PathIcon Data="{StaticResource IconePix}" Width="34" Height="34" Foreground="{StaticResource PixVerde}" />
+                  </Border>
+                  <TextBlock Grid.Row="1" Text="PIX" FontSize="28" FontWeight="ExtraBold" Foreground="White" />
+                  <TextBlock Grid.Row="2" Text="Pagamento instantâneo" FontSize="14" FontWeight="SemiBold" Foreground="#D9FFFFFF" />
+                </Grid>
+              </Panel>
+            </Button>
+            <Button Classes="forma" Background="{StaticResource GradienteDebito}" Command="{Binding DebitoCommand}">
+              <Panel>
+                <!-- Ícone grande e apagado no canto, como marca d'água -->
+                <PathIcon Data="{StaticResource IconeCartao}" Width="130" Height="130" Foreground="#1FFFFFFF"
+                          HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-8,-10" />
+                <Grid RowDefinitions="*,Auto,Auto">
+                  <Border Width="62" Height="62" CornerRadius="18" Background="#2EFFFFFF" HorizontalAlignment="Left"
+                          VerticalAlignment="Top">
+                    <PathIcon Data="{StaticResource IconeCartao}" Width="34" Height="34" Foreground="White" />
+                  </Border>
+                  <TextBlock Grid.Row="1" Text="Débito" FontSize="28" FontWeight="ExtraBold" Foreground="White" />
+                  <TextBlock Grid.Row="2" Text="Cartão na maquininha" FontSize="14" FontWeight="SemiBold" Foreground="#D9FFFFFF" />
+                </Grid>
+              </Panel>
+            </Button>
+            <Button Classes="forma" Background="{StaticResource GradienteCredito}" Command="{Binding CreditoCommand}">
+              <Panel>
+                <!-- Ícone grande e apagado no canto, como marca d'água -->
+                <PathIcon Data="{StaticResource IconeCartaoChip}" Width="130" Height="130" Foreground="#1FFFFFFF"
+                          HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-8,-10" />
+                <Grid RowDefinitions="*,Auto,Auto">
+                  <Border Width="62" Height="62" CornerRadius="18" Background="#2EFFFFFF" HorizontalAlignment="Left"
+                          VerticalAlignment="Top">
+                    <PathIcon Data="{StaticResource IconeCartaoChip}" Width="34" Height="34" Foreground="White" />
+                  </Border>
+                  <TextBlock Grid.Row="1" Text="Crédito" FontSize="28" FontWeight="ExtraBold" Foreground="White" />
+                  <TextBlock Grid.Row="2" Text="Cartão na maquininha" FontSize="14" FontWeight="SemiBold" Foreground="#D9FFFFFF" />
+                </Grid>
+              </Panel>
+            </Button>
+          </UniformGrid>
+        </Grid>
+
+        <!-- 2. Dinheiro: valor recebido e troco -->
+        <Grid IsVisible="{Binding EmDinheiro}" ColumnDefinitions="*,300" RowDefinitions="*,Auto">
+          <StackPanel Spacing="10" Margin="0,0,16,0">
+            <!-- Já vem com o valor da venda; a primeira tecla apaga e o operador digita o que recebeu -->
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="Valor recebido" Classes="rotulo" Margin="2,0,0,0" VerticalAlignment="Center" />
+              <Border Grid.Column="1" Background="{StaticResource PrimariaClara}" CornerRadius="999" Padding="10,3"
+                      IsVisible="{Binding Recebido.Sugerido}">
+                <TextBlock Text="Valor da venda • digite para trocar" FontSize="13" FontWeight="SemiBold"
+                           Foreground="{StaticResource PrimariaEscura}" />
+              </Border>
+            </Grid>
+            <Border Background="{StaticResource Fundo}" CornerRadius="12" Padding="16,8">
+              <TextBlock Text="{Binding Recebido.Texto}" FontSize="40" FontWeight="ExtraBold" TextAlignment="Right" />
+            </Border>
+            <UniformGrid Columns="3">
+              <UniformGrid.Styles>
+                <Style Selector="Button">
+                  <Setter Property="Margin" Value="3" />
+                  <Setter Property="HorizontalAlignment" Value="Stretch" />
+                  <Setter Property="Height" Value="50" />
+                  <Setter Property="FontSize" Value="18" />
+                </Style>
+              </UniformGrid.Styles>
+              <Button Classes="suave" Content="R$ 2" Command="{Binding Recebido.SomarCommand}" CommandParameter="200" />
+              <Button Classes="suave" Content="R$ 5" Command="{Binding Recebido.SomarCommand}" CommandParameter="500" />
+              <Button Classes="suave" Content="R$ 10" Command="{Binding Recebido.SomarCommand}" CommandParameter="1000" />
+              <Button Classes="suave" Content="R$ 20" Command="{Binding Recebido.SomarCommand}" CommandParameter="2000" />
+              <Button Classes="suave" Content="R$ 50" Command="{Binding Recebido.SomarCommand}" CommandParameter="5000" />
+              <Button Classes="suave" Content="R$ 100" Command="{Binding Recebido.SomarCommand}" CommandParameter="10000" />
+            </UniformGrid>
+            <Border CornerRadius="12" Padding="16,10" Background="{StaticResource PrimariaClara}"
+                    Classes.falta="{Binding FaltaDinheiro}">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="TROCO" FontWeight="Bold" FontSize="18" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding Troco}" FontSize="32" FontWeight="ExtraBold" />
+              </Grid>
+            </Border>
+          </StackPanel>
+
+          <v:TecladoNumerico Grid.Column="1" Comando="{Binding Recebido.TeclaCommand}" TeclaEsquerda="C" />
+
+          <Grid Grid.Row="1" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*" Margin="0,14,0,0">
+            <Button Classes="suave" Content="Voltar" Command="{Binding OutraFormaCommand}" Height="60" Padding="28,0" />
+            <Button Grid.Column="1" Classes="primario" Command="{Binding ConfirmarDinheiroCommand}" Height="60"
+                    HorizontalAlignment="Stretch" Margin="12,0,0,0" IsEnabled="{Binding !FaltaDinheiro}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <PathIcon Data="{StaticResource IconeImpressora}" Width="24" Height="24" Foreground="White" />
+                <TextBlock Text="Confirmar e imprimir fichas" Foreground="White" FontSize="20" FontWeight="Bold" />
+              </StackPanel>
+            </Button>
+          </Grid>
+        </Grid>
+
+        <!-- 3. Aguardando a maquininha -->
+        <StackPanel IsVisible="{Binding EmMaquininha}" Spacing="12" Margin="10,6,10,4">
+          <Border Width="88" Height="88" CornerRadius="999" Background="{Binding FundoForma}" HorizontalAlignment="Center">
+            <PathIcon Data="{Binding IconeForma}" Width="44" Height="44" Foreground="{Binding CorForma}" />
+          </Border>
+          <TextBlock HorizontalAlignment="Center" FontSize="24" FontWeight="Bold">
+            <Run Text="Pagamento em" />
+            <Run Text="{Binding FormaTexto}" />
+          </TextBlock>
+          <TextBlock Text="{Binding Andamento}" HorizontalAlignment="Center" FontSize="19" FontWeight="SemiBold"
+                     TextWrapping="Wrap" TextAlignment="Center" />
+
+          <!-- Maquininha ligada ao programa (simulador / app ponte): espera a resposta dela -->
+          <ProgressBar IsVisible="{Binding EhIntegrada}" IsIndeterminate="True" Height="6" Margin="60,0" />
+          <Border IsVisible="{Binding EhSimulador}" Background="{StaticResource AvisoClara}" CornerRadius="12" Padding="14">
+            <StackPanel Spacing="10">
+              <TextBlock Text="Modo simulador: escolha o que a maquininha responderia" FontWeight="SemiBold"
+                         HorizontalAlignment="Center" TextWrapping="Wrap" />
+              <UniformGrid Columns="2">
+                <Button Classes="primario" Content="Simular aprovado" Command="{Binding SimularAprovarCommand}"
+                        HorizontalAlignment="Stretch" Margin="0,0,6,0" Height="52" />
+                <Button Classes="perigo" Content="Simular recusado" Command="{Binding SimularRecusarCommand}"
+                        HorizontalAlignment="Stretch" Margin="6,0,0,0" Height="52" />
+              </UniformGrid>
+            </StackPanel>
+          </Border>
+          <Button IsVisible="{Binding EhIntegrada}" Classes="suave" Content="Cancelar pagamento"
+                  Command="{Binding CancelarMaquininhaCommand}" HorizontalAlignment="Center" Height="54" Padding="30,0" />
+
+          <!-- Maquininha separada: o operador cobra nela e confirma aqui -->
+          <StackPanel IsVisible="{Binding EhSeparada}" Spacing="12">
+            <TextBlock Text="Quando a maquininha aprovar, toque no botão verde para imprimir as fichas."
+                       HorizontalAlignment="Center" FontSize="16" Classes="suave" TextWrapping="Wrap" TextAlignment="Center" />
+            <Button Classes="primario" Command="{Binding ConfirmarNaMaquininhaCommand}" Height="72"
+                    HorizontalAlignment="Stretch" CornerRadius="14" Margin="0,4,0,0">
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <PathIcon Data="{StaticResource IconeOk}" Width="28" Height="28" Foreground="White" />
+                <TextBlock Text="APROVADO NA MAQUININHA" Foreground="White" FontSize="22" FontWeight="ExtraBold" />
+              </StackPanel>
+            </Button>
+            <Grid ColumnDefinitions="*,*">
+              <Button Classes="suave" Content="Voltar" Command="{Binding CancelarMaquininhaCommand}"
+                      HorizontalAlignment="Stretch" Height="54" Margin="0,0,6,0" />
+              <Button Grid.Column="1" Classes="suave" Command="{Binding NaoAprovouCommand}"
+                      HorizontalAlignment="Stretch" Height="54" Margin="6,0,0,0">
+                <TextBlock Text="Não aprovou" Foreground="{StaticResource Perigo}" FontWeight="Bold" />
+              </Button>
+            </Grid>
+          </StackPanel>
+        </StackPanel>
+
+        <!-- 4. Pago -->
+        <StackPanel IsVisible="{Binding EmConcluido}" Spacing="12" Margin="10">
+          <Border Width="96" Height="96" CornerRadius="999" Background="{StaticResource Primaria}" HorizontalAlignment="Center">
+            <PathIcon Data="{StaticResource IconeOk}" Width="56" Height="56" Foreground="White" />
+          </Border>
+          <TextBlock Text="Pagamento confirmado!" HorizontalAlignment="Center" FontSize="26" FontWeight="ExtraBold" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
+            <PathIcon Data="{StaticResource IconeImpressora}" Width="22" Height="22" Foreground="{StaticResource TextoSuave}" />
+            <TextBlock Text="{Binding ResultadoImpressao}" FontSize="18" Classes="suave" />
+          </StackPanel>
+          <Border IsVisible="{Binding TemTroco}" Background="{StaticResource AvisoClara}" CornerRadius="14" Padding="20,12"
+                  HorizontalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="14">
+              <TextBlock Text="TROCO" FontSize="22" FontWeight="Bold" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding Troco}" FontSize="40" FontWeight="ExtraBold" />
+            </StackPanel>
+          </Border>
+          <Button Classes="primario" Content="Próximo cliente" Command="{Binding FecharCommand}" Height="60"
+                  HorizontalAlignment="Center" Padding="40,0" FontSize="20" IsEnabled="{Binding !Imprimindo}" />
+        </StackPanel>
+
+        <!-- 5. Recusado ou erro -->
+        <StackPanel IsVisible="{Binding EmRecusado}" Spacing="14" Margin="10">
+          <Border Width="96" Height="96" CornerRadius="999" Background="{StaticResource PerigoClara}" HorizontalAlignment="Center">
+            <PathIcon Data="{StaticResource IconeFechar}" Width="52" Height="52" Foreground="{StaticResource Perigo}" />
+          </Border>
+          <TextBlock Text="Pagamento não concluído" HorizontalAlignment="Center" FontSize="24" FontWeight="Bold" />
+          <TextBlock Text="{Binding Mensagem}" HorizontalAlignment="Center" FontSize="18" Classes="suave"
+                     TextWrapping="Wrap" TextAlignment="Center" />
+          <Button Classes="primario" Content="Escolher outra forma" Command="{Binding OutraFormaCommand}" Height="60"
+                  HorizontalAlignment="Center" Padding="40,0" FontSize="19" />
+        </StackPanel>
+
+        <!-- 7. A maquininha recebeu a cobrança e parou de responder: o operador confere nela -->
+        <StackPanel IsVisible="{Binding EmSemResposta}" Spacing="12" Margin="10">
+          <Border Width="96" Height="96" CornerRadius="999" Background="{StaticResource AvisoClara}" HorizontalAlignment="Center">
+            <PathIcon Data="{StaticResource IconeAlerta}" Width="52" Height="52" Foreground="{StaticResource Aviso}" />
+          </Border>
+          <TextBlock Text="A maquininha não respondeu" HorizontalAlignment="Center" FontSize="24" FontWeight="Bold" />
+          <TextBlock Text="{Binding Mensagem}" HorizontalAlignment="Center" FontSize="17" Classes="suave"
+                     TextWrapping="Wrap" TextAlignment="Center" />
+          <TextBlock Text="O pedido está guardado e não foi cancelado. Olhe a tela da maquininha: o cliente pode já ter pago."
+                     HorizontalAlignment="Center" FontSize="15" Classes="suave" TextWrapping="Wrap" TextAlignment="Center" />
+          <Button Classes="primario" Command="{Binding ConsultarDeNovoCommand}" IsEnabled="{Binding !Consultando}" Height="62"
+                  HorizontalAlignment="Stretch" Margin="20,4,20,0">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Data="{StaticResource IconeBusca}" Width="24" Height="24" Foreground="White" />
+              <TextBlock Text="Consultar a maquininha de novo" Foreground="White" FontSize="19" FontWeight="Bold" />
+            </StackPanel>
+          </Button>
+          <ProgressBar IsVisible="{Binding Consultando}" IsIndeterminate="True" Height="6" Margin="60,0" />
+          <TextBlock Text="Se a maquininha não voltar, confira nela e escolha:" HorizontalAlignment="Center" FontSize="15"
+                     Classes="suave" Margin="0,6,0,0" />
+          <Grid ColumnDefinitions="*,*" Margin="20,0">
+            <Button Classes="suave" Command="{Binding NaoFoiPagoCommand}" HorizontalAlignment="Stretch" Height="56" Margin="0,0,6,0">
+              <TextBlock Text="Não foi pago" Foreground="{StaticResource Perigo}" FontWeight="Bold" FontSize="17" />
+            </Button>
+            <Button Grid.Column="1" Classes="suave" Command="{Binding FoiAprovadoCommand}" HorizontalAlignment="Stretch" Height="56"
+                    Margin="6,0,0,0">
+              <TextBlock Text="Aprovou na maquininha" Foreground="{StaticResource PrimariaEscura}" FontWeight="Bold" FontSize="17" />
+            </Button>
+          </Grid>
+        </StackPanel>
+
+        <!-- 6. Pago, mas a impressora falhou -->
+        <StackPanel IsVisible="{Binding EmErroImpressao}" Spacing="14" Margin="10">
+          <Border Width="96" Height="96" CornerRadius="999" Background="{StaticResource AvisoClara}" HorizontalAlignment="Center">
+            <PathIcon Data="{StaticResource IconeAlerta}" Width="52" Height="52" Foreground="{StaticResource Aviso}" />
+          </Border>
+          <TextBlock Text="Pago, mas as fichas não saíram" HorizontalAlignment="Center" FontSize="24" FontWeight="Bold" />
+          <TextBlock Text="{Binding Mensagem}" HorizontalAlignment="Center" FontSize="17" Classes="suave"
+                     TextWrapping="Wrap" TextAlignment="Center" />
+          <TextBlock Text="Confira papel, tampa e cabo da impressora e tente de novo. O pedido já está gravado."
+                     HorizontalAlignment="Center" FontSize="15" Classes="suave" TextWrapping="Wrap" TextAlignment="Center" />
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
+            <Button Classes="suave" Content="{Binding TextoFecharSemImprimir}" Command="{Binding FecharCommand}" Height="58"
+                    Padding="24,0" />
+            <Button Classes="primario" Command="{Binding TentarImprimirCommand}" Height="58" Padding="30,0">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <PathIcon Data="{StaticResource IconeImpressora}" Width="22" Height="22" Foreground="White" />
+                <TextBlock Text="Tentar imprimir de novo" Foreground="White" FontSize="18" FontWeight="Bold" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </StackPanel>
+      </Panel>
+    </Grid>
+  </Border>
+
+  <UserControl.Styles>
+    <Style Selector="Border.falta">
+      <Setter Property="Background" Value="{StaticResource PerigoClara}" />
+    </Style>
+  </UserControl.Styles>
+</UserControl>

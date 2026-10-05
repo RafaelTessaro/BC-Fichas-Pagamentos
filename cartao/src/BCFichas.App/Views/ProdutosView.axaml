@@ -1,0 +1,482 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:core="using:BCFichas.Core"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.Views.ProdutosView"
+             x:DataType="vm:ProdutosViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.blococombo">
+      <Setter Property="Background" Value="{StaticResource Fundo}" />
+    </Style>
+    <Style Selector="Border.blococombo.combo">
+      <Setter Property="Background" Value="{StaticResource PrimariaClara}" />
+    </Style>
+    <Style Selector="Button.atalho">
+      <Setter Property="Background" Value="{StaticResource Superficie}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Borda}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="MinHeight" Value="46" />
+      <Setter Property="Margin" Value="0,0,0,6" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.vale">
+      <Setter Property="Background" Value="{StaticResource Superficie}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Primaria}" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Margin" Value="3" />
+      <Setter Property="Padding" Value="2" />
+      <Setter Property="Height" Value="62" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.vale:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.vale:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource PrimariaClara}" />
+      <Setter Property="BorderBrush" Value="{StaticResource PrimariaEscura}" />
+    </Style>
+    <Style Selector="TextBlock.cabecalho-lista">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="{StaticResource TextoSuave}" />
+    </Style>
+    <Style Selector="TextBlock.confere">
+      <Setter Property="Foreground" Value="{StaticResource PrimariaEscura}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*">
+    <Border Classes="cabecalho">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Classes="fantasma" Command="{Binding VoltarCommand}" Height="48" Padding="12,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeVoltar}" />
+            <TextBlock Text="Voltar" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <TextBlock Grid.Column="1" Text="Produtos" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
+        <Button Grid.Column="2" Classes="primario" Command="{Binding NovoCommand}" Height="46">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeMais}" Foreground="White" />
+            <TextBlock Text="Novo produto" Foreground="White" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+    </Border>
+
+    <Panel Grid.Row="1">
+    <Grid ColumnDefinitions="360,*" Margin="10">
+      <!-- Lista -->
+      <Border Classes="cartao" Margin="5" Padding="10">
+        <Grid RowDefinitions="Auto,*">
+          <TextBox Text="{Binding Busca}" Watermark="Procurar produto" Margin="0,0,0,10">
+            <TextBox.InnerLeftContent>
+              <PathIcon Data="{StaticResource IconeBusca}" Margin="10,0,0,0" Foreground="{StaticResource TextoSuave}" />
+            </TextBox.InnerLeftContent>
+          </TextBox>
+          <ListBox Grid.Row="1" ItemsSource="{Binding Lista}" SelectedItem="{Binding Selecionado}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:ProdutoItem">
+                <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,8" Opacity="{Binding Opacidade}">
+                  <Border Width="14" Height="40" CornerRadius="5" Background="{Binding Cor}" BorderBrush="#CBD5E1"
+                          BorderThickness="1" />
+                  <StackPanel Grid.Column="1" Margin="10,0">
+                    <TextBlock Text="{Binding Nome}" FontWeight="Bold" FontSize="16" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Info}" Classes="suave" FontSize="12" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Preco}" FontWeight="Bold" FontSize="15" HorizontalAlignment="Right" />
+                    <TextBlock Text="{Binding Estoque}" Classes="suave" FontSize="12" HorizontalAlignment="Right" />
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+
+      <!-- Edição -->
+      <Border Grid.Column="1" Classes="cartao" Margin="5" Padding="0">
+        <Grid RowDefinitions="*,Auto">
+          <!-- Margem no conteúdo, não Padding no ScrollViewer: com Padding a rolagem parava antes do fim -->
+          <ScrollViewer AllowAutoHide="False">
+            <Grid Margin="20,14,24,12" ColumnDefinitions="*,24,*,24,184" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.ColumnSpan="3" Text="{Binding Titulo}" Classes="titulo" Margin="0,0,0,4" />
+
+              <StackPanel Grid.Row="1" Grid.ColumnSpan="3">
+                <TextBlock Text="Nome no botão e na ficha" Classes="rotulo" />
+                <TextBox Text="{Binding Nome}" MaxLength="40" Watermark="Ex.: PASTEL" />
+              </StackPanel>
+              <StackPanel Grid.Row="2" Grid.ColumnSpan="3">
+                <TextBlock Text="Detalhe (opcional, sai menor na ficha)" Classes="rotulo" />
+                <TextBox Text="{Binding Detalhe}" MaxLength="40" Watermark="Ex.: CARNE OU QUEIJO" />
+              </StackPanel>
+
+              <StackPanel Grid.Row="3">
+                <TextBlock Text="Preço de venda" Classes="rotulo" />
+                <TextBox Classes="numero" Text="{Binding Preco}" Watermark="0,00">
+                  <TextBox.InnerLeftContent>
+                    <TextBlock Text="R$" Margin="12,0,0,0" VerticalAlignment="Center" Classes="suave" />
+                  </TextBox.InnerLeftContent>
+                </TextBox>
+              </StackPanel>
+              <StackPanel Grid.Row="3" Grid.Column="2">
+                <TextBlock Text="Custo (opcional)" Classes="rotulo" />
+                <TextBox Classes="numero" Text="{Binding Custo}" Watermark="0,00">
+                  <TextBox.InnerLeftContent>
+                    <TextBlock Text="R$" Margin="12,0,0,0" VerticalAlignment="Center" Classes="suave" />
+                  </TextBox.InnerLeftContent>
+                </TextBox>
+              </StackPanel>
+
+              <StackPanel Grid.Row="4">
+                <TextBlock Text="Aba" Classes="rotulo" />
+                <ComboBox ItemsSource="{Binding Abas}" SelectedItem="{Binding Aba}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="core:Aba">
+                      <TextBlock Text="{Binding Nome}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </StackPanel>
+              <StackPanel Grid.Row="4" Grid.Column="2" IsVisible="{Binding Ativo}">
+                <TextBlock Text="Posição na aba (livres)" Classes="rotulo" />
+                <ComboBox x:Name="Posicao" ItemsSource="{Binding Posicoes}" SelectedItem="{Binding Posicao}" />
+                <!-- Largura presa à do campo: o texto quebra em vez de alargar a coluna -->
+                <TextBlock Text="{Binding AvisoPosicao}" Classes="dica" Foreground="{StaticResource Perigo}"
+                           TextWrapping="Wrap" MaxWidth="{Binding #Posicao.Bounds.Width}" HorizontalAlignment="Left"
+                           IsVisible="{Binding AvisoPosicao, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              </StackPanel>
+
+              <StackPanel Grid.Row="5" IsVisible="{Binding NaoEhCombo}">
+                <TextBlock Text="Fichas por unidade" Classes="rotulo" />
+                <ComboBox ItemsSource="{Binding OpcoesFichas}" SelectedItem="{Binding FichasPorUnidade}" />
+                <TextBlock Text="Ex.: 2 = sai a mesma ficha duas vezes." Classes="dica" />
+              </StackPanel>
+              <StackPanel Grid.Row="5" Grid.Column="2">
+                <TextBlock Text="Aparece na tela de venda" Classes="rotulo" />
+                <ToggleSwitch IsChecked="{Binding Ativo}" ToolTip.Tip="Desligado: fica escondido (ex.: vale usado só dentro de combos)" />
+              </StackPanel>
+
+              <StackPanel Grid.Row="6">
+                <TextBlock Text="Controlar estoque" Classes="rotulo" />
+                <ToggleSwitch IsChecked="{Binding ControlaEstoque}" />
+              </StackPanel>
+              <StackPanel Grid.Row="6" Grid.Column="2" IsVisible="{Binding ControlaEstoque}">
+                <TextBlock Text="Quantidade em estoque" Classes="rotulo" />
+                <TextBox Classes="numero" Text="{Binding Estoque}" />
+              </StackPanel>
+
+              <!-- Combo: um preço só, imprime fichas de outras coisas (as fichas são montadas numa tela própria) -->
+              <Border x:Name="BlocoCombo" Grid.Row="7" Grid.ColumnSpan="3" Classes="blococombo" CornerRadius="14"
+                      Padding="14,8" Margin="0,12,0,0" Classes.combo="{Binding EhCombo}">
+                <StackPanel Spacing="8">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock VerticalAlignment="Center" TextWrapping="Wrap">
+                      <Run Text="Combo" FontWeight="Bold" FontSize="17" />
+                      <Run Text="  um preço só, imprime várias fichas" FontSize="14" Foreground="{StaticResource TextoSuave}" />
+                    </TextBlock>
+                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding EhCombo}" VerticalAlignment="Center" Margin="12,0,0,0" />
+                  </Grid>
+                  <Grid IsVisible="{Binding EhCombo}" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding ResumoCombo}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"
+                               Foreground="{StaticResource PrimariaEscura}" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Classes="primario" Command="{Binding AbrirComboCommand}" Margin="10,0,0,0">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource IconeFicha}" Foreground="White" />
+                        <TextBlock Text="Montar as fichas" Foreground="White" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </Button>
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <!-- Prévia do botão, imagem e cor (na coluna da direita, para o cadastro caber na tela do tablet) -->
+              <StackPanel Grid.Row="1" Grid.RowSpan="8" Grid.Column="4" Spacing="8">
+                <TextBlock Text="Como fica o botão" Classes="rotulo" />
+                <Panel Height="150">
+                  <Border IsVisible="{Binding !TemImagem}" CornerRadius="14" Background="{Binding PreviaFundo}"
+                          BoxShadow="0 2 4 0 #260F172A">
+                    <StackPanel VerticalAlignment="Center" Margin="10">
+                      <TextBlock Text="{Binding Nome}" Foreground="{Binding PreviaTexto}" FontSize="20" FontWeight="Bold"
+                                 TextAlignment="Center" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Detalhe}" Foreground="{Binding PreviaTexto}" FontSize="12"
+                                 TextAlignment="Center" Opacity="0.85" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Border>
+                  <Border IsVisible="{Binding TemImagem}" CornerRadius="14" Background="White" ClipToBounds="True"
+                          BoxShadow="0 2 4 0 #260F172A" BorderBrush="{Binding PreviaFundo}" BorderThickness="0,0,0,6">
+                    <Grid RowDefinitions="*,Auto" Margin="8,8,8,6">
+                      <Image Source="{Binding ImagemPrevia}" Stretch="Uniform" />
+                      <TextBlock Grid.Row="1" Text="{Binding Nome}" FontSize="15" FontWeight="Bold" Margin="0,4,0,0"
+                                 TextAlignment="Center" TextWrapping="Wrap" MaxLines="2" />
+                    </Grid>
+                  </Border>
+                </Panel>
+                <Button Classes="suave" Command="{Binding EscolherImagemCommand}" HorizontalAlignment="Stretch">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="{StaticResource IconeImagem}" />
+                    <TextBlock Text="Imagem" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+                <Button Classes="fantasma" Content="Tirar imagem" Command="{Binding RemoverImagemCommand}"
+                        HorizontalAlignment="Stretch" IsVisible="{Binding TemImagem}" />
+
+                <TextBlock Text="Cor do botão" Classes="rotulo" Margin="2,6,0,0" />
+                <ItemsControl ItemsSource="{Binding Cores}">
+                  <ItemsControl.Styles>
+                    <Style Selector="Button.cor">
+                      <Setter Property="Width" Value="38" />
+                      <Setter Property="Height" Value="38" />
+                      <Setter Property="MinHeight" Value="38" />
+                      <Setter Property="Margin" Value="0,0,8,8" />
+                    </Style>
+                    <Style Selector="Button.cor.clara">
+                      <Setter Property="BorderBrush" Value="{StaticResource Borda}" />
+                    </Style>
+                    <Style Selector="Button.cor.clara.marcada">
+                      <Setter Property="BorderBrush" Value="{StaticResource Escuro}" />
+                    </Style>
+                  </ItemsControl.Styles>
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:OpcaoCor">
+                      <Button Classes="cor" Classes.marcada="{Binding Marcada}" Classes.clara="{Binding Clara}"
+                              Background="{Binding Pincel}"
+                              Command="{Binding $parent[UserControl].((vm:ProdutosViewModel)DataContext).EscolherCorCommand}"
+                              CommandParameter="{Binding}">
+                        <PathIcon Data="{StaticResource IconeOk}" Width="16" Height="16" IsVisible="{Binding Marcada}"
+                                  Foreground="#64748B" />
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Grid>
+          </ScrollViewer>
+
+          <Border Grid.Row="1" BorderBrush="{StaticResource Borda}" BorderThickness="0,1,0,0" Padding="16,12">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <Button Classes="fantasma" Command="{Binding ExcluirCommand}" IsVisible="{Binding Editando}" Height="54">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <PathIcon Data="{StaticResource IconeLixo}" Foreground="{StaticResource Perigo}" />
+                  <TextBlock Text="Excluir" Foreground="{StaticResource Perigo}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Grid.Column="2" Classes="primario" Command="{Binding SalvarCommand}" Height="56" Padding="40,0">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <PathIcon Data="{StaticResource IconeOk}" Foreground="White" />
+                  <TextBlock Text="Salvar produto" Foreground="White" FontSize="18" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </Grid>
+          </Border>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <!-- FICHAS DO COMBO: produto, detalhe, quantidade e valor de cada ficha (como no sistema antigo, só que melhor) -->
+    <Border IsVisible="{Binding EditandoCombo}" Background="{StaticResource Fundo}">
+      <Border Classes="cartao" Margin="10" Padding="0">
+        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+          <Border Background="{StaticResource Escuro}" CornerRadius="16,16,0,0" Padding="20,10,10,10">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="Fichas do combo" Foreground="White" FontSize="22" FontWeight="Bold" />
+                <TextBlock Text="{Binding NomeDoCombo}" Foreground="#94A3B8" FontSize="14" />
+              </StackPanel>
+              <Button Grid.Column="1" Classes="topo" Command="{Binding FecharComboCommand}" Padding="16,0" Margin="0,0,8,0">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <PathIcon Data="{StaticResource IconeVoltar}" Foreground="White" />
+                  <TextBlock Text="Voltar" Foreground="White" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Grid.Column="2" Classes="primario" Command="{Binding SalvarComboCommand}" Height="48" Padding="22,0">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <PathIcon Data="{StaticResource IconeOk}" Foreground="White" />
+                  <TextBlock Text="Salvar combo" Foreground="White" FontSize="17" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </Grid>
+          </Border>
+
+          <Grid Grid.Row="1" Grid.RowSpan="4" ColumnDefinitions="*,270">
+            <Grid RowDefinitions="Auto,*,Auto">
+
+              <!-- Linha nova -->
+              <Grid ColumnDefinitions="2*,1.6*,80,120,Auto" Margin="16,12,10,4">
+                <StackPanel>
+                  <TextBlock Text="Produto (sai grande na ficha)" Classes="rotulo" Margin="2,0,0,4" />
+                  <TextBox Text="{Binding FichaNome}" MaxLength="40" Watermark="Ex.: VALE R$ 10,00">
+                    <TextBox.KeyBindings><KeyBinding Gesture="Enter" Command="{Binding AdicionarFichaCommand}" /></TextBox.KeyBindings>
+                  </TextBox>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                  <TextBlock Text="Detalhe (opcional)" Classes="rotulo" Margin="2,0,0,4" />
+                  <TextBox Text="{Binding FichaDetalhe}" MaxLength="40" Watermark="Ex.: VAL. 05/10/26">
+                    <TextBox.KeyBindings><KeyBinding Gesture="Enter" Command="{Binding AdicionarFichaCommand}" /></TextBox.KeyBindings>
+                  </TextBox>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Margin="8,0,0,0">
+                  <TextBlock Text="Qtde" Classes="rotulo" Margin="2,0,0,4" />
+                  <TextBox Classes="numero" Text="{Binding FichaQuantidade}" MaxLength="3" HorizontalContentAlignment="Center">
+                    <TextBox.KeyBindings><KeyBinding Gesture="Enter" Command="{Binding AdicionarFichaCommand}" /></TextBox.KeyBindings>
+                  </TextBox>
+                </StackPanel>
+                <StackPanel Grid.Column="3" Margin="8,0,0,0">
+                  <TextBlock Text="Valor de cada" Classes="rotulo" Margin="2,0,0,4" />
+                  <TextBox Classes="numero" Text="{Binding FichaValor}" Watermark="0,00">
+                    <TextBox.InnerLeftContent>
+                      <TextBlock Text="R$" Margin="10,0,0,0" VerticalAlignment="Center" Classes="suave" />
+                    </TextBox.InnerLeftContent>
+                    <TextBox.KeyBindings><KeyBinding Gesture="Enter" Command="{Binding AdicionarFichaCommand}" /></TextBox.KeyBindings>
+                  </TextBox>
+                </StackPanel>
+                <Button Grid.Column="4" Classes="primario" Command="{Binding AdicionarFichaCommand}" VerticalAlignment="Bottom"
+                        Height="48" Margin="8,0,0,0" Padding="16,0">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Data="{StaticResource IconeMais}" Foreground="White" />
+                    <TextBlock Text="Adicionar" Foreground="White" FontSize="16" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </Grid>
+
+              <!-- Lista das fichas -->
+              <Border Grid.Row="1" Margin="16,8,10,0" BorderBrush="{StaticResource Borda}" BorderThickness="1" CornerRadius="12">
+                <Grid RowDefinitions="Auto,*">
+                  <Border Background="{StaticResource Fundo}" CornerRadius="12,12,0,0" Padding="14,8">
+                    <Grid ColumnDefinitions="2*,1.4*,150,100,110,48">
+                      <TextBlock Text="PRODUTO" Classes="cabecalho-lista" />
+                      <TextBlock Grid.Column="1" Text="DETALHE" Classes="cabecalho-lista" />
+                      <TextBlock Grid.Column="2" Text="QTDE" Classes="cabecalho-lista" TextAlignment="Center" />
+                      <TextBlock Grid.Column="3" Text="VALOR" Classes="cabecalho-lista" TextAlignment="Right" />
+                      <TextBlock Grid.Column="4" Text="TOTAL" Classes="cabecalho-lista" TextAlignment="Right" />
+                    </Grid>
+                  </Border>
+                  <TextBlock Grid.Row="1" IsVisible="{Binding SemFichasNoCombo}" Classes="suave" FontSize="16" Margin="20"
+                             TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                             Text="Nenhuma ficha ainda. Toque num atalho ao lado ou escreva o produto, a quantidade e o valor e toque em Adicionar." />
+                  <ScrollViewer Grid.Row="1">
+                    <ItemsControl ItemsSource="{Binding Componentes}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ComponenteEdicao">
+                          <Border Padding="14,6" BorderBrush="{StaticResource Borda}" BorderThickness="0,0,0,1">
+                            <Grid ColumnDefinitions="2*,1.4*,150,100,110,48">
+                              <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Nome}" FontWeight="Bold" FontSize="16" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="baixa o estoque deste produto" IsVisible="{Binding Ligado}" FontSize="11"
+                                           Classes="suave" />
+                              </StackPanel>
+                              <TextBlock Grid.Column="1" Text="{Binding Detalhe}" FontSize="15" VerticalAlignment="Center"
+                                         TextTrimming="CharacterEllipsis" />
+                              <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Button Classes="suave" Width="44" Height="44" MinHeight="44" Padding="0" CornerRadius="999"
+                                        Command="{Binding MenosCommand}" ToolTip.Tip="Tirar uma ficha">
+                                  <PathIcon Data="{StaticResource IconeMenos}" Width="18" Height="18" />
+                                </Button>
+                                <TextBlock Text="{Binding Quantidade}" FontSize="19" FontWeight="Bold" MinWidth="46"
+                                           TextAlignment="Center" VerticalAlignment="Center" />
+                                <Button Classes="suave" Width="44" Height="44" MinHeight="44" Padding="0" CornerRadius="999"
+                                        Command="{Binding MaisCommand}" ToolTip.Tip="Pôr mais uma ficha">
+                                  <PathIcon Data="{StaticResource IconeMais}" Width="18" Height="18" />
+                                </Button>
+                              </StackPanel>
+                              <TextBlock Grid.Column="3" Text="{Binding Valor}" FontSize="16" TextAlignment="Right" VerticalAlignment="Center" />
+                              <TextBlock Grid.Column="4" Text="{Binding Total}" FontSize="16" FontWeight="Bold" TextAlignment="Right"
+                                         VerticalAlignment="Center" />
+                              <Button Grid.Column="5" Classes="fantasma" Width="44" Padding="0" HorizontalAlignment="Right"
+                                      Command="{Binding RemoverCommand}" ToolTip.Tip="Tirar todas estas fichas">
+                                <PathIcon Data="{StaticResource IconeLixo}" Foreground="{StaticResource Perigo}" />
+                              </Button>
+                            </Grid>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </ScrollViewer>
+                </Grid>
+              </Border>
+
+              <!-- Totais -->
+              <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="16,10,10,14">
+                <StackPanel VerticalAlignment="Center" Spacing="4">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Border Classes="selo" IsVisible="{Binding TemFichasNoCombo}">
+                      <TextBlock Text="{Binding QuantasFichas}" FontSize="14" FontWeight="Bold" Foreground="{StaticResource PrimariaEscura}" />
+                    </Border>
+                    <TextBlock Text="{Binding ConfereCombo}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"
+                               TextWrapping="Wrap" Classes.confere="{Binding ComboConfere}" Classes="suave" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Classes="suave" Command="{Binding UsarTotalComoPrecoCommand}" IsVisible="{Binding TemFichasNoCombo}">
+                      <TextBlock Text="Usar o total como preço do combo" />
+                    </Button>
+                    <Button Classes="fantasma" Command="{Binding LimparFichasCommand}" IsVisible="{Binding TemFichasNoCombo}">
+                      <TextBlock Text="Tirar todas" Foreground="{StaticResource Perigo}" />
+                    </Button>
+                  </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                  <TextBlock Text="TOTAL DAS FICHAS" FontSize="13" FontWeight="Bold" Classes="suave" HorizontalAlignment="Right" />
+                  <TextBlock Text="{Binding TotalFichas}" FontSize="36" FontWeight="ExtraBold" HorizontalAlignment="Right" />
+                </StackPanel>
+              </Grid>
+            </Grid>
+
+            <!-- Atalhos: um toque põe a ficha no combo (com a Qtde e o Detalhe digitados ao lado) -->
+            <Border Grid.Column="1" Background="{StaticResource Fundo}" CornerRadius="14" Margin="0,12,16,14" Padding="12">
+              <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
+                <StackPanel>
+                  <TextBlock Text="Atalhos" FontSize="18" FontWeight="Bold" />
+                  <TextBlock Classes="dica" Margin="0,2,0,0" Text="Um toque põe a ficha no combo. Usa a Qtde e o Detalhe digitados ao lado." />
+                </StackPanel>
+                <TextBlock Grid.Row="1" Text="VALES" Classes="cabecalho-lista" Margin="2,12,0,6" />
+                <ItemsControl Grid.Row="2" ItemsSource="{Binding Vales}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:Int64">
+                      <Button Classes="vale" Command="{Binding $parent[UserControl].((vm:ProdutosViewModel)DataContext).AdicionarValeCommand}"
+                              CommandParameter="{Binding}">
+                        <StackPanel>
+                          <TextBlock Text="VALE" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"
+                                     Foreground="{StaticResource PrimariaEscura}" />
+                          <TextBlock Text="{Binding Converter={x:Static v:Conversores.CentavosCurto}}" FontSize="17" FontWeight="ExtraBold"
+                                     HorizontalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Grid.Row="3" Text="PRODUTOS CADASTRADOS" Classes="cabecalho-lista" Margin="2,14,0,6" />
+                <ScrollViewer Grid.Row="4">
+                  <ItemsControl ItemsSource="{Binding ParaOCombo}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="core:Produto">
+                        <Button Classes="atalho" Command="{Binding $parent[UserControl].((vm:ProdutosViewModel)DataContext).AdicionarProdutoCommand}"
+                                CommandParameter="{Binding}">
+                          <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding Nome}" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="{Binding PrecoCentavos, Converter={x:Static v:Conversores.Centavos}}"
+                                       FontSize="14" Classes="suave" Margin="8,0,0,0" VerticalAlignment="Center" />
+                          </Grid>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </Grid>
+            </Border>
+          </Grid>
+        </Grid>
+      </Border>
+    </Border>
+    </Panel>
+  </Grid>
+</UserControl>

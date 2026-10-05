@@ -1,0 +1,51 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:BCFichas.App.ViewModels"
+        xmlns:v="using:BCFichas.App.Views"
+        x:Class="BCFichas.App.Views.JanelaPrincipal"
+        x:DataType="vm:PrincipalViewModel"
+        Title="BC Fichas"
+        Icon="/Assets/icone.ico"
+        Width="1280" Height="800" MinWidth="760" MinHeight="480"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Fundo}">
+
+  <Window.Styles>
+    <Style Selector="Border.aviso">
+      <Setter Property="Background" Value="{StaticResource Escuro}" />
+    </Style>
+    <Style Selector="Border.aviso.erro">
+      <Setter Property="Background" Value="{StaticResource Perigo}" />
+    </Style>
+  </Window.Styles>
+
+  <LayoutTransformControl>
+    <LayoutTransformControl.LayoutTransform>
+      <ScaleTransform ScaleX="{Binding Zoom}" ScaleY="{Binding Zoom}" />
+    </LayoutTransformControl.LayoutTransform>
+
+    <Grid RowDefinitions="*,Auto">
+      <Panel>
+        <ContentControl Content="{Binding Pagina}" />
+
+        <!-- Diálogos por cima da tela -->
+        <Border IsVisible="{Binding TemDialogo}" Background="{StaticResource Sombra}">
+          <ContentControl Content="{Binding Dialogo}" Margin="16"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+
+        <!-- Aviso rápido -->
+        <Border Classes="aviso" Classes.erro="{Binding AvisoErro}"
+                IsVisible="{Binding Aviso, Converter={x:Static ObjectConverters.IsNotNull}}"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="24,0,24,52"
+                CornerRadius="12" Padding="20,12" MaxWidth="720" BoxShadow="0 4 14 0 #400F172A"
+                IsHitTestVisible="False">
+          <TextBlock Text="{Binding Aviso}" Foreground="White" FontSize="17" FontWeight="SemiBold"
+                     TextWrapping="Wrap" TextAlignment="Center" />
+        </Border>
+      </Panel>
+
+      <v:TecladoVirtual Grid.Row="1" IsVisible="{Binding TecladoVisivel}" Numerico="{Binding TecladoNumerico}" />
+    </Grid>
+  </LayoutTransformControl>
+</Window>

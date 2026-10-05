@@ -1,0 +1,322 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.Views.VendaView"
+             x:DataType="vm:VendaViewModel">
+
+  <Grid ColumnDefinitions="136,*">
+
+    <!-- Barra lateral com a marca da BC Fichas (antes era a barra de cima) -->
+    <Border Background="{StaticResource FundoLateral}" BorderBrush="{StaticResource MarcaBorda}" BorderThickness="0,0,1,0">
+      <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" Margin="10,14,10,10">
+        <!-- Tocar 5 vezes seguidas no logo liga/desliga o modo teste (atalho escondido) -->
+        <Button Classes="marca" Command="{Binding ToqueNaMarcaCommand}" Focusable="False">
+          <v:MarcaBC Tamanho="54" />
+        </Button>
+
+        <Button Grid.Row="1" Classes="lateral" Command="{Binding AbrirMenuCommand}" Height="70" Margin="0,12,0,0"
+                ToolTip.Tip="Menu">
+          <StackPanel Spacing="4">
+            <PathIcon Data="{StaticResource IconeMenu}" Width="30" Height="30" Foreground="White" />
+            <TextBlock Text="MENU" Foreground="White" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" />
+          </StackPanel>
+        </Button>
+
+        <StackPanel Grid.Row="2" Spacing="10" Margin="0,12,0,0">
+          <Border Background="{StaticResource Primaria}" CornerRadius="10" Padding="6,6" IsVisible="{Binding !Principal.ModoTeste}">
+            <StackPanel>
+              <TextBlock Text="{Binding Principal.CaixaTexto}" Foreground="White" FontWeight="Bold" FontSize="16"
+                         HorizontalAlignment="Center" />
+              <!-- Só caixas abertos antes da versão 3.1 têm operador -->
+              <TextBlock Text="{Binding Principal.Operador}" Foreground="#DCFCE7" FontSize="13" HorizontalAlignment="Center"
+                         TextTrimming="CharacterEllipsis"
+                         IsVisible="{Binding Principal.Operador, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
+          </Border>
+          <Border Background="{StaticResource Teste}" CornerRadius="10" Padding="6,6" IsVisible="{Binding Principal.ModoTeste}">
+            <TextBlock Text="MODO TESTE" Foreground="White" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" />
+          </Border>
+        </StackPanel>
+
+        <!-- Abas do cardápio (Comidas, Bebidas...): na barra lateral, uma embaixo da outra -->
+        <Grid Grid.Row="3" RowDefinitions="Auto,*" Margin="0,12,0,8" IsVisible="{Binding MostrarAbas}">
+          <TextBlock Text="ABAS" Foreground="{StaticResource MarcaTextoSuave}" FontSize="11" FontWeight="Bold"
+                     Margin="4,0,0,6"
+                     IsVisible="{Binding $parent[Window].Bounds.Height, Converter={x:Static v:Conversores.TelaAlta}}" />
+          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Abas}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Spacing="5" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:AbaItem">
+                  <Button Classes="aba-lateral" Classes.ativa="{Binding Ativa}"
+                          Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).SelecionarAbaCommand}"
+                          CommandParameter="{Binding}">
+                    <TextBlock Classes="aba" Text="{Binding Nome}" TextWrapping="Wrap" MaxLines="2"
+                               TextTrimming="CharacterEllipsis" TextAlignment="Center" FontSize="14" FontWeight="Bold" />
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Grid>
+
+        <!-- Sangria e fechar o caixa à mão, sem abrir o menu (no modo teste, o "fechar" sai do teste).
+             Um embaixo do outro, na largura toda da barra: fáceis de acertar com o dedo. -->
+        <StackPanel Grid.Row="4" Spacing="6" Margin="0,0,0,10">
+          <Button Classes="lateral acao" Command="{Binding AbrirSangriaCommand}" ToolTip.Tip="Sangria e suprimento">
+            <StackPanel Spacing="2">
+              <PathIcon Data="{StaticResource IconeDinheiro}" />
+              <TextBlock Text="Sangria" />
+            </StackPanel>
+          </Button>
+          <Button Classes="lateral acao" Command="{Binding FecharCaixaCommand}" ToolTip.Tip="Fechar o caixa">
+            <StackPanel Spacing="2">
+              <PathIcon Data="{StaticResource IconeCadeado}" />
+              <TextBlock Text="Fechar caixa" IsVisible="{Binding !Principal.ModoTeste}" />
+              <TextBlock Text="Sair do teste" IsVisible="{Binding Principal.ModoTeste}" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" Spacing="0" Margin="0,0,0,8">
+          <TextBlock Text="{Binding Principal.Relogio}" Foreground="White" FontSize="34" FontWeight="Bold"
+                     HorizontalAlignment="Center" />
+          <TextBlock Text="{Binding Principal.Data}" Foreground="{StaticResource MarcaTextoSuave}" FontSize="14"
+                     HorizontalAlignment="Center" />
+        </StackPanel>
+
+        <!-- Versão (o telefone do suporte fica no menu e na abertura do caixa) -->
+        <Border Grid.Row="6" BorderBrush="{StaticResource MarcaBorda}" BorderThickness="0,1,0,0" Padding="0,6,0,0">
+          <TextBlock Text="{Binding Principal.Versao}" FontSize="11" Foreground="{StaticResource MarcaTextoSuave}"
+                     HorizontalAlignment="Center" />
+        </Border>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Column="1" RowDefinitions="Auto,*">
+
+    <!-- Aviso do modo teste -->
+    <Border IsVisible="{Binding Principal.ModoTeste}" Background="{StaticResource Teste}" Padding="16,6,8,6">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <PathIcon Data="{StaticResource IconeAlerta}" Foreground="White" Width="22" Height="22" />
+        <TextBlock Grid.Column="1" Margin="10,0" VerticalAlignment="Center" Foreground="White" FontSize="15" TextWrapping="Wrap">
+          <Run Text="MODO TESTE" FontWeight="Bold" />
+          <Run Text="– estas vendas não entram no relatório e as fichas saem marcadas TESTE." />
+        </TextBlock>
+        <Button Grid.Column="2" Classes="topo" Command="{Binding SairDoModoTesteCommand}" Height="40" Padding="14,0"
+                BorderBrush="White" BorderThickness="1">
+          <TextBlock Text="Sair do modo teste" Foreground="White" FontWeight="Bold" />
+        </Button>
+      </Grid>
+    </Border>
+
+    <!-- O pedido ocupa até 370 de largura; em tela pequena encolhe até 300 para sobrar espaço aos botões -->
+    <Grid Grid.Row="1" Margin="8,10,10,10">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="0.5*" MinWidth="300" MaxWidth="370" />
+      </Grid.ColumnDefinitions>
+
+      <!-- Botões dos produtos (as abas ficam na barra lateral): ocupam a área toda, sem espaço vazio -->
+      <Grid>
+        <StackPanel IsVisible="{Binding SemProdutos}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+          <Border Width="76" Height="76" CornerRadius="20" Background="{StaticResource Borda}" HorizontalAlignment="Center">
+            <PathIcon Data="{StaticResource IconeCaixaProduto}" Width="38" Height="38" Foreground="{StaticResource TextoSuave}" />
+          </Border>
+          <TextBlock Text="Nenhum produto nesta aba" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+          <TextBlock Text="Cadastre em Menu → Produtos." Classes="suave" FontSize="15" HorizontalAlignment="Center" />
+        </StackPanel>
+        <ItemsControl ItemsSource="{Binding Botoes}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <v:GradeDeBotoes Colunas="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).Colunas}"
+                               Linhas="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).LinhasGrade}" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:BotaoProduto">
+              <Panel>
+                <Button Classes="produto"
+                        Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).AdicionarCommand}"
+                        CommandParameter="{Binding}">
+                  <Panel>
+                    <!-- Sem foto: botão todo na cor do produto -->
+                    <Border IsVisible="{Binding !TemImagem}" Background="{Binding Fundo}" CornerRadius="14"
+                            BoxShadow="0 2 4 0 #260F172A">
+                      <Grid RowDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center" Margin="10,8" Spacing="2">
+                          <v:TextoQueCabe Text="{Binding Nome}" Foreground="{Binding Texto}" TamanhoMaximo="{Binding TamanhoNome}"
+                                          FontWeight="Bold" TextAlignment="Center" TextWrapping="Wrap" MaxLines="3"
+                                          TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding Detalhe}" IsVisible="{Binding TemDetalhe}" Foreground="{Binding Texto}"
+                                     Opacity="0.85" FontSize="13" TextAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="8,0,8,8">
+                          <Border Background="#33000000" CornerRadius="8" Padding="8,3" HorizontalAlignment="Left">
+                            <TextBlock Text="{Binding Preco}" Foreground="White" FontWeight="Bold" FontSize="16" />
+                          </Border>
+                          <TextBlock Grid.Column="1" Text="{Binding Estoque}" IsVisible="{Binding MostrarEstoque}"
+                                     Foreground="{Binding Texto}" FontSize="12" Opacity="0.9" VerticalAlignment="Center" />
+                        </Grid>
+                      </Grid>
+                    </Border>
+
+                    <!-- Com foto: cartão branco com a foto em cima, como no sistema antigo -->
+                    <Border IsVisible="{Binding TemImagem}" Background="White" CornerRadius="14" ClipToBounds="True"
+                            BoxShadow="0 2 4 0 #260F172A" BorderBrush="{Binding Fundo}" BorderThickness="0,0,0,6">
+                      <Grid RowDefinitions="*,Auto,Auto" Margin="8,8,8,6">
+                        <Image Source="{Binding Imagem}" Stretch="Uniform" />
+                        <v:TextoQueCabe Grid.Row="1" Text="{Binding Nome}" TamanhoMaximo="{Binding TamanhoNomeFoto}" FontWeight="Bold"
+                                        Margin="0,4,0,3" TextAlignment="Center" TextWrapping="Wrap" MaxLines="2"
+                                        TextTrimming="CharacterEllipsis" />
+                        <Grid Grid.Row="2" ColumnDefinitions="*,Auto,*">
+                          <Border Grid.Column="1" Background="{Binding Fundo}" CornerRadius="8" Padding="10,2">
+                            <TextBlock Text="{Binding Preco}" Foreground="{Binding Texto}" FontWeight="Bold" FontSize="16" />
+                          </Border>
+                          <TextBlock Grid.Column="2" Text="{Binding Estoque}" IsVisible="{Binding MostrarEstoque}"
+                                     FontSize="11" Classes="suave" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                      </Grid>
+                    </Border>
+
+                    <Border IsVisible="{Binding Esgotado}" Background="#B3FFFFFF" CornerRadius="14">
+                      <Border Background="{StaticResource Perigo}" CornerRadius="8" Padding="10,4"
+                              HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="ESGOTADO" Foreground="White" FontWeight="Bold" />
+                      </Border>
+                    </Border>
+                  </Panel>
+                </Button>
+              </Panel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Grid>
+
+      <!-- Pedido -->
+      <Border Grid.Column="1" Classes="cartao" Margin="10,0,0,4" Padding="0">
+        <Grid RowDefinitions="Auto,Auto,*,Auto">
+          <Grid ColumnDefinitions="*,Auto" Margin="16,12,8,8">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <TextBlock Text="Pedido" Classes="titulo" FontSize="22" />
+              <Border Classes="selo" IsVisible="{Binding !Vazio}">
+                <TextBlock Text="{Binding QuantidadeTexto}" FontSize="13" FontWeight="SemiBold"
+                           Foreground="{StaticResource PrimariaEscura}" />
+              </Border>
+            </StackPanel>
+            <Button Grid.Column="1" Classes="fantasma" Command="{Binding LimparCommand}" Padding="10,6"
+                    IsVisible="{Binding !Vazio}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <PathIcon Data="{StaticResource IconeLixo}" Width="18" Height="18" Foreground="{StaticResource Perigo}" />
+                <TextBlock Text="Limpar" Foreground="{StaticResource Perigo}" />
+              </StackPanel>
+            </Button>
+          </Grid>
+
+          <!-- Último troco (venda em dinheiro): fica uns segundos aqui em cima, sem tapar nada -->
+          <Border Grid.Row="1" Classes="troco" IsVisible="{Binding MostrarTroco}" Margin="10,0,10,8" Padding="14,8">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <PathIcon Data="{StaticResource IconeNotas}" Width="26" Height="26" Foreground="{StaticResource Aviso}"
+                        VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+                <TextBlock Text="TROCO" FontSize="15" FontWeight="ExtraBold" Foreground="{StaticResource Aviso}" />
+                <!-- Em tela pequena quebra em duas linhas em vez de cortar ("Recebido R") -->
+                <TextBlock Text="{Binding UltimoRecebido}" FontSize="12" Classes="suave" TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBlock Grid.Column="2" Text="{Binding UltimoTroco}" FontSize="30" FontWeight="ExtraBold"
+                         VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+
+          <!-- Pedido vazio -->
+          <StackPanel Grid.Row="2" IsVisible="{Binding Vazio}" VerticalAlignment="Center" Spacing="10" Margin="24">
+            <PathIcon Data="{StaticResource IconeFicha}" Width="64" Height="64" Foreground="#CBD5E1" />
+            <TextBlock Text="Toque nos produtos para montar o pedido" Classes="suave" TextAlignment="Center"
+                       TextWrapping="Wrap" FontSize="16" />
+          </StackPanel>
+
+          <ScrollViewer Grid.Row="2" IsVisible="{Binding !Vazio}" Padding="10,0">
+            <ItemsControl ItemsSource="{Binding Linhas}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:LinhaItem">
+                  <!-- Nome em cima (pode ocupar duas linhas) e o valor sempre visível à direita -->
+                  <Border BorderBrush="{StaticResource Borda}" BorderThickness="0,0,0,1" Padding="6,8">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                      <TextBlock Text="{Binding Nome}" FontWeight="Bold" FontSize="16" TextWrapping="Wrap" MaxLines="2"
+                                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,8,0" />
+                      <TextBlock Grid.Column="1" Text="{Binding Total}" FontWeight="ExtraBold" FontSize="17"
+                                 TextAlignment="Right" VerticalAlignment="Top" />
+                      <TextBlock Grid.Row="1" Text="{Binding Unitario}" Classes="suave" FontSize="13" VerticalAlignment="Center" />
+                      <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,4,0,0">
+                        <Button Classes="suave" Width="40" Height="40" MinHeight="40" Padding="0" CornerRadius="999"
+                                Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).MenosCommand}"
+                                CommandParameter="{Binding}">
+                          <PathIcon Data="{StaticResource IconeMenos}" Width="18" Height="18" />
+                        </Button>
+                        <TextBlock Text="{Binding Quantidade}" FontSize="19" FontWeight="Bold" MinWidth="38"
+                                   TextAlignment="Center" VerticalAlignment="Center" />
+                        <Button Classes="suave" Width="40" Height="40" MinHeight="40" Padding="0" CornerRadius="999"
+                                Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).MaisCommand}"
+                                CommandParameter="{Binding}">
+                          <PathIcon Data="{StaticResource IconeMais}" Width="18" Height="18" />
+                        </Button>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <Border Grid.Row="3" Background="{StaticResource Fundo}" CornerRadius="0,0,16,16" Padding="14,10,14,14">
+            <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="TOTAL" FontSize="18" FontWeight="Bold" Classes="suave" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding Total}" FontSize="38" FontWeight="ExtraBold" />
+              </Grid>
+              <Button Classes="primario" Command="{Binding PagarCommand}" HorizontalAlignment="Stretch" Height="70"
+                      CornerRadius="14">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <PathIcon Data="{StaticResource IconeCartao}" Width="28" Height="28" Foreground="White" />
+                  <TextBlock Text="PAGAMENTO" FontSize="24" FontWeight="ExtraBold" Foreground="White" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+    </Grid>
+
+    </Grid>
+  </Grid>
+
+  <UserControl.Styles>
+    <!-- Sangria e Fechar caixa na barra lateral -->
+    <Style Selector="Button.lateral.acao">
+      <Setter Property="Height" Value="58" />
+      <Setter Property="Padding" Value="4,4" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.lateral.acao PathIcon">
+      <Setter Property="Width" Value="24" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="Foreground" Value="{StaticResource Marca}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.lateral.acao TextBlock">
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.troco">
+      <Setter Property="Background" Value="{StaticResource AvisoClara}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Aviso}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="12" />
+    </Style>
+  </UserControl.Styles>
+</UserControl>

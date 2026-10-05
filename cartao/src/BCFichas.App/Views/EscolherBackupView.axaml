@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             x:Class="BCFichas.App.Views.EscolherBackupView"
+             x:DataType="vm:EscolherBackupViewModel">
+  <Border Classes="cartao" Width="660" Padding="22">
+    <StackPanel Spacing="12">
+      <TextBlock Text="Qual backup restaurar?" Classes="titulo" FontSize="22" />
+      <TextBlock Classes="suave" FontSize="15" TextWrapping="Wrap" Text="{Binding Explicacao}" />
+      <ScrollViewer MaxHeight="380">
+        <ItemsControl ItemsSource="{Binding Itens}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="8" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:BackupItem">
+              <Button Classes="suave backup" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                      Padding="16,10" CornerRadius="12" MinHeight="70"
+                      Command="{Binding $parent[UserControl].((vm:EscolherBackupViewModel)DataContext).EscolherCommand}"
+                      CommandParameter="{Binding}">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="{Binding Evento}" FontSize="18" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding Detalhes}" Classes="suave" FontSize="14" TextTrimming="CharacterEllipsis" />
+                  <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,0">
+                    <Border Background="{StaticResource PrimariaClara}" CornerRadius="6" Padding="8,2" MaxWidth="320">
+                      <TextBlock Text="{Binding Lugar}" Foreground="{StaticResource PrimariaEscura}" FontSize="12"
+                                 FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    </Border>
+                    <TextBlock Grid.Column="1" Text="{Binding NomeArquivo}" Classes="suave" FontSize="12" Margin="8,0,0,0"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  </Grid>
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+      <Border Background="{StaticResource AvisoClara}" CornerRadius="10" Padding="12,8" IsVisible="{Binding TemRecusados}">
+        <StackPanel Spacing="2">
+          <TextBlock Text="Não dá para usar:" FontWeight="Bold" FontSize="13" />
+          <TextBlock Text="{Binding Recusados}" FontSize="13" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
+        <Button Classes="fantasma" Command="{Binding ProcurarCommand}" IsVisible="{Binding PodeProcurar}" Height="56"
+                Padding="16,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeBusca}" />
+            <TextBlock Text="Procurar em outro lugar" FontSize="16" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Grid.Column="2" Classes="suave" Content="Voltar" Command="{Binding CancelarCommand}" Height="56"
+                Padding="30,0" />
+      </Grid>
+    </StackPanel>
+  </Border>
+</UserControl>

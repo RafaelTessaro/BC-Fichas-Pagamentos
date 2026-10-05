@@ -1,0 +1,92 @@
+name: Build Cartão
+
+# Projeto separado (pasta cartao/): o BC Fichas com a Moderninha Smart 2 do PagBank por Bluetooth. Não mexe no build
+# do BC Fichas original nem no do Rede.
+on:
+  push:
+    paths:
+      - 'cartao/**'
+      - '.github/workflows/cartao.yml'
+  pull_request:
+    paths:
+      - 'cartao/**'
+      - '.github/workflows/cartao.yml'
+  workflow_dispatch:
+
+jobs:
+  # O programa do tablet (Windows)
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: cartao
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Testes
+        run: dotnet test tests/BCFichas.Tests -c Release
+
+      - name: Gerar pacotes do tablet
+        run: |
+          foreach ($rid in 'win-x86', 'win-x64') {
+            dotnet publish src/BCFichas.App -c Release -r $rid -o publish/BCFichasCartao-$rid
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if (-not (Test-Path publish/BCFichasCartao-$rid/BCFichasCartao.exe)) { throw "Falta o BCFichasCartao.exe ($rid)" }
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BCFichasCartao-win-x86
+          path: cartao/publish/BCFichasCartao-win-x86
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BCFichasCartao-win-x64
+          path: cartao/publish/BCFichasCartao-win-x64
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fotos-das-telas-cartao
+          path: cartao/tests/BCFichas.Tests/saida
+
+  # O app que vai dentro da Moderninha Smart 2 (Android)
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cartao/ponte-android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Testes e APK
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testDebugUnitTest assembleDebug assembleRelease
+
+      # Debug: assinado com a chave de teste, instala no terminal de desenvolvimento do PagBank (adb install).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BCFichasPonte-apk-teste
+          path: cartao/ponte-android/app/build/outputs/apk/debug/app-debug.apk
+
+      # Release sem assinatura: é assinado com a chave da empresa antes de ir para a homologação do PagBank.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BCFichasPonte-apk-release-sem-assinatura
+          path: cartao/ponte-android/app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: testes-do-app-da-maquininha
+          path: cartao/ponte-android/app/build/reports/tests

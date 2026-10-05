@@ -1,0 +1,73 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Verde e preto da BC Fichas; o conteúdo continua branco (fica limpo para o operador) -->
+  <Color x:Key="CorPrimaria">#16A34A</Color>
+  <Color x:Key="CorPrimariaEscura">#15803D</Color>
+  <Color x:Key="CorPrimariaClara">#DCFCE7</Color>
+  <Color x:Key="CorMarca">#22C55E</Color>
+  <Color x:Key="CorMarcaFundo">#07110B</Color>
+  <Color x:Key="CorMarcaFundoClaro">#10261A</Color>
+  <Color x:Key="CorFundo">#F1F5F9</Color>
+  <Color x:Key="CorSuperficie">#FFFFFF</Color>
+  <Color x:Key="CorBorda">#E2E8F0</Color>
+  <Color x:Key="CorTexto">#0F172A</Color>
+  <Color x:Key="CorTextoSuave">#64748B</Color>
+  <Color x:Key="CorEscuro">#0B1510</Color>
+  <Color x:Key="CorEscuroSuave">#1A2C21</Color>
+  <Color x:Key="CorPerigo">#DC2626</Color>
+  <Color x:Key="CorPerigoClara">#FEE2E2</Color>
+  <Color x:Key="CorAviso">#D97706</Color>
+  <Color x:Key="CorAvisoClara">#FEF3C7</Color>
+  <Color x:Key="CorAzul">#2563EB</Color>
+  <Color x:Key="CorIndigo">#4F46E5</Color>
+  <Color x:Key="CorPix">#32BCAD</Color>
+
+  <SolidColorBrush x:Key="Primaria" Color="{StaticResource CorPrimaria}" />
+  <SolidColorBrush x:Key="PrimariaEscura" Color="{StaticResource CorPrimariaEscura}" />
+  <SolidColorBrush x:Key="PrimariaClara" Color="{StaticResource CorPrimariaClara}" />
+  <SolidColorBrush x:Key="Fundo" Color="{StaticResource CorFundo}" />
+  <SolidColorBrush x:Key="Superficie" Color="{StaticResource CorSuperficie}" />
+  <SolidColorBrush x:Key="Borda" Color="{StaticResource CorBorda}" />
+  <SolidColorBrush x:Key="Texto" Color="{StaticResource CorTexto}" />
+  <SolidColorBrush x:Key="TextoSuave" Color="{StaticResource CorTextoSuave}" />
+  <SolidColorBrush x:Key="Escuro" Color="{StaticResource CorEscuro}" />
+  <SolidColorBrush x:Key="EscuroSuave" Color="{StaticResource CorEscuroSuave}" />
+  <SolidColorBrush x:Key="Perigo" Color="{StaticResource CorPerigo}" />
+  <SolidColorBrush x:Key="PerigoClara" Color="{StaticResource CorPerigoClara}" />
+  <SolidColorBrush x:Key="Aviso" Color="{StaticResource CorAviso}" />
+  <SolidColorBrush x:Key="AvisoClara" Color="{StaticResource CorAvisoClara}" />
+  <SolidColorBrush x:Key="Azul" Color="{StaticResource CorAzul}" />
+  <SolidColorBrush x:Key="Indigo" Color="{StaticResource CorIndigo}" />
+  <SolidColorBrush x:Key="Pix" Color="{StaticResource CorPix}" />
+  <SolidColorBrush x:Key="Sombra" Color="#660F172A" />
+  <SolidColorBrush x:Key="Marca" Color="{StaticResource CorMarca}" />
+  <SolidColorBrush x:Key="MarcaFundo" Color="{StaticResource CorMarcaFundo}" />
+  <SolidColorBrush x:Key="MarcaTextoSuave" Color="#8FB39B" />
+  <SolidColorBrush x:Key="MarcaBorda" Color="#2B4A36" />
+  <SolidColorBrush x:Key="Teste" Color="#EA580C" />
+  <SolidColorBrush x:Key="TesteClara" Color="#FFEDD5" />
+  <!-- Formas de pagamento -->
+  <SolidColorBrush x:Key="PixVerde" Color="#77B6A8" /><!-- verde oficial do Pix (manual da marca do Banco Central) -->
+  <LinearGradientBrush x:Key="GradienteDinheiro" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#22C55E" />
+    <GradientStop Offset="1" Color="#15803D" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="GradientePix" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#1B3A33" />
+    <GradientStop Offset="1" Color="#07110B" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="GradienteDebito" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#3B82F6" />
+    <GradientStop Offset="1" Color="#1D4ED8" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="GradienteCredito" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#8B5CF6" />
+    <GradientStop Offset="1" Color="#6D28D9" />
+  </LinearGradientBrush>
+  <!-- Fundo da barra lateral: preto esverdeado, como o papel de parede da BC Fichas -->
+  <LinearGradientBrush x:Key="FundoLateral" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#12301F" />
+    <GradientStop Offset="0.55" Color="#0A1A10" />
+    <GradientStop Offset="1" Color="#040906" />
+  </LinearGradientBrush>
+</ResourceDictionary>

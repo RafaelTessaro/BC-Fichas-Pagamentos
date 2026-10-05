@@ -1,0 +1,128 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             x:Class="BCFichas.App.Views.ReimpressaoView"
+             x:DataType="vm:ReimpressaoViewModel">
+  <Grid RowDefinitions="Auto,*">
+    <Border Classes="cabecalho">
+      <Grid ColumnDefinitions="Auto,*,260,Auto">
+        <Button Classes="fantasma" Command="{Binding VoltarCommand}" Height="48" Padding="12,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeVoltar}" />
+            <TextBlock Text="Voltar" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <TextBlock Grid.Column="1" Text="{Binding Titulo}" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
+        <TextBox Grid.Column="2" Classes="numero" Text="{Binding Busca}" Watermark="Nº do pedido" MinHeight="46"
+                 VerticalAlignment="Center">
+          <TextBox.InnerLeftContent>
+            <PathIcon Data="{StaticResource IconeBusca}" Margin="10,0,0,0" Foreground="{StaticResource TextoSuave}" />
+          </TextBox.InnerLeftContent>
+        </TextBox>
+        <Button Grid.Column="3" Classes="suave" Command="{Binding AtualizarCommand}" Content="Atualizar" Margin="8,0,0,0"
+                Height="46" />
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="420,*" Margin="10">
+      <Border Classes="cartao" Margin="5" Padding="10">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Text="Pedidos deste caixa" Classes="secao" Margin="6,2,0,8" />
+          <TextBlock Grid.Row="1" Text="Nenhum pedido encontrado." Classes="suave" Margin="6,0" IsVisible="{Binding Vazio}" />
+          <ListBox Grid.Row="1" ItemsSource="{Binding Pedidos}" SelectedItem="{Binding Selecionado}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:PedidoItem">
+                <Grid ColumnDefinitions="*,Auto" Margin="12,8">
+                  <StackPanel>
+                    <TextBlock FontSize="17" FontWeight="Bold">
+                      <Run Text="{Binding Numero}" />
+                      <Run Text="  " />
+                      <Run Text="{Binding Hora}" FontWeight="Normal" Foreground="{StaticResource TextoSuave}" />
+                    </TextBlock>
+                    <TextBlock FontSize="13" Classes="suave" Classes.alerta="{Binding NaoImpresso}">
+                      <Run Text="{Binding Forma}" />
+                      <Run Text="•" />
+                      <Run Text="{Binding Status}" />
+                    </TextBlock>
+                  </StackPanel>
+                  <TextBlock Grid.Column="1" Text="{Binding Total}" FontSize="17" FontWeight="Bold" VerticalAlignment="Center" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+
+      <Border Grid.Column="1" Classes="cartao" Margin="5">
+        <Panel>
+          <TextBlock Text="Escolha um pedido na lista." Classes="suave" IsVisible="{Binding !TemSelecionado}"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="17" />
+          <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding TemSelecionado}">
+            <StackPanel>
+              <TextBlock Classes="titulo">
+                <Run Text="Pedido" />
+                <Run Text="{Binding Selecionado.Numero}" />
+              </TextBlock>
+              <TextBlock Classes="suave" FontSize="15">
+                <Run Text="{Binding Selecionado.Hora}" />
+                <Run Text="•" />
+                <Run Text="{Binding Selecionado.Forma}" />
+                <Run Text="•" />
+                <Run Text="{Binding Selecionado.Total}" />
+                <Run Text="•" />
+                <Run Text="{Binding Selecionado.Status}" />
+              </TextBlock>
+            </StackPanel>
+            <ScrollViewer Grid.Row="1" Margin="0,12">
+              <ItemsControl ItemsSource="{Binding Itens}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ItemReimpressao">
+                    <Border BorderBrush="{StaticResource Borda}" BorderThickness="0,0,0,1" Padding="4,10">
+                      <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Text="{Binding Nome}" FontSize="17" FontWeight="Bold" />
+                          <TextBlock Classes="suave" FontSize="14">
+                            <Run Text="{Binding Quantidade}" />
+                            <Run Text="•" />
+                            <Run Text="{Binding Fichas}" />
+                          </TextBlock>
+                        </StackPanel>
+                        <!-- Fichas não impressas: só o pedido inteiro, sem "só este item" -->
+                        <Panel Grid.Column="1"
+                               IsVisible="{Binding !$parent[UserControl].((vm:ReimpressaoViewModel)DataContext).SoNaoImpressos}">
+                          <Button Classes="suave" Height="48"
+                                  Command="{Binding $parent[UserControl].((vm:ReimpressaoViewModel)DataContext).ReimprimirItemCommand}"
+                                  CommandParameter="{Binding}" IsVisible="{Binding TemFichas}"
+                                  IsEnabled="{Binding $parent[UserControl].((vm:ReimpressaoViewModel)DataContext).PodeReimprimir}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                              <PathIcon Data="{StaticResource IconeImpressora}" Width="18" Height="18" />
+                              <TextBlock Text="Só este item" VerticalAlignment="Center" />
+                            </StackPanel>
+                          </Button>
+                        </Panel>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+            <Button Grid.Row="2" Classes="primario" Command="{Binding ReimprimirTudoCommand}" HorizontalAlignment="Stretch"
+                    Height="62" IsEnabled="{Binding PodeReimprimir}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <PathIcon Data="{StaticResource IconeImpressora}" Foreground="White" Width="24" Height="24" />
+                <TextBlock Text="{Binding TextoImprimirTudo}" Foreground="White" FontSize="19" FontWeight="Bold" />
+              </StackPanel>
+            </Button>
+          </Grid>
+        </Panel>
+      </Border>
+    </Grid>
+  </Grid>
+
+  <UserControl.Styles>
+    <Style Selector="TextBlock.alerta">
+      <Setter Property="Foreground" Value="{StaticResource Aviso}" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+  </UserControl.Styles>
+</UserControl>

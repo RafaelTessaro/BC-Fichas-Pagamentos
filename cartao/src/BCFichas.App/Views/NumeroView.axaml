@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.Views.NumeroView"
+             x:DataType="vm:NumeroViewModel">
+  <Border Classes="cartao" Width="400" Padding="22">
+    <StackPanel Spacing="12">
+      <TextBlock Text="{Binding Titulo}" Classes="titulo" FontSize="22" HorizontalAlignment="Center" />
+      <TextBlock Text="{Binding Texto}" Classes="suave" FontSize="15" TextWrapping="Wrap" TextAlignment="Center" />
+      <Border Background="{StaticResource Fundo}" CornerRadius="12" Height="76">
+        <TextBlock Text="{Binding Digitado}" FontSize="44" FontWeight="ExtraBold" HorizontalAlignment="Center"
+                   VerticalAlignment="Center" />
+      </Border>
+      <TextBlock Text="{Binding Erro}" Foreground="{StaticResource Perigo}" FontWeight="Bold" HorizontalAlignment="Center"
+                 IsVisible="{Binding Erro, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+      <v:TecladoNumerico Comando="{Binding TeclaCommand}" TeclaEsquerda="C" Height="260" />
+      <Grid ColumnDefinitions="*,*">
+        <Button Classes="suave" Content="Cancelar" Command="{Binding CancelarCommand}" HorizontalAlignment="Stretch"
+                Height="56" Margin="0,0,6,0" />
+        <Button Grid.Column="1" Classes="primario" Content="Confirmar" Command="{Binding ConfirmarCommand}"
+                HorizontalAlignment="Stretch" Height="56" Margin="6,0,0,0" FontSize="18" />
+      </Grid>
+    </StackPanel>
+  </Border>
+</UserControl>

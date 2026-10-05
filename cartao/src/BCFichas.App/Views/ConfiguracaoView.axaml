@@ -1,0 +1,1168 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:core="using:BCFichas.Core"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.Views.ConfiguracaoView"
+             x:DataType="vm:ConfiguracaoViewModel">
+  <UserControl.Styles>
+    <!-- Cada aba é feita de blocos (fundo cinza claro), com um ícone colorido, título e explicação -->
+    <Style Selector=":is(Panel).pagina">
+      <Setter Property="Margin" Value="6,6,16,24" />
+    </Style>
+    <Style Selector="Grid.cabeca">
+      <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
+    <Style Selector="Grid.cabeca > StackPanel">
+      <Setter Property="Margin" Value="12,0,0,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.titulo-bloco">
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector="TextBlock.texto-bloco">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Foreground" Value="{StaticResource TextoSuave}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <!-- Ícones no preto e verde da BC Fichas (como a barra lateral) -->
+    <Style Selector="Border.icone-bloco.menor">
+      <Setter Property="Width" Value="44" />
+      <Setter Property="Height" Value="44" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Background" Value="{StaticResource FundoLateral}" />
+    </Style>
+    <Style Selector="Border.icone-bloco.menor PathIcon">
+      <Setter Property="Foreground" Value="{StaticResource Marca}" />
+      <Setter Property="Width" Value="24" />
+      <Setter Property="Height" Value="24" />
+    </Style>
+    <!-- Lista branca de opções (liga/desliga) dentro de um bloco -->
+    <Style Selector="Border.opcoes">
+      <Setter Property="Background" Value="{StaticResource Superficie}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Borda}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Margin" Value="0,10,0,0" />
+    </Style>
+    <Style Selector="Grid.opcao">
+      <Setter Property="Margin" Value="16,10" />
+      <Setter Property="MinHeight" Value="44" />
+    </Style>
+    <Style Selector="Grid.opcao ToggleSwitch">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="12,0,0,0" />
+    </Style>
+    <Style Selector="TextBlock.nome-opcao">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.separador">
+      <Setter Property="Height" Value="1" />
+      <Setter Property="Background" Value="{StaticResource Borda}" />
+      <Setter Property="Margin" Value="16,0" />
+    </Style>
+    <Style Selector="Border.caminho">
+      <Setter Property="Background" Value="{StaticResource Superficie}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Borda}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="12,10" />
+    </Style>
+    <!-- Número do caixa: − 01 + -->
+    <Style Selector="Button.numero-caixa">
+      <Setter Property="Width" Value="52" />
+      <Setter Property="Height" Value="52" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="12" />
+    </Style>
+    <Style Selector="Button.numero-caixa.valor">
+      <Setter Property="Width" Value="76" />
+      <Setter Property="Background" Value="{StaticResource FundoLateral}" />
+    </Style>
+    <Style Selector="Button.numero-caixa.valor:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.numero-caixa.valor:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource FundoLateral}" />
+      <Setter Property="Opacity" Value="0.9" />
+    </Style>
+    <Style Selector="Button.numero-caixa.valor TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Marca}" />
+      <Setter Property="FontSize" Value="26" />
+      <Setter Property="FontWeight" Value="ExtraBold" />
+    </Style>
+    <Style Selector="Button.numero-caixa:disabled">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
+    <Style Selector="Button.suave.branco">
+      <Setter Property="Background" Value="{StaticResource Superficie}" />
+    </Style>
+    <Style Selector="Button.grade-aba TextBlock.produtos-aba">
+      <Setter Property="Foreground" Value="{StaticResource TextoSuave}" />
+    </Style>
+    <Style Selector="Button.grade-aba.erro">
+      <Setter Property="BorderBrush" Value="{StaticResource Perigo}" />
+    </Style>
+    <Style Selector="Button.grade-aba.erro TextBlock.produtos-aba">
+      <Setter Property="Foreground" Value="{StaticResource Perigo}" />
+    </Style>
+    <Style Selector="Border.bloco">
+      <Setter Property="Background" Value="{StaticResource Fundo}" />
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Padding" Value="18" />
+    </Style>
+    <Style Selector="Border.icone-bloco">
+      <Setter Property="Width" Value="52" />
+      <Setter Property="Height" Value="52" />
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+
+    <!-- Cartões da aba Segurança: verde quando a tela pede senha -->
+    <Style Selector="ToggleButton.protecao">
+      <Setter Property="Background" Value="{StaticResource Superficie}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Borda}" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="MinHeight" Value="72" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource Fundo}" />
+      <Setter Property="BorderBrush" Value="#CBD5E1" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource PrimariaClara}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Primaria}" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:disabled /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Opacity" Value="0.5" />
+    </Style>
+    <Style Selector="ToggleButton.protecao Border.icone">
+      <Setter Property="Background" Value="{StaticResource Fundo}" />
+    </Style>
+    <Style Selector="ToggleButton.protecao Border.icone PathIcon">
+      <Setter Property="Foreground" Value="{StaticResource TextoSuave}" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked Border.icone">
+      <Setter Property="Background" Value="{StaticResource Primaria}" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked Border.icone PathIcon">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="ToggleButton.protecao Border.situacao">
+      <Setter Property="Background" Value="{StaticResource Fundo}" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked Border.situacao">
+      <Setter Property="Background" Value="{StaticResource Primaria}" />
+    </Style>
+    <Style Selector="ToggleButton.protecao :is(Control).travada">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked :is(Control).travada">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked TextBlock.travada">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked PathIcon.travada">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="ToggleButton.protecao:checked TextBlock.livre">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="ToggleButton.protecao TextBlock.livre">
+      <Setter Property="Foreground" Value="{StaticResource TextoSuave}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border Classes="cabecalho">
+      <!-- Salvar fica só na barra de baixo, que aparece quando algo muda -->
+      <Grid ColumnDefinitions="Auto,*">
+        <Button Classes="fantasma" Command="{Binding VoltarCommand}" Height="48" Padding="12,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeVoltar}" />
+            <TextBlock Text="Voltar" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <TextBlock Grid.Column="1" Text="Configurações" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
+      </Grid>
+    </Border>
+
+    <Border Grid.Row="1" Classes="cartao" Margin="14" Padding="12,4,12,12">
+      <TabControl SelectedIndex="{Binding AbaSelecionada}">
+
+        <!-- GERAL -->
+        <TabItem Header="Geral">
+          <ScrollViewer>
+            <Grid Classes="pagina" ColumnDefinitions="*,14,*">
+              <StackPanel Spacing="14">
+                <!-- Evento -->
+                <Border Classes="bloco">
+                  <StackPanel Spacing="4">
+                    <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                      <Border Classes="icone-bloco menor">
+                        <PathIcon Data="{StaticResource IconeFicha}" />
+                      </Border>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Classes="titulo-bloco" Text="Evento" />
+                        <TextBlock Classes="texto-bloco" Text="Sai em cada ficha e nos relatórios." />
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock Text="Nome do evento / festa" Classes="rotulo" />
+                    <TextBox Text="{Binding NomeEvento}" MaxLength="40" Watermark="Ex.: FESTA JUNINA SÃO JOÃO" />
+                    <TextBlock Text="Rodapé da ficha (opcional)" Classes="rotulo" />
+                    <TextBox Text="{Binding Rodape}" MaxLength="80" Watermark="Ex.: OBRIGADO E VOLTE SEMPRE!" />
+                    <TextBlock Classes="dica" TextWrapping="Wrap">
+                      <Run Text="Sai no fim de cada ficha. Embaixo dele sai sempre a linha" />
+                      <Run Text="{x:Static core:Configuracao.MensagemFixa}" FontWeight="SemiBold" />
+                    </TextBlock>
+                  </StackPanel>
+                </Border>
+
+                <!-- Este caixa -->
+                <Border Classes="bloco">
+                  <StackPanel Spacing="4">
+                    <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                      <Border Classes="icone-bloco menor">
+                        <PathIcon Data="{StaticResource IconeLoja}" />
+                      </Border>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Classes="titulo-bloco" Text="Este caixa (PDV)" />
+                        <TextBlock Classes="texto-bloco" Text="Cada máquina do evento tem um número diferente." />
+                      </StackPanel>
+                    </Grid>
+                    <Border Classes="opcoes">
+                      <StackPanel>
+                        <!-- Só um número: − 01 + (tocar no número abre o teclado) -->
+                        <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Classes="nome-opcao" Text="Número deste caixa" />
+                            <TextBlock Classes="dica" Text="{Binding CaixaNaFicha}" TextWrapping="Wrap" />
+                          </StackPanel>
+                          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="12,0,0,0"
+                                      VerticalAlignment="Center">
+                            <Button Classes="suave numero-caixa" Command="{Binding CaixaAnteriorCommand}"
+                                    ToolTip.Tip="Caixa anterior">
+                              <PathIcon Data="{StaticResource IconeMenos}" />
+                            </Button>
+                            <Button Classes="numero-caixa valor" Command="{Binding DigitarCaixaCommand}"
+                                    ToolTip.Tip="Digitar o número">
+                              <TextBlock Text="{Binding NumeroCaixaTexto}" />
+                            </Button>
+                            <Button Classes="suave numero-caixa" Command="{Binding ProximoCaixaCommand}"
+                                    ToolTip.Tip="Próximo caixa">
+                              <PathIcon Data="{StaticResource IconeMais}" />
+                            </Button>
+                          </StackPanel>
+                        </Grid>
+                        <Border Classes="separador" />
+                        <StackPanel Margin="16,10,16,12" Spacing="2">
+                          <TextBlock Classes="nome-opcao" Text="Pasta dos dados do programa" />
+                          <SelectableTextBlock Text="{Binding PastaDados}" Classes="suave" TextWrapping="Wrap" FontSize="13" />
+                        </StackPanel>
+                      </StackPanel>
+                    </Border>
+                    <TextBlock Classes="dica" Margin="2,6,0,0"
+                               Text="Aqui fica tudo do programa. Para passar a programação para outra máquina, use a aba Máquina." />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <!-- Tela e Windows -->
+              <Border Grid.Column="2" Classes="bloco" VerticalAlignment="Top">
+                <StackPanel Spacing="4">
+                  <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                    <Border Classes="icone-bloco menor">
+                      <PathIcon Data="{StaticResource IconeTela}" />
+                    </Border>
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Classes="titulo-bloco" Text="Tela e Windows" />
+                      <TextBlock Classes="texto-bloco" Text="Como o tablet funciona com o programa aberto." />
+                    </StackPanel>
+                  </Grid>
+                  <TextBlock Text="Tamanho da tela" Classes="rotulo" />
+                  <ComboBox ItemsSource="{Binding Zooms}" SelectedItem="{Binding Zoom}">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="x:Int32">
+                        <TextBlock Text="{Binding StringFormat={}{0}%}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <Border Classes="opcoes">
+                    <StackPanel>
+                      <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Classes="nome-opcao" Text="Tela cheia" />
+                          <TextBlock Classes="dica" Text="Esconde a barra do Windows (modo quiosque)." />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding TelaCheia}" />
+                      </Grid>
+                      <Border Classes="separador" />
+                      <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Classes="nome-opcao" Text="Teclado na tela" />
+                          <TextBlock Classes="dica" Text="Mostra um teclado ao tocar num campo de texto." />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding TecladoNaTela}" />
+                      </Grid>
+                      <Border Classes="separador" />
+                      <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Classes="nome-opcao" Text="Manter a tela sempre ligada" />
+                          <TextBlock Classes="dica" Text="O Windows não apaga a tela nem suspende o tablet." />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding ManterTelaLigada}" />
+                      </Grid>
+                      <Border Classes="separador" />
+                      <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Classes="nome-opcao" Text="Abrir quando o Windows ligar" />
+                          <TextBlock Classes="dica" Text="O BC Fichas abre sozinho depois que o Windows entra." />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding IniciarComWindows}" />
+                      </Grid>
+                      <Border Classes="separador" />
+                      <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Classes="nome-opcao" Text="Desligar ao fechar o caixa" />
+                          <TextBlock Classes="dica" Text="O tablet desliga depois de imprimir o fechamento." />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding DesligarAoFechar}" />
+                      </Grid>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- FICHA -->
+        <TabItem Header="Ficha">
+          <Grid ColumnDefinitions="*,Auto">
+            <ScrollViewer>
+              <StackPanel Classes="pagina" Spacing="14">
+                <!-- Modelo -->
+                <Border Classes="bloco">
+                  <StackPanel Spacing="4">
+                    <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                      <Border Classes="icone-bloco menor">
+                        <PathIcon Data="{StaticResource IconeFicha}" />
+                      </Border>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Classes="titulo-bloco" Text="Modelo da ficha" />
+                        <TextBlock Classes="texto-bloco" Text="O jeito da ficha impressa. A prévia ao lado muda na hora." />
+                      </StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,12,*">
+                      <StackPanel>
+                        <TextBlock Text="Modelo" Classes="rotulo" />
+                        <ComboBox ItemsSource="{Binding Modelos}" SelectedItem="{Binding Modelo}" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="2">
+                        <TextBlock Text="Fonte do nome do produto" Classes="rotulo" />
+                        <ComboBox ItemsSource="{Binding Fontes}" SelectedItem="{Binding Fonte}" MaxDropDownHeight="360" />
+                      </StackPanel>
+                    </Grid>
+                  </StackPanel>
+                </Border>
+
+                <!-- O que sai na ficha -->
+                <Border Classes="bloco">
+                  <StackPanel Spacing="4">
+                    <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                      <Border Classes="icone-bloco menor">
+                        <PathIcon Data="{StaticResource IconeOk}" />
+                      </Border>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Classes="titulo-bloco" Text="O que sai na ficha" />
+                        <TextBlock Classes="texto-bloco" Text="Ligue ou desligue cada parte." />
+                      </StackPanel>
+                    </Grid>
+                    <Border Classes="opcoes">
+                      <StackPanel>
+                        <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Classes="nome-opcao" Text="Borda em volta da ficha" />
+                          </StackPanel>
+                          <ToggleSwitch Grid.Column="1" IsChecked="{Binding Moldura}" />
+                        </Grid>
+                        <Border Classes="separador" />
+                        <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Classes="nome-opcao" Text="Valor do produto" />
+                          </StackPanel>
+                          <ToggleSwitch Grid.Column="1" IsChecked="{Binding MostrarValor}" />
+                        </Grid>
+                        <Border Classes="separador" />
+                        <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                          <StackPanel VerticalAlignment="Center">
+                            <TextBlock Classes="nome-opcao" Text="Código de barras" />
+                            <TextBlock Classes="dica" Text="Número único de cada ficha, para conferência e devolução." />
+                          </StackPanel>
+                          <ToggleSwitch Grid.Column="1" IsChecked="{Binding CodigoDeBarras}" />
+                        </Grid>
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
+                </Border>
+
+                <!-- Logotipo -->
+                <Border Classes="bloco">
+                  <StackPanel Spacing="4">
+                    <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                      <Border Classes="icone-bloco menor">
+                        <PathIcon Data="{StaticResource IconeImagem}" />
+                      </Border>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Classes="titulo-bloco" Text="Logotipo do evento" />
+                        <TextBlock Classes="texto-bloco" Text="Desenhos simples, em preto e branco, saem melhor na impressora térmica." />
+                      </StackPanel>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                      <Button Classes="suave branco" Command="{Binding EscolherLogoCommand}" Height="48" Padding="16,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <PathIcon Data="{StaticResource IconeImagem}" />
+                          <TextBlock Text="Escolher imagem" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                      <Button Classes="fantasma" Command="{Binding RemoverLogoCommand}" IsVisible="{Binding TemLogo}"
+                              Height="48" Padding="14,0">
+                        <TextBlock Text="Tirar logo" Foreground="{StaticResource Perigo}" />
+                      </Button>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </ScrollViewer>
+
+            <!-- Prévia -->
+            <Border Grid.Column="1" Classes="bloco" Margin="8,6,4,6" Width="440">
+              <Grid RowDefinitions="Auto,*">
+                <Grid Classes="cabeca" ColumnDefinitions="Auto,*" Margin="0,0,0,12">
+                  <Border Classes="icone-bloco menor">
+                    <PathIcon Data="{StaticResource IconeImpressora}" />
+                  </Border>
+                  <StackPanel Grid.Column="1">
+                    <TextBlock Classes="titulo-bloco" Text="Prévia" />
+                    <TextBlock Classes="texto-bloco" Text="Como a ficha sai no papel." />
+                  </StackPanel>
+                </Grid>
+                <ScrollViewer Grid.Row="1">
+                  <Border Background="White" BoxShadow="0 2 10 0 #330F172A" HorizontalAlignment="Center" VerticalAlignment="Top"
+                          CornerRadius="4">
+                    <Image Source="{Binding Previa}" Width="384" Stretch="Uniform" />
+                  </Border>
+                </ScrollViewer>
+              </Grid>
+            </Border>
+          </Grid>
+        </TabItem>
+
+        <!-- BOTÕES E ABAS -->
+        <TabItem Header="Botões e abas">
+          <ScrollViewer>
+            <Grid Classes="pagina" ColumnDefinitions="3*,14,2*">
+              <!-- Abas: cada uma com a sua grade de botões -->
+              <Border Classes="bloco" VerticalAlignment="Top">
+                <StackPanel Spacing="4">
+                  <Grid Classes="cabeca" ColumnDefinitions="Auto,*,Auto">
+                    <Border Classes="icone-bloco menor">
+                      <PathIcon Data="{StaticResource IconeAbas}" />
+                    </Border>
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Classes="titulo-bloco" Text="Abas da tela de venda" />
+                      <TextBlock Classes="texto-bloco"
+                                 Text="Cada aba tem a sua grade de botões: toque nela para escolher. Com uma aba só, a barra de abas fica escondida." />
+                    </StackPanel>
+                    <Button Grid.Column="2" Classes="suave branco" Command="{Binding NovaAbaCommand}" VerticalAlignment="Center"
+                            Height="44" Padding="12,0" Margin="8,0,0,0">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource IconeMais}" Width="16" Height="16" />
+                        <TextBlock Text="Nova aba" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </Button>
+                  </Grid>
+                  <ItemsControl x:Name="ListaAbas" ItemsSource="{Binding Abas}" Margin="0,8,0,0">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:AbaEdicao">
+                        <Border Classes="opcoes" Padding="6" Margin="0,0,0,8">
+                          <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
+                            <TextBox Text="{Binding Nome}" MaxLength="20" Watermark="Nome da aba" />
+                            <!-- Grade desta aba: automática ou colunas × linhas -->
+                            <Button Grid.Column="1" Classes="suave grade-aba" Classes.erro="{Binding NaoCabe}" Margin="6,0,0,0"
+                                    Height="48" MinWidth="150" Padding="10,0" HorizontalContentAlignment="Left"
+                                    Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).GradeDaAbaCommand}"
+                                    CommandParameter="{Binding}" ToolTip.Tip="Grade de botões desta aba">
+                              <Grid ColumnDefinitions="Auto,*">
+                                <PathIcon Data="{StaticResource IconeGrade}" Width="18" Height="18" Foreground="{StaticResource Primaria}" />
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                  <TextBlock Text="{Binding GradeTexto}" FontWeight="Bold" FontSize="14" />
+                                  <TextBlock Classes="produtos-aba" Text="{Binding ProdutosTexto}" FontSize="11" FontWeight="Normal" />
+                                </StackPanel>
+                              </Grid>
+                            </Button>
+                            <Button Grid.Column="2" Classes="fantasma" Width="46" Padding="0" Margin="4,0,0,0"
+                                    Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).SubirAbaCommand}"
+                                    CommandParameter="{Binding}" ToolTip.Tip="Subir">
+                              <PathIcon Data="{StaticResource IconeSetaCima}" />
+                            </Button>
+                            <Button Grid.Column="3" Classes="fantasma" Width="46" Padding="0"
+                                    Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).DescerAbaCommand}"
+                                    CommandParameter="{Binding}" ToolTip.Tip="Descer">
+                              <PathIcon Data="{StaticResource IconeSetaBaixo}" />
+                            </Button>
+                            <Button Grid.Column="4" Classes="fantasma" Width="46" Padding="0"
+                                    Command="{Binding $parent[UserControl].((vm:ConfiguracaoViewModel)DataContext).ExcluirAbaCommand}"
+                                    CommandParameter="{Binding}" ToolTip.Tip="Excluir">
+                              <PathIcon Data="{StaticResource IconeLixo}" Foreground="{StaticResource Perigo}" />
+                            </Button>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Classes="dica" Text="Abas novas, nomes, grades, ordem e exclusões valem ao tocar em Salvar." />
+                </StackPanel>
+              </Border>
+
+              <StackPanel Grid.Column="2" Spacing="14">
+                <!-- Como funciona a grade -->
+                <Border Classes="bloco">
+                  <StackPanel Spacing="8">
+                    <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                      <Border Classes="icone-bloco menor">
+                        <PathIcon Data="{StaticResource IconeGrade}" />
+                      </Border>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Classes="titulo-bloco" Text="Sem espaço vazio" />
+                        <TextBlock Classes="texto-bloco" Text="Os botões ocupam a tela toda da aba." />
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock TextWrapping="Wrap" FontSize="14">
+                      <Run Text="Automática:" FontWeight="Bold" />
+                      <Run Text="os botões crescem ou diminuem conforme a quantidade de produtos (7 produtos = 4 + 3)." />
+                    </TextBlock>
+                    <TextBlock TextWrapping="Wrap" FontSize="14">
+                      <Run Text="Colunas × linhas:" FontWeight="Bold" />
+                      <Run Text="você escolhe; com menos produtos, as linhas que sobram somem e a última linha estica." />
+                    </TextBlock>
+                  </StackPanel>
+                </Border>
+
+                <!-- Pasta das fotos -->
+                <Border Classes="bloco">
+                  <StackPanel Spacing="4">
+                    <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                      <Border Classes="icone-bloco menor">
+                        <PathIcon Data="{StaticResource IconePasta}" />
+                      </Border>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Classes="titulo-bloco" Text="Pasta das fotos" />
+                        <TextBlock Classes="texto-bloco" Text="O botão Imagem do cadastro de produtos começa nesta pasta." />
+                      </StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                      <TextBox Text="{Binding PastaFotos}" MaxLength="200" Watermark="C:\Sistema_New\produtos" />
+                      <Button Grid.Column="1" Classes="suave branco" Command="{Binding EscolherPastaFotosCommand}"
+                              Margin="8,0,0,0" Padding="14,0" MinHeight="48">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <PathIcon Data="{StaticResource IconePasta}" Width="18" Height="18" />
+                          <TextBlock Text="Escolher" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                    </Grid>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </Grid>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- IMPRESSORA -->
+        <TabItem Header="Impressora">
+          <ScrollViewer>
+            <Grid Classes="pagina" ColumnDefinitions="*,14,*">
+              <StackPanel Spacing="14">
+                <!-- Conexão -->
+                <Border Classes="bloco">
+                  <StackPanel Spacing="4">
+                    <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                      <Border Classes="icone-bloco menor">
+                        <PathIcon Data="{StaticResource IconeImpressora}" />
+                      </Border>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Classes="titulo-bloco" Text="Impressora" />
+                        <TextBlock Classes="texto-bloco" Text="Como a impressora térmica está ligada no tablet." />
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock Text="Ligação" Classes="rotulo" />
+                    <ComboBox ItemsSource="{Binding TiposImpressora}" SelectedItem="{Binding TipoImpressora}" />
+
+                    <StackPanel IsVisible="{Binding ImpressoraWindows}">
+                      <TextBlock Text="Impressora do Windows" Classes="rotulo" />
+                      <ComboBox ItemsSource="{Binding Impressoras}" SelectedItem="{Binding NomeImpressora}" />
+                      <TextBlock Classes="dica" IsVisible="{Binding SemImpressoras}" Foreground="{StaticResource Perigo}"
+                                 Text="Nenhuma impressora instalada no Windows. Instale o driver da Elgin i9 e volte nesta aba." />
+                      <TextBlock Classes="dica"
+                                 Text="A lista é atualizada sozinha sempre que você abre esta aba." />
+                    </StackPanel>
+
+                    <StackPanel IsVisible="{Binding ImpressoraSerial}">
+                      <Grid ColumnDefinitions="*,12,*">
+                        <StackPanel>
+                          <TextBlock Text="Porta" Classes="rotulo" />
+                          <ComboBox ItemsSource="{Binding Portas}" SelectedItem="{Binding PortaSerial}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                          <TextBlock Text="Velocidade" Classes="rotulo" />
+                          <ComboBox ItemsSource="{Binding Velocidades}" SelectedItem="{Binding BaudRate}" />
+                        </StackPanel>
+                      </Grid>
+                      <TextBlock Classes="dica" Text="Veja a porta no Gerenciador de Dispositivos do Windows (Portas COM e LPT)." />
+                    </StackPanel>
+
+                    <StackPanel IsVisible="{Binding ImpressoraArquivo}">
+                      <TextBlock Text="As fichas são salvas como imagens em:" Classes="rotulo" />
+                      <Border Classes="caminho">
+                        <SelectableTextBlock Text="{Binding PastaArquivo}" Classes="suave" TextWrapping="Wrap" FontSize="14" />
+                      </Border>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+
+                <!-- Papel -->
+                <Border Classes="bloco">
+                  <StackPanel Spacing="4">
+                    <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                      <Border Classes="icone-bloco menor">
+                        <PathIcon Data="{StaticResource IconeFicha}" />
+                      </Border>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Classes="titulo-bloco" Text="Papel e guilhotina" />
+                        <TextBlock Classes="texto-bloco" Text="A Elgin i9 usa papel de 80 mm." />
+                      </StackPanel>
+                    </Grid>
+                    <TextBlock Text="Largura do papel" Classes="rotulo" />
+                    <ComboBox ItemsSource="{Binding Papeis}" SelectedItem="{Binding LarguraPapel}">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="x:Int32">
+                          <TextBlock Text="{Binding StringFormat={}{0} mm}" />
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Text="Corte depois de cada ficha" Classes="rotulo" />
+                    <ComboBox ItemsSource="{Binding Cortes}" SelectedItem="{Binding Corte}" />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <StackPanel Grid.Column="2" Spacing="14">
+                <!-- Posição e teste -->
+                <Border Classes="bloco">
+                  <StackPanel Spacing="4">
+                    <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                      <Border Classes="icone-bloco menor">
+                        <PathIcon Data="{StaticResource IconeTroca}" />
+                      </Border>
+                      <StackPanel Grid.Column="1">
+                        <TextBlock Classes="titulo-bloco" Text="Posição no papel" />
+                        <TextBlock Classes="texto-bloco"
+                                   Text="Se a ficha sai mais para um lado, puxe para o outro (meio milímetro por toque) e confira com um teste." />
+                      </StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
+                      <Button Classes="suave branco" Width="60" Height="56" Padding="0" Command="{Binding MoverImpressaoCommand}"
+                              CommandParameter="esquerda" ToolTip.Tip="Puxar para a esquerda">
+                        <PathIcon Data="{StaticResource IconeVoltar}" />
+                      </Button>
+                      <Border Grid.Column="1" Classes="opcoes" Margin="8,0" Height="56">
+                        <TextBlock Text="{Binding AjusteTexto}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                      </Border>
+                      <Button Grid.Column="2" Classes="suave branco" Width="60" Height="56" Padding="0"
+                              Command="{Binding MoverImpressaoCommand}" CommandParameter="direita" ToolTip.Tip="Puxar para a direita">
+                        <PathIcon Data="{StaticResource IconeVoltar}" RenderTransform="rotate(180deg)" />
+                      </Button>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+                      <Button Classes="primario" Command="{Binding ImprimirTesteCommand}" Height="56" HorizontalAlignment="Stretch"
+                              IsEnabled="{Binding !ImprimindoTeste}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                          <PathIcon Data="{StaticResource IconeImpressora}" Foreground="White" />
+                          <TextBlock Text="Imprimir teste" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                      <Button Grid.Column="1" Classes="suave branco" Content="Centralizar" Height="56" Padding="18,0"
+                              Margin="10,0,0,0" Command="{Binding MoverImpressaoCommand}" CommandParameter="centro" />
+                    </Grid>
+                    <TextBlock Classes="dica" Text="O teste usa o que está nesta tela, mesmo antes de salvar." />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </Grid>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- MAQUININHA -->
+        <TabItem Header="Maquininha">
+          <ScrollViewer>
+            <StackPanel Classes="pagina" Spacing="14">
+              <Border Classes="bloco">
+                <StackPanel Spacing="12">
+                  <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                    <Border Classes="icone-bloco menor">
+                      <PathIcon Data="{StaticResource IconeCartao}" />
+                    </Border>
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Classes="titulo-bloco" Text="Cartão e PIX" />
+                      <TextBlock Classes="texto-bloco" Text="Toque em como o cartão e o PIX são cobrados neste caixa." />
+                    </StackPanel>
+                  </Grid>
+                  <UniformGrid Columns="3">
+                    <Button Classes="escolha" Classes.escolhida="{Binding MaquininhaSeparada}" Margin="0,0,6,0"
+                            Command="{Binding EscolherMaquininhaCommand}" CommandParameter="{x:Static core:TipoMaquininha.Separada}">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Classes="icone-escolha">
+                          <PathIcon Data="{StaticResource IconeCartao}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                          <TextBlock Text="Maquininha separada" FontSize="17" FontWeight="Bold" TextWrapping="Wrap" />
+                          <TextBlock Text="Só registra a forma de pagamento" Classes="suave" FontSize="13" FontWeight="Normal"
+                                     TextWrapping="Wrap" />
+                        </StackPanel>
+                        <PathIcon Grid.Column="2" Classes="marcada" Data="{StaticResource IconeOk}" />
+                      </Grid>
+                    </Button>
+                    <Button Classes="escolha" Classes.escolhida="{Binding MaquininhaSmart}" Margin="6,0"
+                            Command="{Binding EscolherMaquininhaCommand}" CommandParameter="{x:Static core:TipoMaquininha.PagBankSmart}">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Classes="icone-escolha">
+                          <PathIcon Data="{StaticResource IconeCartaoChip}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                          <TextBlock Text="Moderninha Smart 2" FontSize="17" FontWeight="Bold" TextWrapping="Wrap" />
+                          <TextBlock Text="PagBank, ligada por Bluetooth: o valor vai sozinho" Classes="suave" FontSize="13"
+                                     FontWeight="Normal" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <PathIcon Grid.Column="2" Classes="marcada" Data="{StaticResource IconeOk}" />
+                      </Grid>
+                    </Button>
+                    <Button Classes="escolha" Classes.escolhida="{Binding MaquininhaSimulador}" Margin="6,0,0,0"
+                            Command="{Binding EscolherMaquininhaCommand}" CommandParameter="{x:Static core:TipoMaquininha.Simulador}">
+                      <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Classes="icone-escolha">
+                          <PathIcon Data="{StaticResource IconeUsuario}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                          <TextBlock Text="Simulador" FontSize="17" FontWeight="Bold" TextWrapping="Wrap" />
+                          <TextBlock Text="Para treinar, sem maquininha" Classes="suave" FontSize="13" FontWeight="Normal"
+                                     TextWrapping="Wrap" />
+                        </StackPanel>
+                        <PathIcon Grid.Column="2" Classes="marcada" Data="{StaticResource IconeOk}" />
+                      </Grid>
+                    </Button>
+                  </UniformGrid>
+
+                  <Border Classes="opcoes" Padding="16" IsVisible="{Binding MaquininhaSeparada}">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="Como funciona" FontWeight="Bold" FontSize="16" />
+                      <TextBlock TextWrapping="Wrap" FontSize="15"
+                                 Text="No pagamento com Débito, Crédito ou PIX, o programa mostra o valor para passar na maquininha. Quando ela aprovar, o operador toca em APROVADO NA MAQUININHA e as fichas saem. A forma de pagamento fica registrada nos relatórios e no fechamento." />
+                    </StackPanel>
+                  </Border>
+
+                  <!-- Moderninha Smart 2: escolher a maquininha pareada e testar -->
+                  <StackPanel IsVisible="{Binding MaquininhaSmart}" Spacing="14">
+                    <Border Classes="opcoes" Padding="16">
+                      <StackPanel Spacing="6">
+                        <TextBlock Text="Qual maquininha" FontWeight="Bold" FontSize="16" />
+                        <Grid ColumnDefinitions="*,Auto">
+                          <ComboBox ItemsSource="{Binding Aparelhos}" SelectedItem="{Binding AparelhoEscolhido}"
+                                    PlaceholderText="Escolha a maquininha pareada" HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                              <DataTemplate x:DataType="vm:AparelhoOpcao">
+                                <StackPanel>
+                                  <TextBlock Text="{Binding Nome}" FontWeight="SemiBold" />
+                                  <TextBlock Text="{Binding Detalhe}" Classes="suave" FontSize="13" />
+                                </StackPanel>
+                              </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                          </ComboBox>
+                          <Button Grid.Column="1" Classes="suave branco" Content="Procurar de novo" Height="52" Padding="18,0"
+                                  Margin="10,0,0,0" Command="{Binding ProcurarAparelhosCommand}" />
+                        </Grid>
+                        <TextBlock Classes="dica" IsVisible="{Binding SemAparelhos}" Foreground="{StaticResource Perigo}"
+                                   Text="Nenhum aparelho pareado com este tablet. Pareie a maquininha no Bluetooth do Windows (passo a passo abaixo) e toque em Procurar de novo." />
+                        <TextBlock Text="Endereço Bluetooth (ou porta COM)" Classes="rotulo" />
+                        <TextBox Text="{Binding MaquininhaLigacao}" MaxLength="60" Watermark="Ex.: 00:1A:7D:DA:71:13 ou COM7" />
+                        <TextBlock Classes="dica"
+                                   Text="Preenche sozinho ao escolher na lista. A porta COM só serve se o Windows tiver criado uma para a maquininha." />
+                      </StackPanel>
+                    </Border>
+
+                    <Border Classes="opcoes">
+                      <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Classes="nome-opcao" Text="Imprimir comprovante na maquininha" />
+                          <TextBlock Classes="dica" TextWrapping="Wrap"
+                                     Text="A via do estabelecimento a cada pagamento. Desligado, a fila anda mais rápido e gasta menos papel." />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding MaquininhaComprovante}" />
+                      </Grid>
+                    </Border>
+
+                    <StackPanel Spacing="8">
+                      <Button Classes="primario" Command="{Binding TestarMaquininhaCommand}" Height="56" HorizontalAlignment="Left"
+                              Padding="24,0">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                          <PathIcon Data="{StaticResource IconeCartaoChip}" Foreground="White" />
+                          <TextBlock Text="Testar a ligação" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                      <Border IsVisible="{Binding ResultadoTeste, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                              CornerRadius="12" Padding="14,10" Classes="resultado"
+                              Classes.ok="{Binding TesteOk}" Classes.falhou="{Binding TesteFalhou}">
+                        <Border.Styles>
+                          <Style Selector="Border.resultado">
+                            <Setter Property="Background" Value="{StaticResource Superficie}" />
+                          </Style>
+                          <Style Selector="Border.resultado.ok">
+                            <Setter Property="Background" Value="{StaticResource PrimariaClara}" />
+                          </Style>
+                          <Style Selector="Border.resultado.falhou">
+                            <Setter Property="Background" Value="{StaticResource PerigoClara}" />
+                          </Style>
+                        </Border.Styles>
+                        <TextBlock Text="{Binding ResultadoTeste}" TextWrapping="Wrap" FontSize="15" FontWeight="SemiBold" />
+                      </Border>
+                      <TextBlock Classes="dica" Text="O teste usa o que está nesta tela, mesmo antes de salvar. Não cobra nada." />
+                    </StackPanel>
+
+                    <Border Classes="opcoes" Padding="16">
+                      <StackPanel Spacing="6">
+                        <TextBlock Text="Como ligar a maquininha (uma vez)" FontWeight="Bold" FontSize="16" />
+                        <TextBlock TextWrapping="Wrap" FontSize="15"
+                                   Text="1. Na maquininha, abra o app BC Fichas e toque em Deixar visível." />
+                        <TextBlock TextWrapping="Wrap" FontSize="15"
+                                   Text="2. No tablet: Configurações do Windows → Dispositivos → Bluetooth → Adicionar → Bluetooth. Escolha a maquininha e confirme o mesmo código nos dois." />
+                        <TextBlock TextWrapping="Wrap" FontSize="15"
+                                   Text="3. Aqui: toque em Procurar de novo, escolha a maquininha, Testar a ligação e Salvar." />
+                        <TextBlock TextWrapping="Wrap" FontSize="13" Classes="suave"
+                                   Text="Na venda, o valor vai sozinho para a maquininha: o cliente paga nela (cartão ou PIX na tela dela) e as fichas saem quando ela aprovar. O app BC Fichas precisa estar aberto na maquininha." />
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
+
+                  <Border Classes="opcoes" Padding="16" IsVisible="{Binding MaquininhaSimulador}">
+                    <StackPanel Spacing="6">
+                      <TextBlock Text="Modo simulador" FontWeight="Bold" FontSize="16" />
+                      <TextBlock TextWrapping="Wrap" FontSize="15"
+                                 Text="No pagamento com cartão ou PIX aparecem os botões 'Simular aprovado' e 'Simular recusado'." />
+                      <TextBlock Text="Aprovar sozinho depois de" Classes="rotulo" />
+                      <ComboBox ItemsSource="{Binding SegundosSimulador}" SelectedItem="{Binding SimuladorSegundos}" Width="440"
+                                HorizontalAlignment="Left">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="x:Int32">
+                            <TextBlock Text="{Binding Converter={x:Static v:Conversores.Segundos}}" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- SEGURANÇA -->
+        <TabItem Header="Segurança">
+          <ScrollViewer>
+            <StackPanel Margin="6,6,6,24" MaxWidth="900" HorizontalAlignment="Left" Spacing="16">
+
+              <!-- Senha master -->
+              <Border Background="{StaticResource Fundo}" CornerRadius="14" Padding="18">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <Border Width="56" Height="56" CornerRadius="14" Background="{StaticResource Primaria}"
+                          IsVisible="{Binding TemSenha}">
+                    <PathIcon Data="{StaticResource IconeCadeado}" Width="28" Height="28" Foreground="White" />
+                  </Border>
+                  <Border Width="56" Height="56" CornerRadius="14" Background="{StaticResource AvisoClara}"
+                          IsVisible="{Binding SemSenha}">
+                    <PathIcon Data="{StaticResource IconeAlerta}" Width="28" Height="28" Foreground="{StaticResource Aviso}" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock Text="Senha master" FontSize="19" FontWeight="Bold" />
+                    <TextBlock IsVisible="{Binding TemSenha}" Classes="suave" FontSize="15" TextWrapping="Wrap"
+                               Text="Senha definida. As telas marcadas abaixo pedem a senha para abrir." />
+                    <TextBlock IsVisible="{Binding SemSenha}" Foreground="{StaticResource Aviso}" FontSize="15" TextWrapping="Wrap"
+                               Text="Sem senha: qualquer pessoa abre todas as telas." />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Classes="fantasma" Content="Tirar senha" Command="{Binding RemoverSenhaCommand}"
+                            IsVisible="{Binding TemSenha}" Foreground="{StaticResource Perigo}" />
+                    <Button Classes="primario" Command="{Binding DefinirSenhaCommand}" Height="52" Padding="22,0">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{StaticResource IconeCadeado}" Foreground="White" Width="20" Height="20" />
+                        <TextBlock Text="Criar senha" Foreground="White" IsVisible="{Binding SemSenha}" />
+                        <TextBlock Text="Trocar senha" Foreground="White" IsVisible="{Binding TemSenha}" />
+                      </StackPanel>
+                    </Button>
+                  </StackPanel>
+                </Grid>
+              </Border>
+
+              <!-- Telas travadas -->
+              <StackPanel Spacing="4">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                  <StackPanel>
+                    <TextBlock Text="Telas que pedem a senha" Classes="secao" Margin="0" />
+                    <TextBlock Text="Toque numa tela para travar ou liberar. Grava ao tocar em Salvar." Classes="dica" Margin="0" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Classes="fantasma" Content="Travar todas" Command="{Binding TravarTudoCommand}"
+                          IsEnabled="{Binding TemSenha}" VerticalAlignment="Center" />
+                  <Button Grid.Column="2" Classes="fantasma" Content="Liberar todas" Command="{Binding LiberarTudoCommand}"
+                          IsEnabled="{Binding TemSenha}" VerticalAlignment="Center" />
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Protecoes}" IsEnabled="{Binding TemSenha}" Margin="-5,6,-5,0">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ProtecaoTela">
+                      <ToggleButton Classes="protecao" IsChecked="{Binding Marcada}" Margin="5" Padding="14,10"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                          <Border Classes="icone" Width="44" Height="44" CornerRadius="12">
+                            <PathIcon Data="{Binding Icone}" Width="24" Height="24" />
+                          </Border>
+                          <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Nome}" FontSize="16" FontWeight="Bold" />
+                            <TextBlock Text="{Binding Descricao}" FontSize="13" Classes="suave" />
+                          </StackPanel>
+                          <Border Grid.Column="2" Classes="situacao" CornerRadius="999" Padding="10,4" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                              <PathIcon Classes="travada" Data="{StaticResource IconeCadeado}" Width="14" Height="14" />
+                              <TextBlock Classes="travada" Text="Pede senha" FontSize="13" FontWeight="Bold" />
+                              <TextBlock Classes="livre" Text="Livre" FontSize="13" FontWeight="SemiBold" />
+                            </StackPanel>
+                          </Border>
+                        </Grid>
+                      </ToggleButton>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Classes="dica" IsVisible="{Binding SemSenha}" Text="Crie uma senha para poder travar as telas." />
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+        <!-- MÁQUINA: programar várias máquinas, começar de novo e liberar opções (só com a senha técnica) -->
+        <TabItem Header="Máquina">
+          <Panel>
+          <!-- Cadeado: a senha técnica da BC Fichas (no modo teste não pede). Com rolagem: em tela pequena, com o
+               teclado da tela aberto, o campo da senha e o Entrar ficavam escondidos embaixo do teclado. -->
+          <ScrollViewer IsVisible="{Binding !MaquinaLiberada}">
+          <Border Classes="bloco" Width="460" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="28,24">
+            <StackPanel Spacing="12">
+              <Border Width="64" Height="64" CornerRadius="18" Background="{StaticResource FundoLateral}"
+                      HorizontalAlignment="Center">
+                <PathIcon Data="{StaticResource IconeCadeado}" Width="32" Height="32" Foreground="{StaticResource Marca}" />
+              </Border>
+              <TextBlock Text="Área técnica da BC Fichas" FontSize="21" FontWeight="Bold" HorizontalAlignment="Center" />
+              <TextBlock Classes="suave" FontSize="15" TextWrapping="Wrap" TextAlignment="Center"
+                         Text="Backup, restaurar, apagar as vendas e as opções liberadas para o cliente. Digite a senha técnica." />
+              <TextBox x:Name="CampoSenhaTecnica" Text="{Binding SenhaTecnicaDigitada}" PasswordChar="●"
+                       Watermark="Senha técnica" FontSize="20" MaxLength="40" Margin="0,4,0,0">
+                <TextBox.KeyBindings>
+                  <KeyBinding Gesture="Enter" Command="{Binding LiberarMaquinaCommand}" />
+                </TextBox.KeyBindings>
+              </TextBox>
+              <TextBlock Text="{Binding ErroSenhaTecnica}" Foreground="{StaticResource Perigo}" FontWeight="Bold"
+                         HorizontalAlignment="Center"
+                         IsVisible="{Binding ErroSenhaTecnica, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <Button Classes="primario" Command="{Binding LiberarMaquinaCommand}" IsEnabled="{Binding !ConferindoSenha}"
+                      HorizontalAlignment="Stretch" Height="56">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <PathIcon Data="{StaticResource IconeCadeado}" Foreground="White" />
+                  <TextBlock Text="Entrar" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </Border>
+          </ScrollViewer>
+
+          <ScrollViewer IsVisible="{Binding MaquinaLiberada}">
+            <StackPanel Margin="6,6,6,24" MaxWidth="900" HorizontalAlignment="Left" Spacing="14">
+              <Border Background="{StaticResource FundoLateral}" CornerRadius="14" Padding="18,14">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="ESTA MÁQUINA" Foreground="{StaticResource Marca}" FontSize="12" FontWeight="Bold" />
+                    <TextBlock Text="{Binding SituacaoMaquina}" Foreground="White" FontSize="17" FontWeight="SemiBold"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SituacaoVendas}" Foreground="#CBD5E1" FontSize="14" TextWrapping="Wrap" />
+                  </StackPanel>
+                  <Border Grid.Column="1" Background="{StaticResource Primaria}" CornerRadius="8" Padding="12,6"
+                          Margin="12,0,0,0" VerticalAlignment="Center" IsVisible="{Binding MaquinaPura}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <PathIcon Data="{StaticResource IconeOk}" Foreground="White" Width="16" Height="16" />
+                      <TextBlock Text="PURA" Foreground="White" FontWeight="Bold" FontSize="14" />
+                    </StackPanel>
+                  </Border>
+                  <Border Grid.Column="1" Background="{StaticResource Aviso}" CornerRadius="8" Padding="12,6"
+                          Margin="12,0,0,0" VerticalAlignment="Center" IsVisible="{Binding !MaquinaPura}">
+                    <TextBlock Text="COM VENDAS" Foreground="White" FontWeight="Bold" FontSize="14" />
+                  </Border>
+                </Grid>
+              </Border>
+
+              <!-- Opções que só aparecem no Menu quando o cliente pede -->
+              <Border Classes="bloco">
+                <StackPanel Spacing="4">
+                  <Grid Classes="cabeca" ColumnDefinitions="Auto,*">
+                    <Border Classes="icone-bloco menor">
+                      <PathIcon Data="{StaticResource IconeMenu}" />
+                    </Border>
+                    <StackPanel Grid.Column="1">
+                      <TextBlock Classes="titulo-bloco" Text="Liberar no menu" />
+                      <TextBlock Classes="texto-bloco" Text="Só ligue se o cliente pedir. Desligadas, não aparecem no Menu." />
+                    </StackPanel>
+                  </Grid>
+                  <Border Classes="opcoes">
+                    <StackPanel>
+                      <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Classes="nome-opcao" Text="Devolução de fichas" />
+                          <TextBlock Classes="dica" TextWrapping="Wrap"
+                                     Text="Só em dinheiro: digita o valor das fichas devolvidas e ele sai do caixa como uma sangria." />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding LiberarDevolucao}" />
+                      </Grid>
+                      <Border Classes="separador" />
+                      <Grid Classes="opcao" ColumnDefinitions="*,Auto">
+                        <StackPanel VerticalAlignment="Center">
+                          <TextBlock Classes="nome-opcao" Text="Reimpressão de fichas" />
+                          <TextBlock Classes="dica" TextWrapping="Wrap" Text="Segunda via das fichas de um pedido." />
+                        </StackPanel>
+                        <ToggleSwitch Grid.Column="1" IsChecked="{Binding LiberarReimpressao}" />
+                      </Grid>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </Border>
+
+              <!-- Backup da programação -->
+              <Border Classes="bloco">
+                <Grid ColumnDefinitions="Auto,*">
+                  <Border Classes="icone-bloco" Background="{StaticResource FundoLateral}">
+                    <PathIcon Data="{StaticResource IconeTroca}" Foreground="{StaticResource Marca}" Width="28" Height="28" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="8">
+                    <TextBlock Text="Backup da programação" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Classes="dica" Margin="0" FontSize="14"
+                               Text="Faça o backup na máquina programada e restaure nas outras: só muda o número do caixa (PDV). Vai tudo num arquivo só (produtos, abas, combos, imagens, logotipo, evento, ficha e senha) e nunca vão as vendas, então quem restaura chega pura para o cliente. A impressora, a maquininha e a tela continuam as de cada máquina." />
+                    <TextBlock Text="Pasta do backup" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,0" />
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBox Text="{Binding PastaBackup}" MaxLength="250" Watermark="C:\Sistema_New\backup" />
+                      <Button Grid.Column="1" Classes="suave" Command="{Binding EscolherPastaBackupCommand}"
+                              Margin="8,0,0,0" Padding="14,0" MinHeight="44">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <PathIcon Data="{StaticResource IconePasta}" Width="18" Height="18" />
+                          <TextBlock Text="Escolher" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                    </Grid>
+                    <TextBlock Classes="dica" Margin="0" FontSize="13"
+                               Text="Pelo acesso remoto, é só copiar o arquivo .bcf para esta pasta da outra máquina. Com pendrive no tablet, o backup vai também para ele e o Restaurar procura nele." />
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+                      <Button Classes="primario" Command="{Binding FazerBackupCommand}" IsEnabled="{Binding !Ocupado}"
+                              Height="54" Padding="20,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <PathIcon Data="{StaticResource IconeSetaBaixo}" Foreground="White" />
+                          <TextBlock Text="Fazer backup" Foreground="White" FontSize="17" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                      <Button Classes="suave" Command="{Binding RestaurarCommand}" IsEnabled="{Binding !Ocupado}"
+                              Height="54" Padding="20,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <PathIcon Data="{StaticResource IconeSetaCima}" />
+                          <TextBlock Text="Restaurar" FontSize="17" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                    </StackPanel>
+                  </StackPanel>
+                </Grid>
+              </Border>
+
+              <!-- Deixar pura para o cliente -->
+              <Border Classes="bloco">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <Border Classes="icone-bloco" Background="{StaticResource Aviso}">
+                    <PathIcon Data="{StaticResource IconeFicha}" Foreground="White" Width="28" Height="28" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Margin="14,0" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="Deixar pura para o cliente" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Classes="dica" Margin="0" FontSize="14"
+                               Text="Apaga vendas, testes, caixas (até o aberto), sangrias e devoluções, e o pedido e a abertura de caixa voltam para o 1. Ficam os produtos e as configurações. Use antes de entregar a máquina ou para começar outra festa com o mesmo cardápio." />
+                  </StackPanel>
+                  <Button Grid.Column="2" Classes="suave" Command="{Binding LimparVendasCommand}" IsEnabled="{Binding !Ocupado}"
+                          VerticalAlignment="Center" Height="54" Padding="18,0">
+                    <TextBlock Text="Apagar as vendas" Foreground="{StaticResource Aviso}" FontWeight="Bold" FontSize="16" />
+                  </Button>
+                </Grid>
+              </Border>
+
+              <!-- Reprogramação para novo evento -->
+              <Border Classes="bloco">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <Border Classes="icone-bloco" Background="{StaticResource Perigo}">
+                    <PathIcon Data="{StaticResource IconeLixo}" Foreground="White" Width="28" Height="28" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Margin="14,0" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="Reprogramação para novo evento" FontSize="18" FontWeight="Bold" />
+                    <TextBlock Classes="dica" Margin="0" FontSize="14"
+                               Text="Zera a programação para cadastrar um evento diferente (como o banco vazio do sistema antigo): apaga vendas, produtos, combos, abas, evento e modelo da ficha. Ficam o número do caixa, a impressora, as pastas e a senha." />
+                  </StackPanel>
+                  <Button Grid.Column="2" Classes="perigo" Command="{Binding ZerarProgramacaoCommand}" IsEnabled="{Binding !Ocupado}"
+                          VerticalAlignment="Center" Height="54" Padding="18,0">
+                    <TextBlock Text="Zerar programação" Foreground="White" FontWeight="Bold" FontSize="16" />
+                  </Button>
+                </Grid>
+              </Border>
+
+              <TextBlock Classes="dica" FontSize="13"
+                         Text="Antes de apagar ou restaurar, o programa guarda sozinho uma cópia de segurança do banco em dados\backups (as 15 últimas). Se apagar sem querer, chame o suporte." />
+            </StackPanel>
+          </ScrollViewer>
+          </Panel>
+        </TabItem>
+      </TabControl>
+    </Border>
+
+    <!-- Aparece quando algo mudou e não foi salvo: difícil esquecer de salvar -->
+    <Border Grid.Row="2" IsVisible="{Binding TemAlteracoes}" Background="{StaticResource FundoLateral}"
+            BorderBrush="{StaticResource MarcaBorda}" BorderThickness="0,1,0,0" Padding="20,12">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+        <Border Width="44" Height="44" CornerRadius="999" Background="{StaticResource AvisoClara}">
+          <PathIcon Data="{StaticResource IconeAlerta}" Width="22" Height="22" Foreground="{StaticResource Aviso}" />
+        </Border>
+        <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center">
+          <TextBlock Text="Alterações não salvas" Foreground="White" FontSize="18" FontWeight="Bold" />
+          <TextBlock Text="Toque em Salvar para gravar. Se sair sem salvar, as mudanças se perdem."
+                     Foreground="{StaticResource MarcaTextoSuave}" FontSize="14" TextWrapping="Wrap" />
+        </StackPanel>
+        <Button Grid.Column="2" Classes="lateral" Command="{Binding DesfazerCommand}" Height="54" Padding="20,0"
+                Margin="0,0,10,0" HorizontalAlignment="Right">
+          <TextBlock Text="Desfazer" Foreground="White" FontSize="16" FontWeight="SemiBold" />
+        </Button>
+        <Button Grid.Column="3" Classes="primario" Command="{Binding SalvarCommand}" Height="54" Padding="28,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeOk}" Foreground="White" />
+            <TextBlock Text="Salvar alterações" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

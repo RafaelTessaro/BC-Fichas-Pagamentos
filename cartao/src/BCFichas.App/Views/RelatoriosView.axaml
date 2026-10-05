@@ -1,0 +1,139 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.Views.RelatoriosView"
+             x:DataType="vm:RelatoriosViewModel">
+  <UserControl.Styles>
+    <Style Selector="StackPanel.filtros Button">
+      <Setter Property="Margin" Value="0,0,8,0" />
+      <Setter Property="Padding" Value="18,0" />
+      <Setter Property="Height" Value="44" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="TextBlock.saida">
+      <Setter Property="Foreground" Value="{StaticResource Perigo}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*">
+    <Border Classes="cabecalho">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Classes="fantasma" Command="{Binding VoltarCommand}" Height="48" Padding="12,0">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <PathIcon Data="{StaticResource IconeVoltar}" />
+            <TextBlock Text="Voltar" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <TextBlock Grid.Column="1" Text="Relatórios" Classes="titulo" VerticalAlignment="Center" Margin="10,0" />
+        <Button Grid.Column="2" Classes="suave" Command="{Binding AtualizarCommand}" Content="Atualizar" Height="46" />
+      </Grid>
+    </Border>
+
+    <TabControl Grid.Row="1" SelectedIndex="{Binding AbaSelecionada}" Margin="10,4,10,10">
+      <TabItem Header="Caixa atual">
+        <Grid RowDefinitions="Auto,*">
+          <Button Classes="suave" Command="{Binding ImprimirAtualCommand}" HorizontalAlignment="Right" Height="46"
+                  Margin="0,6,6,6" IsVisible="{Binding Atual, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <PathIcon Data="{StaticResource IconeImpressora}" />
+              <TextBlock Text="Imprimir parcial" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <TextBlock Grid.Row="1" Text="Nenhum caixa aberto." Classes="suave" Margin="10"
+                     IsVisible="{Binding Atual, Converter={x:Static ObjectConverters.IsNull}}" />
+          <ScrollViewer Grid.Row="1">
+            <ContentControl Content="{Binding Atual}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="vm:ResumoVM"><v:ResumoCaixaView /></DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
+          </ScrollViewer>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Caixas">
+        <Grid RowDefinitions="Auto,*">
+          <StackPanel Classes="filtros" Orientation="Horizontal" Margin="4,8">
+            <Button Classes="opcao" Classes.marcada="{Binding FiltroHoje}" Content="Hoje" Command="{Binding FiltrarCommand}" CommandParameter="1" />
+            <Button Classes="opcao" Classes.marcada="{Binding Filtro7}" Content="7 dias" Command="{Binding FiltrarCommand}" CommandParameter="7" />
+            <Button Classes="opcao" Classes.marcada="{Binding Filtro30}" Content="30 dias" Command="{Binding FiltrarCommand}" CommandParameter="30" />
+            <Button Classes="opcao" Classes.marcada="{Binding FiltroTudo}" Content="Tudo" Command="{Binding FiltrarCommand}" CommandParameter="0" />
+          </StackPanel>
+          <Grid Grid.Row="1" ColumnDefinitions="340,*">
+            <Border Classes="cartao" Margin="5" Padding="8">
+              <Panel>
+                <TextBlock Text="Nenhum caixa no período." Classes="suave" Margin="8" IsVisible="{Binding !Sessoes.Count}" />
+                <ListBox ItemsSource="{Binding Sessoes}" SelectedItem="{Binding SessaoSelecionada}">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:SessaoItem">
+                      <Grid ColumnDefinitions="*,Auto" Margin="10,8">
+                        <StackPanel>
+                          <TextBlock Text="{Binding Titulo}" FontWeight="Bold" FontSize="16" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Text="{Binding Periodo}" Classes="suave" FontSize="13" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding Total}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" />
+                      </Grid>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Panel>
+            </Border>
+            <Grid Grid.Column="1" RowDefinitions="Auto,*">
+              <Button Classes="suave" Command="{Binding ImprimirSelecionadoCommand}" HorizontalAlignment="Right" Height="46"
+                      Margin="0,4,6,4" IsVisible="{Binding ResumoSelecionado, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <PathIcon Data="{StaticResource IconeImpressora}" />
+                  <TextBlock Text="Reimprimir relatório" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <ScrollViewer Grid.Row="1">
+                <ContentControl Content="{Binding ResumoSelecionado}">
+                  <ContentControl.ContentTemplate>
+                    <DataTemplate x:DataType="vm:ResumoVM"><v:ResumoCaixaView /></DataTemplate>
+                  </ContentControl.ContentTemplate>
+                </ContentControl>
+              </ScrollViewer>
+            </Grid>
+          </Grid>
+        </Grid>
+      </TabItem>
+
+      <TabItem Header="Sangrias e suprimentos">
+        <Grid RowDefinitions="Auto,Auto,*">
+          <StackPanel Classes="filtros" Orientation="Horizontal" Margin="4,8">
+            <Button Classes="opcao" Classes.marcada="{Binding FiltroHoje}" Content="Hoje" Command="{Binding FiltrarCommand}" CommandParameter="1" />
+            <Button Classes="opcao" Classes.marcada="{Binding Filtro7}" Content="7 dias" Command="{Binding FiltrarCommand}" CommandParameter="7" />
+            <Button Classes="opcao" Classes.marcada="{Binding Filtro30}" Content="30 dias" Command="{Binding FiltrarCommand}" CommandParameter="30" />
+            <Button Classes="opcao" Classes.marcada="{Binding FiltroTudo}" Content="Tudo" Command="{Binding FiltrarCommand}" CommandParameter="0" />
+          </StackPanel>
+          <TextBlock Grid.Row="1" Text="{Binding TotalMovimentos}" FontWeight="SemiBold" Margin="8,0,0,6" />
+          <Border Grid.Row="2" Classes="cartao" Margin="5">
+            <Panel>
+              <TextBlock Text="Nenhum movimento no período." Classes="suave" IsVisible="{Binding !Movimentos.Count}" />
+              <ScrollViewer>
+                <ItemsControl ItemsSource="{Binding Movimentos}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MovimentoItem">
+                      <Border BorderBrush="{StaticResource Borda}" BorderThickness="0,0,0,1" Padding="4,9">
+                        <Grid ColumnDefinitions="140,*,Auto">
+                          <TextBlock Text="{Binding Tipo}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" />
+                          <StackPanel Grid.Column="1">
+                            <TextBlock Text="{Binding Hora}" FontSize="14" />
+                            <TextBlock Text="{Binding Motivo}" Classes="suave" FontSize="13" />
+                          </StackPanel>
+                          <TextBlock Grid.Column="2" Text="{Binding Valor}" FontSize="17" FontWeight="Bold"
+                                     VerticalAlignment="Center" Classes.saida="{Binding Saida}" />
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Panel>
+          </Border>
+        </Grid>
+      </TabItem>
+    </TabControl>
+  </Grid>
+</UserControl>
