@@ -225,7 +225,7 @@
 
   let pin = "";
   try { pin = localStorage.getItem("bcfichas-pin") || ""; } catch (e) { /* navegação privada */ }
-  let periodo = "caixaAberto", aba = "painel", etag = null, dados = null;
+  let periodo = "caixaAberto", aba = "painel", etag = null, dados = null, recebidoEm = 0;
   let ultimoContato = 0, ultimaFalha = 0, falhando = false, timer = null;
   let ordemProdutos = "quantidade", maquinaProdutos = "todas", maquinaAberta = null, horaEscolhida = null;
 
@@ -244,14 +244,27 @@
     return (neg ? "−" : "") + "R$ " + r + "," + String(c % 100).padStart(2, "0");
   };
   const numero = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  const pct = (p, t) => t > 0 ? Math.round(p * 100 / t) + "%" : "0%";
+  // Porcentagens inteiras que somam 100 (as que sobraram do arredondamento vão para as maiores frações)
+  const porcentagens = (valores) => {
+    const total = valores.reduce((s, v) => s + Math.max(0, v), 0);
+    if (total <= 0) return valores.map(() => 0);
+    const exatas = valores.map((v) => Math.max(0, v) * 100 / total);
+    const inteiras = exatas.map((p) => Math.floor(p));
+    let falta = 100 - inteiras.reduce((s, p) => s + p, 0);
+    exatas.map((p, i) => [p - inteiras[i], i]).sort((a, b) => b[0] - a[0])
+      .forEach(([, i]) => { if (falta > 0) { inteiras[i]++; falta--; } });
+    return inteiras;
+  };
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const hora = (iso) => iso ? iso.substring(11, 16) : "";
   const haQuanto = (seg) => seg < 5 ? "agora" : seg < 60 ? `há ${seg} s` : seg < 3600 ? `há ${Math.floor(seg / 60)} min` : `há ${Math.floor(seg / 3600)} h`;
+  // Segundos desde a última resposta com novidade: sem venda nova a máquina responde "nada mudou" (304) e o
+  // relógio dos números tem de continuar andando no celular.
+  const desdeOsDados = () => Math.max(0, Math.round((Date.now() - recebidoEm) / 1000));
   const segundosDesde = (iso) => {
     if (!iso || !dados) return null;
     const agora = Date.parse(dados.agora), quando = Date.parse(iso);
-    return isNaN(agora) || isNaN(quando) ? null : Math.max(0, Math.round((agora - quando) / 1000));
+    return isNaN(agora) || isNaN(quando) ? null : Math.max(0, Math.round((agora - quando) / 1000) + desdeOsDados());
   };
   const caixa = (n) => "Caixa " + String(n).padStart(2, "0");
 
@@ -316,6 +329,7 @@
       if (r.status === 503) { mostrarEntrada("O painel está desligado nesta máquina."); return; }
       if (r.status === 200) {
         dados = await r.json();
+        recebidoEm = Date.now();
         etag = r.headers.get("ETag");
         mostrarPainel();
         desenhar();
@@ -347,6 +361,9 @@
     }
   }
   setInterval(mostrarStatus, 1000);
+  // "última venda há…" e "sem conexão há…" continuam andando mesmo sem novidade (a lista de produtos e o gráfico
+  // não mudam com o relógio e não são redesenhados, para não fechar o filtro aberto)
+  setInterval(() => { if (!document.hidden && (aba === "painel" || aba === "maquinas")) desenhar(); }, 10000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) atualizar(); });
 
   // ---------- Desenho ----------
@@ -368,16 +385,21 @@
   function painel(b) {
     const parcial = dados.maquinasOnline < dados.maquinasTotal
       ? `<div class="selo">Parcial: ${dados.maquinasOnline} de ${dados.maquinasTotal} máquinas respondendo</div>` : "";
-    const devol = b.devolvido > 0 ? ` · devoluções ${reais(b.devolvido)}` : "";
+    // Os mesmos nomes do relatório do caixa: "total vendido" é antes das devoluções; com devolução, o número
+    // grande é a "venda líquida"
+    const devol = b.devolvido > 0
+      ? `<div class="linha">vendido ${reais(b.vendido)} · devoluções ${reais(-b.devolvido)}</div>` : "";
     const formas = b.formas.filter((f) => f.valor > 0);
     const totalFormas = formas.reduce((s, f) => s + f.valor, 0);
+    const pcts = porcentagens(b.formas.map((f) => f.valor));
     const top = b.produtos.slice(0, 3);
     const maxTop = top.length ? top[0].quantidade : 1;
     return semCaixa() + `
       <div class="cartao destaque">
-        <div class="rotulo">TOTAL VENDIDO</div>
+        <div class="rotulo">${b.devolvido > 0 ? "VENDA LÍQUIDA" : "TOTAL VENDIDO"}</div>
         <div class="total">${reais(b.liquido)}</div>
-        <div class="linha">${numero(b.pedidos)} vendas · ${numero(b.fichas)} fichas${devol}</div>
+        <div class="linha">${numero(b.pedidos)} vendas · ${numero(b.fichas)} fichas</div>
+        ${devol}
         ${parcial}
       </div>
       <div class="grade">
@@ -393,10 +415,10 @@
       <div class="cartao">
         <h2>Formas de pagamento</h2>
         ${totalFormas > 0 ? `<div class="barra-formas">${formas.map((f) => `<div style="width:${f.valor * 100 / totalFormas}%;background:${CORES[f.chave]}"></div>`).join("")}</div>` : ""}
-        ${b.formas.map((f) => `
+        ${b.formas.map((f, i) => `
           <div class="linha-lista"><span class="ponto" style="background:${CORES[f.chave]}"></span>
             <span class="nome">${esc(f.nome)}<small>${numero(f.pedidos)} ${f.pedidos === 1 ? "venda" : "vendas"}</small></span>
-            <span class="num">${reais(f.valor)}<small>${pct(f.valor, totalFormas)}</small></span></div>`).join("")}
+            <span class="num">${reais(f.valor)}<small>${pcts[i]}%</small></span></div>`).join("")}
       </div>
       <div class="cartao">
         <h2>Máquinas</h2>
@@ -412,7 +434,7 @@
     const b = m.estado[periodo];
     const ultima = segundosDesde(b.ultimaVendaEm);
     const sub = !m.online
-      ? `sem conexão ${haQuanto(m.segundosSemResposta)}`
+      ? `sem conexão ${haQuanto(m.segundosSemResposta + desdeOsDados())}`
       : b.caixasAbertos === 0 && periodo === "caixaAberto" ? "caixa fechado"
       : ultima === null ? "nenhuma venda ainda" : `última venda ${haQuanto(ultima)}`;
     const total = Math.max(1, ...dados.maquinas.map((x) => x.estado[periodo].liquido));
@@ -421,7 +443,7 @@
       <div class="linha-lista maquina ${m.online ? "" : "fora"}" data-maquina="${esc(m.estado.instancia)}">
         <span class="estado"></span>
         <span class="nome">${caixa(m.estado.caixa)}${m.estaMaquina ? " (esta)" : ""}<small>${sub}</small>
-          ${comDetalhe ? `<div class="barrinha"><div style="width:${b.liquido * 100 / total}%"></div></div>` : ""}</span>
+          ${comDetalhe ? `<div class="barrinha"><div style="width:${Math.max(0, b.liquido) * 100 / total}%"></div></div>` : ""}</span>
         <span class="num">${reais(b.liquido)}<small>${numero(b.pedidos)} vendas</small></span>
       </div>
       ${aberta ? detalheMaquina(m, b) : ""}`;
@@ -482,7 +504,7 @@
     const lista = b.porHora;
     if (!lista.length) return semCaixa() + `<div class="cartao vazio"><b>Nenhuma venda ainda</b>O gráfico aparece com a primeira venda.</div>`;
     const varias = new Set(lista.map((h) => h.hora.substring(0, 10))).size > 1;
-    const max = Math.max(...lista.map((h) => h.valor));
+    const max = Math.max(1, ...lista.map((h) => h.valor)); // venda de R$ 0 (cortesia) não vira divisão por zero
     const pico = lista.reduce((a, h) => h.valor > a.valor ? h : a, lista[0]);
     const atual = (dados.agora || "").substring(0, 13).replace("T", " ");
     const escolhida = lista.find((h) => h.hora === horaEscolhida) || pico;

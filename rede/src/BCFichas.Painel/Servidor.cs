@@ -32,10 +32,21 @@ public sealed class Servidor : IAsyncDisposable
     public const string CabecalhoPin = "X-Pin";
     private const int TentativasErradas = 5;
 
+    /// <summary>
+    /// Conexões abertas ao mesmo tempo. Cada celular deixa uma ou mais abertas entre as perguntas (a cada 3 s) e as
+    /// outras máquinas também: com 32, a equipe toda olhando deixava celular de fora. Conexão parada quase não usa
+    /// memória.
+    /// </summary>
+    internal const int MaximoDeConexoes = 256;
+
     private readonly WebApplication _app;
     private readonly Leitor _leitor;
     private readonly Rede _rede;
     private readonly ConcurrentDictionary<IPAddress, (int Erros, DateTime Ate)> _bloqueios = new();
+    /// <summary>O último JSON desta máquina, pela marca: várias máquinas perguntando, um JSON só.</summary>
+    private Resposta? _ultimoEstado;
+
+    private sealed record Resposta(string Marca, byte[] Json);
 
     private Servidor(WebApplication app, Leitor leitor, Rede rede)
     {
@@ -58,19 +69,15 @@ public sealed class Servidor : IAsyncDisposable
         builder.Logging.ClearProviders();
         builder.WebHost.ConfigureKestrel(k =>
         {
-            k.Limits.MaxConcurrentConnections = 32;
+            k.Limits.MaxConcurrentConnections = MaximoDeConexoes;
             k.Limits.MaxRequestBodySize = 0;
             k.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(5);
-            k.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(30);
+            // O celular pergunta a cada 3 s: 15 s mantém a conexão dele e solta logo a de quem foi embora
+            k.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(15);
             k.AddServerHeader = false;
             if (soLocal) k.Listen(IPAddress.Loopback, porta);
             else k.Listen(IPAddress.Any, porta);
         });
-        builder.Services.ConfigureHttpJsonOptions(o =>
-        {
-            o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-        });
-
         var app = builder.Build();
         var leitor = new Leitor(pastaDados, Guid.NewGuid().ToString("N")[..12]);
         var rede = new Rede(leitor, porta == 0 ? Rede.PortaPadrao : porta)
@@ -101,39 +108,83 @@ public sealed class Servidor : IAsyncDisposable
             await proximo(contexto);
         });
 
-        _app.MapGet("/", () => Pagina("index.html"));
-        _app.MapGet("/{arquivo}", (string arquivo) => Pagina(arquivo));
-
-        _app.MapGet("/api/v1/info", () =>
+        // Quatro rotas fixas, num "switch" só: sem o roteamento das minimal APIs (que monta cada rota com árvores
+        // de expressão ao abrir, carrega mais bibliotecas e pesa no tablet)
+        _app.Run(contexto =>
         {
-            var c = _leitor.Config;
-            return Results.Json(new Info(_leitor.Instancia, c.NumeroCaixa, c.NomeEvento, Leitor.Versao,
-                c.PainelAtivo && Configuracao.PinValido(c.PainelPin)), Json.Opcoes);
-        });
-
-        _app.MapGet("/api/v1/estado", (HttpContext contexto) =>
-        {
-            if (Recusar(contexto) is { } recusa) return recusa;
-            var (estado, marca) = _leitor.Ler();
-            return ComMarca(contexto, marca, estado);
-        });
-
-        _app.MapGet("/api/v1/evento", (HttpContext contexto) =>
-        {
-            if (Recusar(contexto) is { } recusa) return recusa;
-            _rede.AlguemOlhando();
-            var marca = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(_rede.Marca())))[..20];
-            return ComMarca(contexto, marca, null);
+            if (!HttpMethods.IsGet(contexto.Request.Method))
+                return Results.StatusCode(StatusCodes.Status405MethodNotAllowed).ExecuteAsync(contexto);
+            var caminho = contexto.Request.Path.Value is { Length: > 1 } p ? p.TrimEnd('/') : "/";
+            IResult resposta = caminho.ToLowerInvariant() switch
+            {
+                "/" => Pagina("index.html"),
+                "/api/v1/info" => Info(),
+                "/api/v1/estado" => Recusar(contexto) ?? Estado(contexto),
+                "/api/v1/evento" => Recusar(contexto) ?? Evento(contexto),
+                _ when caminho.LastIndexOf('/') == 0 => Pagina(caminho[1..]),
+                _ => Results.NotFound(),
+            };
+            return resposta.ExecuteAsync(contexto);
         });
     }
 
-    /// <summary>Resposta com marca (ETag): o celular manda a última que recebeu e, sem novidade, não vem nada.</summary>
-    private IResult ComMarca(HttpContext contexto, string marca, object? corpo)
+    /// <summary>Quem é esta máquina (público: é como as outras se acham na rede; sem números).</summary>
+    private IResult Info()
+    {
+        var c = _leitor.Config;
+        return Results.Json(new Info(_leitor.Instancia, c.NumeroCaixa, c.NomeEvento, Leitor.Versao,
+            c.PainelAtivo && Configuracao.PinValido(c.PainelPin)), Json.Opcoes);
+    }
+
+    /// <summary>
+    /// Os números desta máquina (o que as outras máquinas perguntam). Com novidade, o JSON é montado uma vez para a
+    /// marca nova e servido igual a todas as máquinas que perguntarem.
+    /// </summary>
+    private IResult Estado(HttpContext contexto)
+    {
+        var (estado, marca) = _leitor.Ler();
+        if (NadaMudou(contexto, marca)) return Results.StatusCode(StatusCodes.Status304NotModified);
+        var guardado = Volatile.Read(ref _ultimoEstado);
+        if (guardado is null || guardado.Marca != marca)
+        {
+            guardado = new Resposta(marca, JsonSerializer.SerializeToUtf8Bytes(estado, Json.Opcoes));
+            Volatile.Write(ref _ultimoEstado, guardado);
+        }
+        return Results.Bytes(guardado.Json, "application/json; charset=utf-8");
+    }
+
+    /// <summary>
+    /// O evento todo (o que o celular pergunta a cada 3 s). Montado a cada resposta: leva a hora da máquina, com que o
+    /// celular calcula o "última venda há…".
+    /// </summary>
+    private IResult Evento(HttpContext contexto)
+    {
+        _rede.AlguemOlhando();
+        if (NadaMudou(contexto, Resumo(_rede.Marca()))) return Results.StatusCode(StatusCodes.Status304NotModified);
+        return Results.Json(_rede.Evento(), Json.Opcoes);
+    }
+
+    /// <summary>Marca (ETag) da resposta: o celular manda a última que recebeu e, sem novidade, não vem nada.</summary>
+    private static bool NadaMudou(HttpContext contexto, string marca)
     {
         var etag = $"\"{marca}\"";
         contexto.Response.Headers.ETag = etag;
-        if (contexto.Request.Headers.IfNoneMatch.ToString() == etag) return Results.StatusCode(StatusCodes.Status304NotModified);
-        return Results.Json(corpo ?? _rede.Evento(), Json.Opcoes);
+        return contexto.Request.Headers.IfNoneMatch.ToString() == etag;
+    }
+
+    /// <summary>
+    /// Resumo curto de um texto (FNV-1a de 64 bits) para marca e identidade. Não é segredo nenhum, então não precisa
+    /// de criptografia (que carrega a biblioteca do sistema só para isso).
+    /// </summary>
+    internal static string Resumo(string texto)
+    {
+        var hash = 14695981039346656037UL;
+        foreach (var c in texto)
+        {
+            hash = (hash ^ (byte)c) * 1099511628211UL;
+            hash = (hash ^ (byte)(c >> 8)) * 1099511628211UL;
+        }
+        return hash.ToString("x16", System.Globalization.CultureInfo.InvariantCulture);
     }
 
     /// <summary>PIN errado ou faltando: não mostra nada. Cinco erros seguidos bloqueiam o endereço por 5 minutos.</summary>
@@ -156,6 +207,10 @@ public sealed class Servidor : IAsyncDisposable
         }
         _bloqueios.AddOrUpdate(ip, (1, DateTime.UtcNow.AddMinutes(5)),
             (_, atual) => (atual.Ate > DateTime.UtcNow ? atual.Erros + 1 : 1, DateTime.UtcNow.AddMinutes(5)));
+        // Os endereços que erraram e foram embora não ficam guardados para sempre
+        if (_bloqueios.Count > 256)
+            foreach (var (velho, b2) in _bloqueios)
+                if (b2.Ate <= DateTime.UtcNow) _bloqueios.TryRemove(velho, out _);
         return Results.StatusCode(StatusCodes.Status401Unauthorized);
     }
 
@@ -188,9 +243,9 @@ public sealed class Servidor : IAsyncDisposable
     /// <summary>Arquivos da página (dentro do programa).</summary>
     private static IResult Pagina(string arquivo)
     {
+        if (!Tipos.TryGetValue(Path.GetExtension(arquivo), out var tipo)) return Results.NotFound();
         var recurso = Assembly.GetExecutingAssembly().GetManifestResourceStream("pagina/" + arquivo);
-        if (recurso is null || !Tipos.TryGetValue(Path.GetExtension(arquivo), out var tipo)) return Results.NotFound();
-        return Results.Stream(recurso, tipo);
+        return recurso is null ? Results.NotFound() : Results.Stream(recurso, tipo);
     }
 
     public async ValueTask DisposeAsync()

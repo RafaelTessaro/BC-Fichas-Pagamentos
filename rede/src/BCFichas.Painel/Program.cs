@@ -7,7 +7,20 @@ using BCFichas.Painel;
 // Sai sozinho quando o caixa fecha ou quando o painel é desligado.
 
 using var unico = new Mutex(true, "BCFichasPainel-instancia-unica", out var primeiro);
-if (!primeiro) return 0;
+if (!primeiro)
+{
+    // O caixa fechou e abriu de novo: o painel antigo percebe em até 5 s e sai. Espera por ele em vez de desistir
+    // (o caixa só tentaria de novo 30 s depois, e o celular ficaria esse tempo sem painel).
+    try
+    {
+        primeiro = unico.WaitOne(TimeSpan.FromSeconds(20));
+    }
+    catch (AbandonedMutexException)
+    {
+        primeiro = true; // o antigo foi fechado à força: a vez é deste
+    }
+    if (!primeiro) return 0;
+}
 
 string? Argumento(string nome)
 {
