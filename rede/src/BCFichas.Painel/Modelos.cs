@@ -40,7 +40,14 @@ public sealed record Bloco
 
 /// <summary>Uma máquina: o caixa aberto agora e o evento todo.</summary>
 public sealed record EstadoMaquina(
-    string Instancia, int Caixa, string NomeEvento, string Versao, string Agora, Bloco CaixaAberto, Bloco TodoEvento);
+    string Instancia, int Caixa, string NomeEvento, string Versao, string Agora, Bloco CaixaAberto, Bloco TodoEvento)
+{
+    /// <summary>
+    /// O tablet (não muda quando o programa reabre nem quando o IP muda): a mesma máquina em dois endereços entra
+    /// uma vez só na soma. Vazio numa máquina com versão antiga do painel (aí vale a <see cref="Instancia"/>).
+    /// </summary>
+    public string Maquina { get; init; } = "";
+}
 
 /// <summary>Uma máquina vista pelo painel: a última resposta dela e se ainda está respondendo.</summary>
 public sealed record MaquinaNoPainel(

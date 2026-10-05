@@ -122,12 +122,7 @@ internal static class PainelDaRede
     public static async Task<string?> LiberarNoFirewall()
     {
         if (!OperatingSystem.IsWindows()) return "Só no Windows.";
-        // Apaga a regra antiga (o programa pode ter mudado de pasta) e cria de novo, numa permissão só.
-        var regra = $"name=\"{NomeRegra}\"";
-        var comando =
-            $"netsh advfirewall firewall delete rule {regra} >nul 2>&1 & " +
-            $"netsh advfirewall firewall add rule {regra} dir=in action=allow program=\"{Exe}\" protocol=TCP " +
-            $"localport={Configuracao.PortaPainel} remoteip=localsubnet profile=any enable=yes";
+        var comando = ComandoDoFirewall(Exe);
         try
         {
             using var p = Process.Start(new ProcessStartInfo("cmd.exe", $"/s /c \"{comando}\"")
@@ -149,6 +144,21 @@ internal static class PainelDaRede
             Log.Erro("Liberar no firewall", e);
             return "Não foi possível liberar no firewall.";
         }
+    }
+
+    /// <summary>
+    /// O que roda no cmd (como administrador): apaga a regra antiga (o programa pode ter mudado de pasta) e cria de
+    /// novo, numa permissão só. Apaga também as regras de entrada que o próprio Windows cria para o programa quando
+    /// alguém toca em "Cancelar" no aviso do firewall: são de bloqueio, e bloqueio vale mais que a liberação.
+    /// </summary>
+    internal static string ComandoDoFirewall(string exe)
+    {
+        var regra = $"name=\"{NomeRegra}\"";
+        return
+            $"netsh advfirewall firewall delete rule {regra} >nul 2>&1 & " +
+            $"netsh advfirewall firewall delete rule name=all dir=in program=\"{exe}\" >nul 2>&1 & " +
+            $"netsh advfirewall firewall add rule {regra} dir=in action=allow program=\"{exe}\" protocol=TCP " +
+            $"localport={Configuracao.PortaPainel} remoteip=localsubnet profile=any enable=yes";
     }
 
     /// <summary>A regra do firewall já existe? (nulo: não deu para saber, ex.: fora do Windows)</summary>
