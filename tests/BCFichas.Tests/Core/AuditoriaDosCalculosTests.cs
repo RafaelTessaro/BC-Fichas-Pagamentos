@@ -39,7 +39,10 @@ public class AuditoriaDosCalculosTests
         {
             if (anotado.Apagado)
             {
-                Assert.Null(festa.Caixa.Sessao(anotado.Id)); // o fim do modo teste apagou tudo
+                // O fim do modo teste apagou tudo; o número dele fica livre e pode ir para o caixa aberto depois
+                // (a contagem das aberturas não pula)
+                var depois = festa.Caixa.Sessao(anotado.Id);
+                Assert.True(depois is null || depois.AbertaEm != anotado.AbertaEm);
                 continue;
             }
             var resumo = festa.Caixa.Resumo(anotado.Id);
@@ -153,7 +156,7 @@ public class AuditoriaDosCalculosTests
 
             // O caixa escolhido na lista mostra o resumo dele
             if (tela.SessaoSelecionada is { } escolhido)
-                Assert.Equal(Dinheiro.Formatar(festa.Caixas.Single(c => c.Id == escolhido.Sessao.Id).TotalVendido),
+                Assert.Equal(Dinheiro.Formatar(festa.Caixas.Single(c => c.Id == escolhido.Sessao.Id && !c.Apagado).TotalVendido),
                     tela.ResumoSelecionado!.TotalVendido);
         }
     }

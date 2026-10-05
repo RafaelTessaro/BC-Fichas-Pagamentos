@@ -1101,7 +1101,7 @@
                   <StackPanel Grid.Column="1" Margin="14,0" Spacing="4" VerticalAlignment="Center">
                     <TextBlock Text="Deixar pura para o cliente" FontSize="18" FontWeight="Bold" />
                     <TextBlock Classes="dica" Margin="0" FontSize="14"
-                               Text="Apaga vendas, testes, caixas (até o aberto), sangrias e devoluções, e o pedido volta para o 1. Ficam os produtos e as configurações. Use antes de entregar a máquina ou para começar outra festa com o mesmo cardápio." />
+                               Text="Apaga vendas, testes, caixas (até o aberto), sangrias e devoluções, e o pedido e a abertura de caixa voltam para o 1. Ficam os produtos e as configurações. Use antes de entregar a máquina ou para começar outra festa com o mesmo cardápio." />
                   </StackPanel>
                   <Button Grid.Column="2" Classes="suave" Command="{Binding LimparVendasCommand}" IsEnabled="{Binding !Ocupado}"
                           VerticalAlignment="Center" Height="54" Padding="18,0">

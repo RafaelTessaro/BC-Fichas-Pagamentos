@@ -520,7 +520,8 @@ public sealed class ProgramacaoServico
             DELETE FROM movimentos;
             DELETE FROM sessoes;
             UPDATE contadores SET valor = 0 WHERE nome IN ('pedido', 'pedido_teste');
-            """);
+            DELETE FROM sqlite_sequence WHERE name = 'sessoes';
+            """); // a abertura de caixa (SESSÃO no papel) também volta para o 1, como o pedido
 
     private static void ApagarCatalogo(SqliteConnection c, SqliteTransaction t) =>
         Banco.Executar(c, t, """

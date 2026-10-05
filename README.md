@@ -177,7 +177,8 @@ pastas continuam os dela**. Tudo o que estava guardado nela (vendas, testes, cai
 apagado, e o programa avisa antes o que vai sair.
 
 **Deixar pura para o cliente:** depois de testar a máquina, toque em **Apagar as vendas**. Saem vendas, testes,
-caixas (até o aberto), sangrias e devoluções, e o pedido volta para o 1. Os produtos e as configurações ficam.
+caixas (até o aberto), sangrias e devoluções, e o pedido e a abertura de caixa (a "SESSÃO" do papel) voltam
+para o 1. Os produtos e as configurações ficam.
 Se algum produto controla estoque, o programa pergunta: **Devolver ao estoque** (volta ao que era antes das
 vendas, para entregar ao cliente) ou **Deixar como está** (outra festa com o que sobrou). Ao fazer o backup numa
 máquina que ainda tem vendas, o programa já pergunta se quer apagar — menos com o caixa aberto com vendas, para

@@ -76,7 +76,8 @@ public sealed class CaixaServico
             DELETE FROM movimentos WHERE sessao_id IN (SELECT id FROM sessoes WHERE teste = 1);
             DELETE FROM sessoes WHERE teste = 1;
             UPDATE contadores SET valor = 0 WHERE nome = 'pedido_teste';
-            """);
+            UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX(id), 0) FROM sessoes) WHERE name = 'sessoes';
+            """); // o número da abertura (SESSÃO no papel) que o teste usou volta a ficar livre: a contagem não pula
     });
 
     public Movimento RegistrarMovimento(SessaoCaixa sessao, TipoMovimento tipo, long valor, string motivo)

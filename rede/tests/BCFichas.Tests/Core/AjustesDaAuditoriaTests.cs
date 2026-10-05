@@ -121,4 +121,28 @@ public class AjustesDaAuditoriaTests
         catalogo.SalvarProduto(pastel, 30);
         Assert.Equal(9_999_999, catalogo.Produto(pastel.Id)!.PrecoCentavos);
     }
+
+    [Fact]
+    public void Apagar_as_vendas_volta_a_abertura_de_caixa_para_1()
+    {
+        using var temp = new SistemaTemporario();
+        var caixa = temp.Sistema.Caixa;
+        for (var i = 0; i < 3; i++) caixa.Fechar(caixa.Abrir(1, null, 0), 0);
+        Assert.Equal(4, caixa.Abrir(1, null, 0).Id); // a 4ª abertura sai como SESSÃO 4
+
+        // Deixar pura para o cliente: a próxima abertura sai como SESSÃO 1, como o pedido volta para o 1
+        temp.Sistema.Programacao.ApagarVendas();
+        Assert.Equal(1, caixa.Abrir(1, null, 0).Id);
+    }
+
+    [Fact]
+    public void Modo_teste_nao_faz_a_abertura_de_caixa_pular_numero()
+    {
+        using var temp = new SistemaTemporario();
+        var caixa = temp.Sistema.Caixa;
+        caixa.Fechar(caixa.Abrir(1, null, 0), 0);          // SESSÃO 1
+        caixa.Fechar(caixa.Abrir(1, null, 0, teste: true), 0); // o teste usa um número...
+        caixa.ApagarTestes();                              // ...que volta a ficar livre ao sair do modo teste
+        Assert.Equal(2, caixa.Abrir(1, null, 0).Id);
+    }
 }
