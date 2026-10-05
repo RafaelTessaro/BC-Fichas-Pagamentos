@@ -33,9 +33,9 @@ public sealed class Servidor : IAsyncDisposable
     private const int TentativasErradas = 5;
 
     /// <summary>
-    /// Conexões abertas ao mesmo tempo. Cada celular deixa uma ou mais abertas entre as perguntas (a cada 3 s) e as
-    /// outras máquinas também: com 32, a equipe toda olhando deixava celular de fora. Conexão parada quase não usa
-    /// memória.
+    /// Conexões abertas ao mesmo tempo. Cada celular deixa uma ou mais abertas por alguns segundos depois de
+    /// atualizar e as outras máquinas também: com 32, a equipe toda abrindo o painel junto deixava celular de fora.
+    /// Conexão parada quase não usa memória.
     /// </summary>
     internal const int MaximoDeConexoes = 256;
 
@@ -62,8 +62,7 @@ public sealed class Servidor : IAsyncDisposable
     public int Porta { get; private set; }
 
     /// <param name="porta">0 = uma porta livre (testes).</param>
-    public static async Task<Servidor> Iniciar(string pastaDados, int porta = Rede.PortaPadrao,
-        TimeSpan? intervaloRede = null, bool soLocal = false)
+    public static async Task<Servidor> Iniciar(string pastaDados, int porta = Rede.PortaPadrao, bool soLocal = false)
     {
         var builder = WebApplication.CreateSlimBuilder();
         builder.Logging.ClearProviders();
@@ -72,7 +71,7 @@ public sealed class Servidor : IAsyncDisposable
             k.Limits.MaxConcurrentConnections = MaximoDeConexoes;
             k.Limits.MaxRequestBodySize = 0;
             k.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(5);
-            // O celular pergunta a cada 3 s: 15 s mantém a conexão dele e solta logo a de quem foi embora
+            // Quem acabou de atualizar costuma tocar de novo logo: 15 s mantém a conexão e depois solta
             k.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(15);
             k.AddServerHeader = false;
             if (soLocal) k.Listen(IPAddress.Loopback, porta);
@@ -80,15 +79,11 @@ public sealed class Servidor : IAsyncDisposable
         });
         var app = builder.Build();
         var leitor = new Leitor(pastaDados, Guid.NewGuid().ToString("N")[..12]);
-        var rede = new Rede(leitor, porta == 0 ? Rede.PortaPadrao : porta)
-        {
-            Intervalo = intervaloRede ?? TimeSpan.FromSeconds(3),
-        };
+        var rede = new Rede(leitor, porta == 0 ? Rede.PortaPadrao : porta);
         var servidor = new Servidor(app, leitor, rede);
         servidor.Configurar();
         await app.StartAsync();
         servidor.Porta = new Uri(app.Urls.First()).Port;
-        rede.Iniciar();
         return servidor;
     }
 
@@ -110,21 +105,24 @@ public sealed class Servidor : IAsyncDisposable
 
         // Quatro rotas fixas, num "switch" só: sem o roteamento das minimal APIs (que monta cada rota com árvores
         // de expressão ao abrir, carrega mais bibliotecas e pesa no tablet)
-        _app.Run(contexto =>
+        _app.Run(async contexto =>
         {
             if (!HttpMethods.IsGet(contexto.Request.Method))
-                return Results.StatusCode(StatusCodes.Status405MethodNotAllowed).ExecuteAsync(contexto);
+            {
+                await Results.StatusCode(StatusCodes.Status405MethodNotAllowed).ExecuteAsync(contexto);
+                return;
+            }
             var caminho = contexto.Request.Path.Value is { Length: > 1 } p ? p.TrimEnd('/') : "/";
             IResult resposta = caminho.ToLowerInvariant() switch
             {
                 "/" => Pagina("index.html"),
                 "/api/v1/info" => Info(),
                 "/api/v1/estado" => Recusar(contexto) ?? Estado(contexto),
-                "/api/v1/evento" => Recusar(contexto) ?? Evento(contexto),
+                "/api/v1/evento" => Recusar(contexto) ?? await Evento(contexto),
                 _ when caminho.LastIndexOf('/') == 0 => Pagina(caminho[1..]),
                 _ => Results.NotFound(),
             };
-            return resposta.ExecuteAsync(contexto);
+            await resposta.ExecuteAsync(contexto);
         });
     }
 
@@ -154,12 +152,13 @@ public sealed class Servidor : IAsyncDisposable
     }
 
     /// <summary>
-    /// O evento todo (o que o celular pergunta a cada 3 s). Montado a cada resposta: leva a hora da máquina, com que o
-    /// celular calcula o "última venda há…".
+    /// O evento todo (o que o celular pede ao abrir o painel e no botão Atualizar): pergunta na hora às outras
+    /// máquinas e junta tudo. Montado a cada resposta: leva a hora da máquina, com que o celular calcula o "última
+    /// venda há…".
     /// </summary>
-    private IResult Evento(HttpContext contexto)
+    private async Task<IResult> Evento(HttpContext contexto)
     {
-        _rede.AlguemOlhando();
+        await _rede.Atualizar();
         if (NadaMudou(contexto, Resumo(_rede.Marca()))) return Results.StatusCode(StatusCodes.Status304NotModified);
         return Results.Json(_rede.Evento(), Json.Opcoes);
     }

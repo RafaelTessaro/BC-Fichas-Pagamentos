@@ -63,7 +63,7 @@ public class AuditoriaDoPainelTests : IAsyncLifetime
 
     private async Task<Servidor> Subir(SistemaTemporario t, int porta = 0)
     {
-        var s = await Servidor.Iniciar(t.Pasta, porta, intervaloRede: TimeSpan.FromMilliseconds(200), soLocal: true);
+        var s = await Servidor.Iniciar(t.Pasta, porta, soLocal: true);
         _servidores.Add(s);
         return s;
     }
@@ -97,7 +97,7 @@ public class AuditoriaDoPainelTests : IAsyncLifetime
         return (await r.Content.ReadFromJsonAsync<EstadoEvento>(Json.Opcoes))!;
     }
 
-    /// <summary>Pergunta até a condição valer (a rede do painel consulta as outras a cada 200 ms nos testes).</summary>
+    /// <summary>Pergunta até a condição valer (cada pergunta do celular faz a máquina consultar as outras).</summary>
     private async Task<EstadoEvento> EsperarEvento(Servidor s, Func<EstadoEvento, bool> condicao, int segundos = 10)
     {
         var limite = DateTime.UtcNow.AddSeconds(segundos);
@@ -217,7 +217,7 @@ public class AuditoriaDoPainelTests : IAsyncLifetime
     public async Task Maquina_com_outro_pin_na_lista_nao_e_bloqueada_de_tanto_perguntar()
     {
         // A máquina 2 ficou com outro PIN (backup antigo). O painel da 1 não pode ficar perguntando com o PIN
-        // errado a cada 3 s: em 5 tentativas a 2 bloqueia o tablet 1 por 5 minutos, e mesmo depois de o PIN ser
+        // errado a cada Atualizar: em 5 tentativas a 2 bloqueia o tablet 1 por 5 minutos, e mesmo depois de o PIN ser
         // corrigido a máquina 2 continua fora do painel.
         var b = Maquina(2, pin: "999999");
         Vender(b.Sistema, b.Sistema.Caixa.Abrir(2, null, 0), FormaPagamento.Pix, ("PASTEL", 1));
@@ -239,7 +239,7 @@ public class AuditoriaDoPainelTests : IAsyncLifetime
     public async Task Outra_coisa_respondendo_na_porta_com_resposta_enorme_fica_de_fora()
     {
         // Um aparelho qualquer na porta 8765 que responde 200 com um JSON enorme: o painel não pode guardar isso
-        // nem mandar para os celulares a cada 3 s.
+        // nem mandar para os celulares a cada Atualizar.
         using var parar = new CancellationTokenSource();
         var corpo = Encoding.UTF8.GetBytes(
             "{\"instancia\":\"" + new string('x', 6_000_000) + "\",\"caixa\":7,\"nomeEvento\":\"\",\"versao\":\"\"," +
@@ -307,8 +307,8 @@ public class AuditoriaDoPainelTests : IAsyncLifetime
     [Fact]
     public async Task Maquina_lenta_nao_atrasa_o_celular_nem_derruba_as_outras()
     {
-        // Um tablet travado aceita a conexão e nunca responde: o celular continua recebendo na hora e a máquina 2
-        // continua "respondendo" (a consulta das outras não espera a lenta para sempre).
+        // Um tablet travado aceita a conexão e nunca responde: o Atualizar desiste dele em 2 s (não fica esperando para
+        // sempre) e a máquina 2 continua "respondendo".
         var lenta = new TcpListener(IPAddress.Loopback, 0);
         lenta.Start();
         var presas = new List<TcpClient>();
@@ -338,7 +338,7 @@ public class AuditoriaDoPainelTests : IAsyncLifetime
             {
                 var pergunta = Stopwatch.StartNew();
                 var evento = await Evento(servidorA);
-                Assert.True(pergunta.ElapsedMilliseconds < 1000, $"o celular esperou {pergunta.ElapsedMilliseconds} ms");
+                Assert.True(pergunta.ElapsedMilliseconds < 3500, $"o celular esperou {pergunta.ElapsedMilliseconds} ms");
                 Assert.True(evento.Maquinas.All(m => m.Online));
                 Assert.Equal(1000, evento.CaixaAberto.Vendido);
                 await Task.Delay(300);
@@ -396,8 +396,8 @@ public class AuditoriaDoPainelTests : IAsyncLifetime
     [Fact]
     public async Task Muitos_celulares_olhando_ao_mesmo_tempo_sao_todos_atendidos()
     {
-        // Cada celular deixa a conexão aberta entre uma pergunta e outra (a cada 3 s); o navegador abre mais de uma
-        // ao carregar a página. A equipe toda com o QR code não pode deixar ninguém de fora.
+        // Cada celular deixa a conexão aberta por um tempo depois de atualizar; o navegador abre mais de uma ao
+        // carregar a página. A equipe toda abrindo o QR code junto não pode deixar ninguém de fora.
         var a = Maquina(1);
         var servidor = await Subir(a);
         var celulares = Enumerable.Range(0, 48).Select(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(5) }).ToList();

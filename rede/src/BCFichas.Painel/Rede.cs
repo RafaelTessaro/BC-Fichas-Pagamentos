@@ -9,8 +9,9 @@ using BCFichas.Core;
 namespace BCFichas.Painel;
 
 /// <summary>
-/// As outras máquinas do evento. Enquanto alguém está olhando o painel, pergunta a cada uma como estão as vendas
-/// (a cada poucos segundos, e quase de graça quando nada mudou). Só entram as que têm o mesmo PIN do evento.
+/// As outras máquinas do evento. Só pergunta a cada uma como estão as vendas quando alguém pede no celular (ao abrir
+/// o painel ou no botão Atualizar): sem ninguém pedindo, as máquinas não conversam. Só entram as que têm o mesmo PIN
+/// do evento.
 /// </summary>
 public sealed class Rede : IDisposable
 {
@@ -18,12 +19,18 @@ public sealed class Rede : IDisposable
 
     /// <summary>
     /// Maior resposta aceita de outra máquina. Uma máquina com anos de festas manda poucas centenas de KB; mais que
-    /// isso é outra coisa respondendo na porta (e ficaria guardada e indo para os celulares a cada 3 s).
+    /// isso é outra coisa respondendo na porta (e ficaria guardada e indo para os celulares).
     /// </summary>
     internal const int MaiorResposta = 4 * 1024 * 1024;
 
     /// <summary>Máquina que recusou o PIN: fica de fora e sem perguntas por um tempo (senão ela bloqueia este tablet).</summary>
     internal static readonly TimeSpan EsperaOutroPin = TimeSpan.FromMinutes(6);
+
+    /// <summary>
+    /// Sem a lista de endereços e sem nenhuma máquina achada ainda, o primeiro Atualizar espera a procura na rede
+    /// (perguntar aos 253 vizinhos leva uns 6 s) para já vir com as outras máquinas.
+    /// </summary>
+    internal static readonly TimeSpan EsperaPelaProcura = TimeSpan.FromSeconds(8);
 
     private readonly Leitor _leitor;
     private readonly int _porta;
@@ -31,16 +38,19 @@ public sealed class Rede : IDisposable
     private readonly ConcurrentDictionary<string, Vizinha> _vizinhas = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, DateTime> _recusadas = new(StringComparer.OrdinalIgnoreCase);
     private readonly CancellationTokenSource _parar = new();
-    private DateTime _ultimaOlhada = DateTime.MinValue;
+    private readonly object _trava = new();
     private DateTime _ultimaProcura = DateTime.MinValue;
+    private DateTime _fimDaRodada = DateTime.MinValue;
     private string? _pinUsado;
-    private Task? _laco;
+    private Task? _rodada;
     private Task _procura = Task.CompletedTask;
 
     private sealed class Vizinha
     {
         public EstadoMaquina? Estado;
         public string? Marca;
+        /// <summary>Respondeu na última vez que alguém atualizou o painel.</summary>
+        public bool Respondeu;
         public DateTime UltimaResposta = DateTime.MinValue;
         public DateTime PrimeiraFalha = DateTime.MinValue;
         /// <summary>Digitada nas configurações (sai quando é tirada da lista); falso = achada na rede.</summary>
@@ -54,28 +64,36 @@ public sealed class Rede : IDisposable
         _http = new HttpClient { Timeout = espera ?? TimeSpan.FromSeconds(2), MaxResponseContentBufferSize = MaiorResposta };
     }
 
-    /// <summary>De quanto em quanto tempo pergunta às outras máquinas (enquanto alguém olha).</summary>
-    public TimeSpan Intervalo { get; init; } = TimeSpan.FromSeconds(3);
+    /// <summary>
+    /// Dois celulares atualizando quase juntos (ou um toque duplo no Atualizar) usam a mesma consulta às outras
+    /// máquinas, em vez de perguntar tudo de novo.
+    /// </summary>
+    public TimeSpan Reaproveitar { get; init; } = TimeSpan.FromSeconds(2);
 
-    /// <summary>Sem resposta há mais que isso: a máquina aparece "sem conexão" (com os últimos números dela).</summary>
-    public TimeSpan Tolerancia { get; init; } = TimeSpan.FromSeconds(12);
+    /// <summary>
+    /// Pergunta agora às outras máquinas como estão as vendas (o celular abriu o painel ou tocou em Atualizar).
+    /// Termina quando todas responderam ou desistiu das que não responderam a tempo (2 s).
+    /// </summary>
+    public Task Atualizar()
+    {
+        lock (_trava)
+        {
+            if (_rodada is { } atual && (!atual.IsCompleted || DateTime.UtcNow - _fimDaRodada < Reaproveitar))
+                return atual;
+            return _rodada = Task.Run(() => Rodada(_parar.Token));
+        }
+    }
 
-    public void Iniciar() => _laco ??= Task.Run(() => Laco(_parar.Token));
-
-    /// <summary>Alguém abriu ou atualizou o painel: as outras máquinas passam a ser consultadas.</summary>
-    public void AlguemOlhando() => _ultimaOlhada = DateTime.UtcNow;
-
-    /// <summary>Esta máquina e as outras que já responderam.</summary>
+    /// <summary>Esta máquina e as outras, com os números da última vez que responderam.</summary>
     public EstadoEvento Evento()
     {
-        AlguemOlhando();
         var (local, _) = _leitor.Ler();
         var agora = DateTime.UtcNow;
         var maquinas = new List<MaquinaNoPainel> { new("Esta máquina", true, true, 0, local) };
         foreach (var (endereco, v, estado) in Visiveis(local))
         {
             var semResposta = (int)(agora - v.UltimaResposta).TotalSeconds;
-            maquinas.Add(new MaquinaNoPainel(endereco, false, agora - v.UltimaResposta < Tolerancia, semResposta, estado));
+            maquinas.Add(new MaquinaNoPainel(endereco, false, v.Respondeu, semResposta, estado));
         }
         maquinas = maquinas.OrderBy(m => m.Estado.Caixa).ThenBy(m => m.Endereco, StringComparer.Ordinal).ToList();
         return new EstadoEvento(local.NomeEvento, Leitor.Agora(), maquinas.Count(m => m.Online), maquinas.Count,
@@ -87,9 +105,8 @@ public sealed class Rede : IDisposable
     public string Marca()
     {
         var (local, marca) = _leitor.Ler();
-        var agora = DateTime.UtcNow;
         var partes = Visiveis(local).OrderBy(x => x.Endereco, StringComparer.OrdinalIgnoreCase)
-            .Select(x => $"{x.Endereco}:{x.V.Marca}:{(agora - x.V.UltimaResposta < Tolerancia ? 1 : 0)}");
+            .Select(x => $"{x.Endereco}:{x.V.Marca}:{(x.V.Respondeu ? 1 : 0)}");
         return marca + "|" + string.Join("|", partes);
     }
 
@@ -102,8 +119,7 @@ public sealed class Rede : IDisposable
     /// <param name="podar">Tira da lista os endereços velhos achados na rede (a máquina já responde em outro).</param>
     private List<(string Endereco, Vizinha V, EstadoMaquina Estado)> Visiveis(EstadoMaquina local, bool podar = false)
     {
-        var agora = DateTime.UtcNow;
-        bool Online(Vizinha v) => agora - v.UltimaResposta < Tolerancia;
+        static bool Online(Vizinha v) => v.Respondeu;
         bool Melhor((string Endereco, Vizinha V, EstadoMaquina Estado) a, (string Endereco, Vizinha V, EstadoMaquina Estado) b)
         {
             if (Online(a.V) != Online(b.V)) return Online(a.V);
@@ -141,34 +157,46 @@ public sealed class Rede : IDisposable
         return escolhidas.Values.ToList();
     }
 
-    private async Task Laco(CancellationToken parar)
+    /// <summary>
+    /// Uma consulta a todas as outras máquinas, ao mesmo tempo. Sem a lista de endereços, procura as máquinas na rede
+    /// (no máximo uma vez por minuto) e, se ainda não achou nenhuma, espera a procura para já vir com elas.
+    /// </summary>
+    private async Task Rodada(CancellationToken parar)
     {
-        while (!parar.IsCancellationRequested)
+        try
         {
-            try
+            Procurar(parar);
+            if (_vizinhas.IsEmpty && !_procura.IsCompleted)
             {
-                if (DateTime.UtcNow - _ultimaOlhada < TimeSpan.FromSeconds(30))
+                try
                 {
-                    Procurar(parar);
-                    await Task.WhenAll(_vizinhas.Keys.ToList().Select(e => Consultar(e, parar)));
-                    Visiveis(_leitor.Ler().Estado, podar: true);
+                    await _procura.WaitAsync(EsperaPelaProcura, parar);
                 }
-                await Task.Delay(Intervalo, parar);
+                catch (TimeoutException)
+                {
+                    // Consulta as que já achou; as outras entram no próximo Atualizar
+                }
             }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-            catch (Exception e)
-            {
-                Registro.Erro("Rede", e);
-            }
+            await Task.WhenAll(_vizinhas.Keys.ToList().Select(e => Consultar(e, parar)));
+            Visiveis(_leitor.Ler().Estado, podar: true);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception e)
+        {
+            Registro.Erro("Rede", e);
+        }
+        finally
+        {
+            // Dentro da trava: no tablet de 32 bits a data não é gravada de uma vez só
+            lock (_trava) _fimDaRodada = DateTime.UtcNow;
         }
     }
 
     /// <summary>
     /// As máquinas digitadas nas configurações (as tiradas da lista saem do painel); sem nenhuma, procura na rede
-    /// deste tablet (a cada minuto, só enquanto alguém olha o painel, sem atrasar a consulta às que já achou).
+    /// deste tablet (no máximo uma vez por minuto, só quando alguém atualiza o painel).
     /// </summary>
     private void Procurar(CancellationToken parar)
     {
@@ -245,12 +273,13 @@ public sealed class Rede : IDisposable
             if (resposta.StatusCode == HttpStatusCode.NotModified)
             {
                 v.UltimaResposta = DateTime.UtcNow;
+                v.Respondeu = true;
                 return;
             }
             if (resposta.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests)
             {
-                // Outro evento (PIN diferente): fica de fora, e sem perguntar de novo a cada 3 s (5 PINs errados
-                // seguidos fazem a outra máquina bloquear este tablet por 5 minutos)
+                // Outro evento (PIN diferente): fica de fora, e sem perguntar de novo a cada Atualizar (5 PINs
+                // errados seguidos fazem a outra máquina bloquear este tablet por 5 minutos)
                 _recusadas[endereco] = DateTime.UtcNow + EsperaOutroPin;
                 _vizinhas.TryRemove(endereco, out _);
                 return;
@@ -259,12 +288,14 @@ public sealed class Rede : IDisposable
             v.Estado = await resposta.Content.ReadFromJsonAsync<EstadoMaquina>(Json.Opcoes, parar);
             v.Marca = resposta.Headers.ETag?.Tag.Trim('"');
             v.UltimaResposta = DateTime.UtcNow;
+            v.Respondeu = true;
             v.PrimeiraFalha = DateTime.MinValue;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException
                                        or NotSupportedException or InvalidOperationException)
         {
             // Sem resposta: continua com os últimos números. Achada na procura e sumida há 10 min: sai da lista.
+            v.Respondeu = false;
             if (v.PrimeiraFalha == DateTime.MinValue) v.PrimeiraFalha = DateTime.UtcNow;
             if (v.Estado is null && DateTime.UtcNow - v.PrimeiraFalha > TimeSpan.FromMinutes(10) && !v.Digitada)
                 _vizinhas.TryRemove(endereco, out _);
@@ -351,7 +382,7 @@ public sealed class Rede : IDisposable
         _parar.Cancel();
         try
         {
-            _laco?.Wait(TimeSpan.FromSeconds(2));
+            _rodada?.Wait(TimeSpan.FromSeconds(2));
             _procura.Wait(TimeSpan.FromSeconds(2));
         }
         catch (AggregateException)

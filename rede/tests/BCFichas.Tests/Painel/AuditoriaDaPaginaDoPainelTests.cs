@@ -54,7 +54,7 @@ public class AuditoriaDaPaginaDoPainelTests : IAsyncLifetime
 
     private async Task<Servidor> Subir(SistemaTemporario t)
     {
-        var s = await Servidor.Iniciar(t.Pasta, porta: 0, intervaloRede: TimeSpan.FromMilliseconds(200), soLocal: true);
+        var s = await Servidor.Iniciar(t.Pasta, porta: 0, soLocal: true);
         _servidores.Add(s);
         return s;
     }
@@ -128,7 +128,7 @@ public class AuditoriaDaPaginaDoPainelTests : IAsyncLifetime
         Vender(s, sessao, FormaPagamento.Pix, ("PASTEL", 1));
         var servidor = await Subir(t);
 
-        // Três minutos sem venda nenhuma: o celular recebe "nada mudou" (304) a cada 3 s, mas a linha da máquina não
+        // Três minutos com o painel aberto sem tocar em Atualizar: os números não mudam, mas a linha da máquina não
         // pode continuar dizendo "última venda agora".
         var html = Tela(servidor, "maquinas", 200);
         var linha = Regex.Match(html, @"Caixa 01 \(esta\)<small>([^<]+)</small>");

@@ -153,7 +153,7 @@ public class AuditoriaDoPainelCalculosTests : IAsyncLifetime
 
     private async Task<Servidor> Subir(SistemaTemporario t)
     {
-        var s = await Servidor.Iniciar(t.Pasta, porta: 0, intervaloRede: TimeSpan.FromMilliseconds(100), soLocal: true);
+        var s = await Servidor.Iniciar(t.Pasta, porta: 0, soLocal: true);
         _servidores.Add(s);
         return s;
     }

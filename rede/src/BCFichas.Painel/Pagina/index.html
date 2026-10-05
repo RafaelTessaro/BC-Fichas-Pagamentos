@@ -31,8 +31,10 @@
   [hidden] { display: none !important; }
 
   /* Topo preto e verde, como a barra lateral do caixa */
+  /* Topo e faixa do Atualizar ficam sempre à vista, mesmo rolando a tela */
+  .fixo { position: sticky; top: 0; z-index: 5; }
   .topo {
-    position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px;
+    display: flex; align-items: center; gap: 12px;
     padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
     background: linear-gradient(135deg, var(--fundo-marca), var(--fundo-marca-2)); color: #fff;
   }
@@ -47,13 +49,21 @@
     display: grid; place-items: center; cursor: pointer; flex: none; }
   .icone-botao svg { width: 24px; height: 24px; fill: #fff; }
 
-  .status { display: flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 14px; font-weight: 600;
-    background: var(--verde-claro); color: var(--verde-escuro); }
+  .status { display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 16px; font-size: 14px; font-weight: 600;
+    background: var(--verde-claro); color: var(--verde-escuro); min-height: 52px; }
   .status::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: currentColor; flex: none; }
-  .status.ok::before { animation: pulso 2s infinite; }
   .status.atraso { background: var(--aviso-claro); color: #92400E; }
   .status.erro { background: var(--perigo-claro); color: #991B1B; }
-  @keyframes pulso { 50% { opacity: .35; } }
+  .status #status-texto { flex: 1; min-width: 0; line-height: 1.25; }
+  .status #status-texto small { display: block; font-size: 13px; font-weight: 600; opacity: .85; }
+  /* Botão Atualizar: as máquinas só conversam quando alguém toca nele (ou abre o painel) */
+  .atualizar { display: flex; align-items: center; gap: 6px; flex: none; border: 0; border-radius: 999px;
+    padding: 9px 16px 9px 12px; background: var(--verde); color: #fff; font-weight: 800; font-size: 15px;
+    cursor: pointer; box-shadow: 0 1px 3px rgba(15,23,42,.2); }
+  .atualizar svg { width: 20px; height: 20px; fill: currentColor; }
+  .atualizar:disabled { opacity: .75; cursor: default; }
+  .atualizar.girando svg { animation: girar .9s linear infinite; }
+  @keyframes girar { to { transform: rotate(360deg); } }
 
   main { padding: 14px 14px 8px; max-width: 720px; margin: 0 auto; }
   .segmento { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px;
@@ -157,6 +167,7 @@
 </head>
 <body>
 
+<div class="fixo">
 <header class="topo">
   <div class="logo"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M3,6A2,2 0 0,1 5,4H19A2,2 0 0,1 21,6V9.5A2.5,2.5 0 0,0 21,14.5V18A2,2 0 0,1 19,20H5A2,2 0 0,1 3,18V14.5A2.5,2.5 0 0,0 3,9.5Z M7,8V10H17V8Z M9,14V16H15V14Z"/></svg></div>
   <div class="nome"><b>BC-FICHAS</b><span id="nome-evento">Painel do evento</span></div>
@@ -164,7 +175,14 @@
     <svg viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg>
   </button>
 </header>
-<div id="status" class="status" hidden></div>
+<div id="status" class="status" hidden>
+  <span id="status-texto"></span>
+  <button class="atualizar" id="atualizar" type="button">
+    <svg viewBox="0 0 24 24"><path d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/></svg>
+    <span id="atualizar-texto">Atualizar</span>
+  </button>
+</div>
+</div>
 
 <main>
   <!-- Entrada: o PIN do evento (vem junto no QR code da máquina) -->
@@ -209,7 +227,7 @@
   <div class="conteudo">
     <h2>Ajustes</h2>
     <div class="par"><span>Conectado a</span><b id="ajuste-endereco"></b></div>
-    <div class="par"><span>Atualiza a cada</span><b>3 segundos</b></div>
+    <div class="par"><span>Atualiza</span><b>ao abrir e no botão Atualizar</b></div>
     <div class="par"><span>Só consulta</span><b>não muda nada nas máquinas</b></div>
     <button class="botao claro" id="trocar-pin">Sair / trocar o PIN</button>
     <button class="botao" id="fechar-ajustes">Fechar</button>
@@ -221,12 +239,13 @@
   "use strict";
   const $ = (id) => document.getElementById(id);
   const CORES = { dinheiro: "var(--dinheiro)", pix: "var(--pix)", debito: "var(--debito)", credito: "var(--credito)" };
-  const INTERVALO = 3000;
+  // Ao voltar para o painel (outro aplicativo, tela apagada) com os números mais velhos que isso, atualiza sozinho
+  const VELHO_AO_VOLTAR = 60000;
 
   let pin = "";
   try { pin = localStorage.getItem("bcfichas-pin") || ""; } catch (e) { /* navegação privada */ }
   let periodo = "caixaAberto", aba = "painel", etag = null, dados = null, recebidoEm = 0;
-  let ultimoContato = 0, ultimaFalha = 0, falhando = false, timer = null;
+  let ultimoContato = 0, ultimaFalha = 0, falhando = false, buscando = false;
   let ordemProdutos = "quantidade", maquinaProdutos = "todas", maquinaAberta = null, horaEscolhida = null;
 
   // PIN vindo no QR code (http://192.168.1.10:8765/?pin=123456): guarda e tira da barra de endereço
@@ -270,7 +289,6 @@
 
   // ---------- Telas ----------
   function mostrarEntrada(erro) {
-    clearTimeout(timer);
     $("tela-pin").hidden = false; $("conteudo").hidden = true; $("abas").hidden = true;
     $("status").hidden = true; $("abrir-ajustes").hidden = true;
     $("erro-pin").textContent = erro || "";
@@ -312,16 +330,18 @@
     pin = ""; $("ajustes").hidden = true; mostrarEntrada();
   });
 
-  // ---------- Busca (a cada 3 s, só com a tela ligada; sem novidade, a máquina responde "nada mudou") ----------
+  // ---------- Busca (ao abrir e no botão Atualizar: as máquinas só se consultam quando alguém pede) ----------
   async function atualizar() {
-    clearTimeout(timer);
     if (!pin) { mostrarEntrada(); return; }
-    if (document.hidden) return;
+    if (buscando) return;
+    buscando = true;
+    carregando(true);
     try {
       const cab = { "X-Pin": pin };
       if (etag) cab["If-None-Match"] = etag;
       const ctl = new AbortController();
-      const limite = setTimeout(() => ctl.abort(), 4000);
+      // A máquina pergunta às outras na hora (até 2 s cada; sem a lista de endereços, a primeira vez procura na rede)
+      const limite = setTimeout(() => ctl.abort(), 20000);
       const r = await fetch("/api/v1/evento", { headers: cab, cache: "no-store", signal: ctl.signal });
       clearTimeout(limite);
       if (r.status === 401) { pin = ""; try { localStorage.removeItem("bcfichas-pin"); } catch (e) { } mostrarEntrada("PIN errado."); return; }
@@ -340,31 +360,60 @@
     } catch (e) {
       if (!falhando) ultimaFalha = Date.now();
       falhando = true;
+      if (!dados) mostrarFalhaInicial();
+    } finally {
+      buscando = false;
+      carregando(false);
+      mostrarStatus();
     }
-    mostrarStatus();
-    timer = setTimeout(atualizar, INTERVALO);
+  }
+
+  function carregando(sim) {
+    $("atualizar").disabled = sim;
+    $("atualizar").classList.toggle("girando", sim);
+    $("atualizar-texto").textContent = sim ? "Atualizando…" : "Atualizar";
+    if (sim && !dados) {
+      // Primeira vez: a faixa já aparece, avisando que está buscando
+      $("status").hidden = false; $("status").className = "status ok";
+      $("status-texto").innerHTML = "Buscando as vendas…<small>Perguntando às máquinas</small>";
+    }
+  }
+
+  // Sem resposta na primeira vez: mostra a faixa com o botão para tentar de novo
+  function mostrarFalhaInicial() {
+    $("tela-pin").hidden = true; $("status").hidden = false;
+    const s = $("status");
+    s.className = "status erro";
+    $("status-texto").innerHTML = "Não consegui falar com a máquina<small>Confira o Wi-Fi do evento</small>";
   }
 
   function mostrarStatus() {
     if (!dados) return;
     const s = $("status");
-    const seg = Math.round((Date.now() - ultimoContato) / 1000);
+    const quando = haQuanto(Math.round((Date.now() - ultimoContato) / 1000));
+    // Duas linhas curtas: quando foi a última atualização e quantas máquinas responderam
+    const texto = (linha1, linha2) => { $("status-texto").innerHTML = `${esc(linha1)}<small>${esc(linha2)}</small>`; };
     if (falhando) {
       s.className = "status erro";
-      s.textContent = `Sem conexão com a máquina ${haQuanto(Math.round((Date.now() - ultimaFalha) / 1000))} — confira o Wi-Fi do evento`;
+      texto(`Sem conexão ${haQuanto(Math.round((Date.now() - ultimaFalha) / 1000))}`, "Confira o Wi-Fi do evento");
     } else if (dados.maquinasOnline < dados.maquinasTotal) {
       s.className = "status atraso";
-      s.textContent = `Ao vivo · ${dados.maquinasOnline} de ${dados.maquinasTotal} máquinas respondendo · ${haQuanto(seg)}`;
+      texto(`Atualizado ${quando}`, `${dados.maquinasOnline} de ${dados.maquinasTotal} máquinas responderam`);
     } else {
       s.className = "status ok";
-      s.textContent = `Ao vivo · ${dados.maquinasTotal} ${dados.maquinasTotal === 1 ? "máquina" : "máquinas"} · atualizado ${haQuanto(seg)}`;
+      texto(`Atualizado ${quando}`, `${dados.maquinasTotal} ${dados.maquinasTotal === 1 ? "máquina respondeu" : "máquinas responderam"}`);
     }
   }
+  $("atualizar").addEventListener("click", atualizar);
+  // Só o "há quanto tempo" anda sozinho (é o relógio do celular: não pergunta nada às máquinas)
   setInterval(mostrarStatus, 1000);
-  // "última venda há…" e "sem conexão há…" continuam andando mesmo sem novidade (a lista de produtos e o gráfico
+  // "última venda há…" e "sem conexão há…" continuam andando sem perguntar nada (a lista de produtos e o gráfico
   // não mudam com o relógio e não são redesenhados, para não fechar o filtro aberto)
   setInterval(() => { if (!document.hidden && (aba === "painel" || aba === "maquinas")) desenhar(); }, 10000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) atualizar(); });
+  // Abriu o painel de novo (voltou de outro aplicativo, acendeu a tela) com números velhos: já vem atualizado
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && pin && Date.now() - ultimoContato > VELHO_AO_VOLTAR) atualizar();
+  });
 
   // ---------- Desenho ----------
   function desenhar() {
@@ -384,7 +433,7 @@
 
   function painel(b) {
     const parcial = dados.maquinasOnline < dados.maquinasTotal
-      ? `<div class="selo">Parcial: ${dados.maquinasOnline} de ${dados.maquinasTotal} máquinas respondendo</div>` : "";
+      ? `<div class="selo">Parcial: ${dados.maquinasOnline} de ${dados.maquinasTotal} máquinas responderam</div>` : "";
     // Os mesmos nomes do relatório do caixa: "total vendido" é antes das devoluções; com devolução, o número
     // grande é a "venda líquida"
     const devol = b.devolvido > 0
@@ -434,7 +483,7 @@
     const b = m.estado[periodo];
     const ultima = segundosDesde(b.ultimaVendaEm);
     const sub = !m.online
-      ? `sem conexão ${haQuanto(m.segundosSemResposta + desdeOsDados())}`
+      ? `sem conexão desde ${hora(m.estado.agora)}`
       : b.caixasAbertos === 0 && periodo === "caixaAberto" ? "caixa fechado"
       : ultima === null ? "nenhuma venda ainda" : `última venda ${haQuanto(ultima)}`;
     const total = Math.max(1, ...dados.maquinas.map((x) => x.estado[periodo].liquido));

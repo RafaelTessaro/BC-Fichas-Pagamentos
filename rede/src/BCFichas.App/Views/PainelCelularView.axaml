@@ -11,7 +11,7 @@
         </Border>
         <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center">
           <TextBlock Text="Painel no celular" Classes="titulo" />
-          <TextBlock Text="As vendas de todas as máquinas do evento, ao vivo, no celular." Classes="suave" FontSize="15" />
+          <TextBlock Text="As vendas de todas as máquinas do evento no celular: toque em Atualizar para ver os números de agora." Classes="suave" FontSize="15" TextWrapping="Wrap" />
         </StackPanel>
         <Button Grid.Column="2" Classes="fantasma" Command="{Binding FecharCommand}" Width="52" Height="52" Padding="0"
                 VerticalAlignment="Top">
@@ -61,7 +61,7 @@
               </TextBlock>
               <TextBlock FontSize="15" TextWrapping="Wrap">
                 <Run Text="3." FontWeight="Bold" />
-                <Run Text="Se pedir, digite o PIN. Pronto: as vendas atualizam sozinhas." />
+                <Run Text="Se pedir, digite o PIN. Para ver os números de agora, toque em Atualizar." />
               </TextBlock>
             </StackPanel>
           </Border>

@@ -52,10 +52,9 @@ public class PainelTests : IAsyncLifetime
         return forma == FormaPagamento.Dinheiro ? pedido : s.Vendas.ConfirmarPagamento(pedido.Id, null);
     }
 
-    private async Task<Servidor> Subir(SistemaTemporario t, TimeSpan? intervalo = null)
+    private async Task<Servidor> Subir(SistemaTemporario t)
     {
-        var s = await Servidor.Iniciar(t.Pasta, porta: 0, intervaloRede: intervalo ?? TimeSpan.FromMilliseconds(200),
-            soLocal: true);
+        var s = await Servidor.Iniciar(t.Pasta, porta: 0, soLocal: true);
         _servidores.Add(s);
         return s;
     }
@@ -220,6 +219,110 @@ public class PainelTests : IAsyncLifetime
         }
         Assert.False(dois!.Online);
         Assert.Equal(3400, dois.Estado.CaixaAberto.Vendido);
+    }
+
+    [Fact]
+    public async Task So_pergunta_as_outras_maquinas_quando_o_celular_pede()
+    {
+        // A máquina 2 de verdade, e na frente dela um "tablet" que só conta as perguntas e devolve os números dela
+        Ligar(_b.Sistema, 2);
+        Vender(_b.Sistema, _b.Sistema.Caixa.Abrir(2, null, 0), FormaPagamento.Pix, ("CERVEJA", 3)); // R$ 24
+        var servidorB = await Subir(_b);
+        var numerosB = await (await _http.SendAsync(Pedir(servidorB, "/api/v1/estado"))).Content.ReadAsByteArrayAsync();
+        using var parar = new CancellationTokenSource();
+        var contador = new int[1];
+        var porta = Contador(numerosB, contador, parar.Token);
+
+        Ligar(_a.Sistema, 1, maquinas: $"127.0.0.1:{porta}");
+        var servidorA = await Subir(_a);
+
+        // Ninguém abriu o painel: as máquinas não conversam
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        Assert.Equal(0, Volatile.Read(ref contador[0]));
+
+        // O celular abriu o painel: a máquina 1 pergunta à 2 na hora e já responde com as duas
+        using (var r = await _http.SendAsync(Pedir(servidorA, "/api/v1/evento")))
+        {
+            var evento = (await r.Content.ReadFromJsonAsync<EstadoEvento>(Json.Opcoes))!;
+            Assert.Equal([1, 2], evento.Maquinas.Select(m => m.Estado.Caixa));
+            Assert.Equal(2400, evento.CaixaAberto.Vendido);
+        }
+        Assert.Equal(1, Volatile.Read(ref contador[0]));
+
+        // Dois celulares tocando em Atualizar juntos (ou um toque duplo): uma pergunta só
+        await Task.WhenAll(Enumerable.Range(0, 2).Select(async _ =>
+        {
+            using var r = await _http.SendAsync(Pedir(servidorA, "/api/v1/evento"));
+            Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        }));
+        Assert.Equal(1, Volatile.Read(ref contador[0]));
+
+        // Painel aberto no celular, mas ninguém tocou em Atualizar: continuam quietas
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        Assert.Equal(1, Volatile.Read(ref contador[0]));
+
+        // Tocou em Atualizar: pergunta de novo
+        using (var r = await _http.SendAsync(Pedir(servidorA, "/api/v1/evento")))
+            Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal(2, Volatile.Read(ref contador[0]));
+        parar.Cancel();
+    }
+
+    /// <summary>Um "tablet" que conta as perguntas que recebe e responde sempre os mesmos números.</summary>
+    private static int Contador(byte[] numeros, int[] contador, CancellationToken parar)
+    {
+        var l = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+        l.Start();
+        parar.Register(l.Stop);
+        _ = Task.Run(async () =>
+        {
+            while (!parar.IsCancellationRequested)
+            {
+                System.Net.Sockets.TcpClient c;
+                try
+                {
+                    c = await l.AcceptTcpClientAsync(parar);
+                }
+                catch (Exception)
+                {
+                    return;
+                }
+                _ = Task.Run(async () =>
+                {
+                    using (c)
+                    {
+                        try
+                        {
+                            var s = c.GetStream();
+                            var buffer = new byte[8192];
+                            var recebido = "";
+                            int lidos;
+                            while ((lidos = await s.ReadAsync(buffer, parar)) > 0)
+                            {
+                                recebido += System.Text.Encoding.ASCII.GetString(buffer, 0, lidos);
+                                int fim;
+                                while ((fim = recebido.IndexOf("\r\n\r\n", StringComparison.Ordinal)) >= 0)
+                                {
+                                    var pedido = recebido[..fim];
+                                    recebido = recebido[(fim + 4)..];
+                                    Interlocked.Increment(ref contador[0]);
+                                    var resposta = pedido.Contains("If-None-Match: \"x\"", StringComparison.OrdinalIgnoreCase)
+                                        ? System.Text.Encoding.ASCII.GetBytes("HTTP/1.1 304 Not Modified\r\nETag: \"x\"\r\n\r\n")
+                                        : [.. System.Text.Encoding.ASCII.GetBytes(
+                                            $"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {numeros.Length}\r\nETag: \"x\"\r\n\r\n"), .. numeros];
+                                    await s.WriteAsync(resposta, parar);
+                                }
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            // fim do teste
+                        }
+                    }
+                });
+            }
+        });
+        return ((IPEndPoint)l.LocalEndpoint).Port;
     }
 
     [Fact]

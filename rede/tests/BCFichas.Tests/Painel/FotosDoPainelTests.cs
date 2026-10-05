@@ -92,12 +92,12 @@ public class FotosDoPainelTests : IAsyncLifetime
         for (var caixa = 2; caixa <= 4; caixa++)
         {
             var m = Maquina(caixa, 30 + caixa * 9);
-            var s = await Servidor.Iniciar(m.Pasta, porta: 0, intervaloRede: TimeSpan.FromMilliseconds(200), soLocal: true);
+            var s = await Servidor.Iniciar(m.Pasta, porta: 0, soLocal: true);
             _servidores.Add(s);
             servidores.Add(s);
         }
         var principal = Maquina(1, 64, string.Join(" ", servidores.Select(s => $"127.0.0.1:{s.Porta}")));
-        var um = await Servidor.Iniciar(principal.Pasta, porta: 0, intervaloRede: TimeSpan.FromMilliseconds(200), soLocal: true);
+        var um = await Servidor.Iniciar(principal.Pasta, porta: 0, soLocal: true);
         _servidores.Add(um);
 
         // Espera as 4 aparecerem e tira a máquina 4 da rede (fica com os últimos números, marcada sem conexão)
@@ -112,8 +112,7 @@ public class FotosDoPainelTests : IAsyncLifetime
         var quatro = servidores[^1];
         await quatro.DisposeAsync();
         _servidores.Remove(quatro);
-        await Task.Delay(TimeSpan.FromSeconds(13));
-        await http.GetStringAsync($"http://127.0.0.1:{um.Porta}/api/v1/evento");
+        await Task.Delay(TimeSpan.FromSeconds(3));
 
         Foto(um.Porta, "70-celular-painel", "painel", 2050);
         Foto(um.Porta, "71-celular-maquinas", "maquinas", 915);

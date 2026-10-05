@@ -1,7 +1,7 @@
 # BC Fichas Rede
 
 O mesmo BC Fichas (versão 3.11.4) com uma novidade: o **painel no celular**. O dono do evento conecta o celular no
-Wi-Fi do roteador das máquinas e vê, **ao vivo**, as vendas de todas as máquinas juntas: total vendido, formas de
+Wi-Fi do roteador das máquinas e vê, com um toque em **Atualizar**, as vendas de todas as máquinas juntas: total vendido, formas de
 pagamento, cada máquina, os produtos mais vendidos e as vendas por hora.
 
 - **Não precisa de internet.** Tudo acontece dentro da rede do roteador do evento (pode ser oculta).
@@ -36,9 +36,12 @@ configurações, e o painel fecha sozinho quando o caixa fecha.
 
 - O celular abre o endereço de **qualquer** máquina (ex.: `http://192.168.1.10:8765`). Essa máquina pergunta às
   outras como estão as vendas e mostra tudo somado. Se ela for desligada, é só abrir o endereço de outra.
-- Atualiza a cada 3 segundos enquanto alguém está olhando. Ninguém olhando: as máquinas não conversam (não pesa).
-- Máquina desligada ou fora da rede: continua no painel com os últimos números, em cinza, com "sem conexão há…",
-  e o total avisa "Parcial: 3 de 4 máquinas respondendo".
+- **Atualiza quando o dono pede:** ao abrir o painel os números já vêm atualizados; depois, é tocar em **Atualizar**
+  (fica em cima, sempre à vista, com "Atualizado há…"). Só nessa hora as máquinas conversam: no resto do tempo ficam
+  quietas (não pesa no tablet nem no Wi-Fi). Voltando ao painel depois de mais de 1 minuto (outro aplicativo, tela
+  apagada), ele atualiza sozinho uma vez.
+- Máquina desligada ou fora da rede: continua no painel com os últimos números, em cinza, com "sem conexão desde…",
+  e o total avisa "Parcial: 3 de 4 máquinas responderam". O Atualizar espera cada máquina no máximo 2 segundos.
 - Só entram as máquinas com o **mesmo PIN**: duas festas no mesmo roteador não se misturam.
 - As vendas do **modo teste** ficam de fora (como nos relatórios do cliente).
 
@@ -95,7 +98,7 @@ se ela estiver travada).
 | Aba | O que mostra |
 | --- | --- |
 | **Painel** | Total vendido (grande), número de vendas e fichas, devoluções, média por venda, dinheiro estimado nos caixas, sangrias, formas de pagamento com barra colorida, as máquinas e os 3 produtos mais vendidos. |
-| **Máquinas** | Cada caixa com o total, a última venda e se está respondendo. Toque para ver as formas de pagamento e o dinheiro daquela máquina. |
+| **Máquinas** | Cada caixa com o total, a última venda e se respondeu. Toque para ver as formas de pagamento e o dinheiro daquela máquina. |
 | **Produtos** | Ranking por quantidade ou por valor, de todas as máquinas ou de uma só. |
 | **Por hora** | Barras com as vendas de cada hora, o horário de pico em destaque. Toque numa barra para ver os números. |
 
@@ -112,7 +115,7 @@ Em cima dá para escolher **Caixa aberto** (só o caixa que está aberto agora e
 ## Peso no tablet
 
 O painel roda separado do caixa, com prioridade baixa. Medido num computador de 64 bits, usa uns 75 MB de memória
-parado e 85 MB servindo o celular (no tablet de 32 bits tende a ser um pouco menos), e quase nada do processador. Quando alguém está olhando, cada máquina soma as vendas dela só quando muda alguma coisa (uma
+parado e 85 MB servindo o celular (no tablet de 32 bits tende a ser um pouco menos), e quase nada do processador. Quando alguém toca em Atualizar, cada máquina soma as vendas dela só se mudou alguma coisa (uma
 leitura com 3.000 vendas leva poucos milésimos num computador comum). O pacote fica uns 27 MB maior que o do
 BC Fichas original.
 
@@ -121,8 +124,8 @@ BC Fichas original.
 | O que acontece | O que fazer |
 | --- | --- |
 | O celular não abre o endereço | Confira se o celular está no Wi-Fi do roteador; no Android, desligue os dados móveis; toque em **Liberar no firewall** na máquina; confira se o isolamento de AP do roteador está desligado. |
-| "3 de 4 máquinas respondendo" | A máquina que falta está desligada, fora do Wi-Fi, com o painel desligado ou com outro PIN. |
-| Uma máquina não aparece | Com a lista de endereços em branco, espere um minuto (ela é procurada a cada minuto) ou ponha os endereços na lista. |
+| "3 de 4 máquinas responderam" | A máquina que falta está desligada, fora do Wi-Fi, com o painel desligado ou com outro PIN. |
+| Uma máquina não aparece | Com a lista de endereços em branco, as máquinas são procuradas no máximo uma vez por minuto: espere um minuto e toque em Atualizar, ou ponha os endereços na lista. |
 | "Muitas tentativas erradas" | Errou o PIN 5 vezes: espere 5 minutos. |
 | Menu → Painel no celular diz "não respondeu" | Feche e abra o programa. Se continuar, veja o arquivo `dados\painel-erros.log` e chame o suporte. |
 
@@ -150,7 +153,7 @@ rede/
 - Página do celular: `src/BCFichas.Painel/Pagina/index.html` (HTML, CSS e JavaScript num arquivo só, dentro do
   programa; nada vem da internet).
 - Endereços: `GET /api/v1/info` (sem PIN: quem é a máquina), `GET /api/v1/estado` (as vendas desta máquina) e
-  `GET /api/v1/evento` (todas as máquinas juntas). PIN no cabeçalho `X-Pin`; respostas com `ETag` (nada mudou:
+  `GET /api/v1/evento` (todas as máquinas juntas: pergunta às outras na hora). PIN no cabeçalho `X-Pin`; respostas com `ETag` (nada mudou:
   `304`, sem corpo).
 - Porta `8765`. Linha de comando do painel: `BCFichasPainel.exe --dados <pasta> [--porta 8765] [--pai <pid do caixa>]`.
 
