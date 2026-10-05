@@ -275,7 +275,10 @@ caixas), reimpressão, devolução e fechamento abrem em menos de 0,2 s (teste `
 - `src/BCFichas.Core` — regras de negócio, banco, impressão e maquininha (sem nada de tela).
 - `src/BCFichas.App` — telas (Views em XAML e ViewModels).
 - `tests/BCFichas.Tests` — testes das regras e das telas (as telas rodam "sem monitor" e geram fotos em
-  `tests/BCFichas.Tests/saida`).
+  `tests/BCFichas.Tests/saida`). Os arquivos `Auditoria*Tests.cs` são da auditoria da 3.11.3: os relatórios
+  conferidos contra uma recontagem independente de centenas de caixas sorteados (vendas, combos, sangrias,
+  devoluções, modo teste), as regras de venda, as telas (toque duplo, telas de 1024×600) e o desempenho
+  (memória estável depois de 3.000 vendas, telas que saem da memória).
 
 ```bash
 dotnet test                                                   # testes + fotos das telas
