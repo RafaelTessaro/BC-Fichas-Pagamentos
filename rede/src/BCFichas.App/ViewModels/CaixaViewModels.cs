@@ -152,6 +152,12 @@ public sealed partial class FechamentoViewModel : PaginaViewModel
             Sistema.Impressao.Documento(Relatorios.Fechamento(resumo, Principal.Config, parcial: true), "Parcial impressa"));
     }
 
+    /// <summary>Fechando e imprimindo o fechamento: o Voltar espera terminar.</summary>
+    protected override void Voltar()
+    {
+        if (!Ocupado) base.Voltar();
+    }
+
     [RelayCommand]
     private async Task FecharCaixa()
     {
@@ -159,6 +165,11 @@ public sealed partial class FechamentoViewModel : PaginaViewModel
         if (sessao is null || Ocupado) return;
 
         var texto = "Depois de fechar não dá para vender neste caixa até abrir de novo.";
+        // Pedido pago cujas fichas não saíram (a impressora falhou): depois de fechar não dá mais para imprimir
+        var naoImpressos = Sistema.Vendas.NaoImpressos(sessao.Id);
+        if (naoImpressos > 0)
+            texto = $"Atenção: {naoImpressos} pedido(s) pago(s) com fichas que não saíram na impressora. Depois de " +
+                    "fechar, elas não podem mais ser impressas: imprima antes pelo Menu (Fichas não impressas).\n\n" + texto;
         if (Principal.Config.DesligarAoFechar) texto += "\n\nO computador vai desligar em seguida.";
         if (!await Principal.Confirmar("Fechar o caixa?", texto, "Fechar caixa", "Voltar", perigo: true)) return;
 

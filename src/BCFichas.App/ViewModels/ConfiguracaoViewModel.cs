@@ -242,6 +242,8 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
 
     private async Task VoltarAsync()
     {
+        // Backup, restaurar ou apagar em andamento: o resultado apareceria por cima da tela de venda
+        if (Ocupado) return;
         if (TemAlteracoes)
         {
             if (await Principal.Confirmar("Salvar as alterações?",

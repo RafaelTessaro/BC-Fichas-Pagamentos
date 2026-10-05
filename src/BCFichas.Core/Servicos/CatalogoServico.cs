@@ -159,6 +159,9 @@ public sealed class CatalogoServico
         return Enumerable.Range(1, totalPosicoes).Where(p => !ocupadas.Contains(p)).ToList();
     }
 
+    /// <summary>Preço máximo de um produto ou combo: R$ 99.999,99.</summary>
+    public const long PrecoMaximo = 9_999_999;
+
     public Produto SalvarProduto(Produto produto, int totalPosicoes)
     {
         produto.Nome = (produto.Nome ?? "").Trim().ToUpperInvariant();
@@ -167,6 +170,9 @@ public sealed class CatalogoServico
         if (produto.Nome.Length == 0) throw new ErroDeNegocio("Informe o nome do produto.");
         if (produto.Nome.Length > 40) throw new ErroDeNegocio("O nome do produto pode ter no máximo 40 letras.");
         if (produto.PrecoCentavos < 0) throw new ErroDeNegocio("O preço não pode ser negativo.");
+        // Um zero a mais digitado sem querer (o total do pedido nem cabia na tela de venda)
+        if (produto.PrecoCentavos > PrecoMaximo)
+            throw new ErroDeNegocio($"O preço máximo é {Dinheiro.Formatar(PrecoMaximo)}.");
         if (produto.CustoCentavos < 0) throw new ErroDeNegocio("O custo não pode ser negativo.");
         if (produto.EhCombo) produto.FichasPorUnidade = 1;
         if (produto.FichasPorUnidade is < 1 or > 20)

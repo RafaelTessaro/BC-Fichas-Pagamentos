@@ -105,4 +105,20 @@ public class AjustesDaAuditoriaTests
         s.Vendas.CriarPedido(sessao, carrinho.Linhas, FormaPagamento.Dinheiro, 1000);
         Assert.Equal(1, s.Programacao.Situacao().PedidosNoCaixaAberto);
     }
+
+    [Fact]
+    public void Preco_do_produto_tem_limite()
+    {
+        using var temp = new SistemaTemporario();
+        var catalogo = temp.Sistema.Catalogo;
+        var pastel = catalogo.Produtos().First(p => p.Nome == "PASTEL");
+
+        pastel.PrecoCentavos = 99_999_999_999_900; // um monte de zeros a mais
+        var erro = Assert.Throws<ErroDeNegocio>(() => catalogo.SalvarProduto(pastel, 30));
+        Assert.Contains("R$ 99.999,99", erro.Message);
+
+        pastel.PrecoCentavos = 9_999_999;
+        catalogo.SalvarProduto(pastel, 30);
+        Assert.Equal(9_999_999, catalogo.Produto(pastel.Id)!.PrecoCentavos);
+    }
 }

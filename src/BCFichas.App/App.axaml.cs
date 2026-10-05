@@ -13,6 +13,9 @@ public partial class App : Application
     /// <summary>Criado no Program.Main (ou pelos testes) antes de abrir a janela.</summary>
     public static Sistema Sistema { get; set; } = null!;
 
+    /// <summary>Erro inesperado num botão avisa e o programa continua (vale enquanto o programa está aberto).</summary>
+    internal ErrosNaTela? Erros { get; private set; }
+
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
@@ -20,6 +23,7 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var principal = new PrincipalViewModel(Sistema) { AplicarNoWindows = IntegracaoWindows.Aplicar };
+            Erros = ErrosNaTela.Instalar(principal);
             IntegracaoWindows.Aplicar(Sistema.Config.Atual);
             desktop.MainWindow = new JanelaPrincipal { DataContext = principal };
             desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
