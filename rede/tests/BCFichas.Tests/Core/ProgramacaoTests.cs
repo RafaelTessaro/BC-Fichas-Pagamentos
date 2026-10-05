@@ -233,7 +233,7 @@ public class ProgramacaoTests : IDisposable
         Assert.Equal(1, situacao.PedidosTeste);
         Assert.Equal(2, situacao.Caixas);
         Assert.True(situacao.CaixaAberto);
-        Assert.Equal(3, situacao.PedidosNoCaixaAberto);
+        Assert.Equal(2, situacao.PedidosNoCaixaAberto); // o crédito esperando a maquininha ainda não é venda
         Assert.True(situacao.ModoTeste);
         Assert.Equal(2 + 2 + 8, situacao.EstoqueAVoltar); // 2 pastéis, 2 combos e 8 cervejas ainda fora do estoque
 

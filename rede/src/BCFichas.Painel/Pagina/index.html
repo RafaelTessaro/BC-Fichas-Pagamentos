@@ -456,7 +456,7 @@
       ${par("Dinheiro no caixa (estimado)", reais(b.dinheiroNoCaixa))}
       ${par("Sangrias", reais(b.sangrias))}
       ${par("Devoluções", b.devolucoes + " · " + reais(b.devolvido))}
-      ${par("Fichas impressas", numero(b.fichas))}
+      ${par("Fichas vendidas", numero(b.fichas))}
       ${b.abertoEm ? par("Caixa aberto às", hora(b.abertoEm)) : ""}
       ${!m.online ? par("Números até", hora(m.estado.agora)) : ""}
       ${par("Endereço", esc(m.endereco))}

@@ -87,4 +87,22 @@ public class AjustesDaAuditoriaTests
         Assert.Equal([fechadoAntes.Id], s.Caixa.Sessoes(hoje.AddDays(-2), hoje.AddDays(-2)).Select(x => x.Id));
         Assert.Equal(3, s.Caixa.Sessoes(hoje.AddDays(-6), hoje).Count);
     }
+
+    [Fact]
+    public void Aviso_do_caixa_aberto_conta_so_as_vendas_pagas()
+    {
+        using var temp = new SistemaTemporario();
+        var s = temp.Sistema;
+        var sessao = s.Caixa.Abrir(1, null, 0);
+        var pastel = s.Catalogo.Produtos().First(p => p.Nome == "PASTEL");
+        var carrinho = new BCFichas.Core.Vendas.Carrinho();
+        carrinho.Adicionar(pastel);
+
+        // Débito esperando a maquininha: ainda não é venda
+        s.Vendas.CriarPedido(sessao, carrinho.Linhas, FormaPagamento.Debito, 0);
+        Assert.Equal(0, s.Programacao.Situacao().PedidosNoCaixaAberto);
+
+        s.Vendas.CriarPedido(sessao, carrinho.Linhas, FormaPagamento.Dinheiro, 1000);
+        Assert.Equal(1, s.Programacao.Situacao().PedidosNoCaixaAberto);
+    }
 }

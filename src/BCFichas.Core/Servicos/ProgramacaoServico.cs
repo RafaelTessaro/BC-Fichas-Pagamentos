@@ -95,9 +95,10 @@ public sealed class ProgramacaoServico
             PedidosTeste: pedidos.Teste,
             Caixas: Contar("SELECT COUNT(*) FROM sessoes"),
             CaixaAberto: Contar("SELECT COUNT(*) FROM sessoes WHERE fechada_em IS NULL AND teste = 0") > 0,
-            PedidosNoCaixaAberto: Contar("""
+            // Só as vendas pagas (tentativa cancelada ou esperando a maquininha não é venda)
+            PedidosNoCaixaAberto: Contar($"""
                 SELECT COUNT(*) FROM pedidos p JOIN sessoes s ON s.id = p.sessao_id
-                WHERE s.fechada_em IS NULL AND s.teste = 0
+                WHERE s.fechada_em IS NULL AND s.teste = 0 AND p.status = {(int)StatusPedido.Pago}
                 """),
             ModoTeste: Contar("SELECT COUNT(*) FROM sessoes WHERE fechada_em IS NULL AND teste = 1") > 0,
             EstoqueAVoltar: EstoqueVendido(c, t).Values.Sum());
