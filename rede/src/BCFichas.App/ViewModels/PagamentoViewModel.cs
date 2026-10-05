@@ -81,7 +81,16 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     public bool EmConcluido => Etapa == EtapaPagamento.Concluido;
     public bool EmRecusado => Etapa == EtapaPagamento.Recusado;
     public bool EmErroImpressao => Etapa == EtapaPagamento.ErroImpressao;
-    public bool PodeFechar => Etapa is EtapaPagamento.Escolher or EtapaPagamento.Dinheiro or EtapaPagamento.Recusado;
+    public bool PodeFechar => !Gravando && Etapa is EtapaPagamento.Escolher or EtapaPagamento.Dinheiro or EtapaPagamento.Recusado;
+
+    /// <summary>
+    /// Gravando a venda em dinheiro (no tablet o disco é lento). Até terminar, Voltar, o X e as outras formas não
+    /// fazem nada: um PIX escolhido nessa hora virava um segundo pedido, esperando a maquininha para sempre (e o
+    /// caixa não fechava mais).
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PodeFechar))]
+    private bool _gravando;
 
     /// <summary>
     /// A impressora falhou: dá para fechar e imprimir depois pelo menu (Reimprimir fichas ou, sem a reimpressão
@@ -92,6 +101,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     [RelayCommand]
     private void EscolherDinheiro()
     {
+        if (Gravando) return;
         _forma = FormaPagamento.Dinheiro;
         FormaTexto = "Dinheiro";
         // Já vem com o valor da venda (pagou certinho: é só confirmar). Se o cliente deu mais, a primeira tecla
@@ -109,6 +119,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
             _principal.MostrarAviso("O valor recebido é menor que o total.", erro: true);
             return;
         }
+        Gravando = true;
         try
         {
             // Gravar no banco fora da tela: no tablet o disco é lento e a tela não pode travar
@@ -121,6 +132,10 @@ public sealed partial class PagamentoViewModel : ViewModelBase
             Mensagem = e.Message;
             Etapa = EtapaPagamento.Recusado;
             return;
+        }
+        finally
+        {
+            Gravando = false;
         }
         await Concluir();
     }
@@ -136,6 +151,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
 
     private async Task Maquininha(FormaPagamento forma)
     {
+        if (Gravando) return;
         _forma = forma;
         FormaTexto = Nomes.De(forma);
         IconeForma = Recursos.Icone(forma switch
@@ -235,6 +251,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     [RelayCommand]
     private void OutraForma()
     {
+        if (Gravando) return;
         Mensagem = "";
         Etapa = EtapaPagamento.Escolher;
     }
@@ -245,7 +262,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     [RelayCommand]
     private void Fechar()
     {
-        if (Etapa == EtapaPagamento.Maquininha) return;
+        if (Etapa == EtapaPagamento.Maquininha || Gravando) return;
         FecharJanela();
     }
 
@@ -263,6 +280,8 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     private async Task Concluir()
     {
         _aoConcluir();
+        // O troco da venda anterior (se ainda está na tela) não vale para esta: some, e o desta aparece ao fechar.
+        _principal.Venda.EsconderTroco();
         TemTroco = _pedido!.TrocoCentavos > 0;
         Troco = Dinheiro.Formatar(_pedido.TrocoCentavos);
         await Imprimir();

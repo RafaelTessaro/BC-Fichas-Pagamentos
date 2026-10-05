@@ -252,15 +252,22 @@ public sealed partial class SangriaViewModel(PrincipalViewModel principal) : Pag
             : $"Depois {(EhSangria ? "da sangria" : "do suprimento")}: {Dinheiro.Formatar(depois)}";
     }
 
+    /// <summary>Quando o último movimento foi registrado (para reconhecer o segundo toque de um toque duplo).</summary>
+    private long _registradoEm = long.MinValue / 2;
+
     [RelayCommand]
     private async Task Salvar()
     {
         var sessao = Principal.Sessao;
         if (sessao is null) return;
+        // Toque duplo no Registrar (sem comprovante): o primeiro registrou e zerou o valor; o segundo dava "Informe um
+        // valor maior que zero" em vermelho e parecia que não tinha registrado (e a sangria era feita de novo).
+        if (Valor.Centavos == 0 && Environment.TickCount64 - _registradoEm < 1000) return;
         try
         {
             var movimento = Sistema.Caixa.RegistrarMovimento(sessao,
                 EhSangria ? TipoMovimento.Sangria : TipoMovimento.Suprimento, Valor.Centavos, Motivo);
+            _registradoEm = Environment.TickCount64;
             Principal.MostrarAviso($"{(EhSangria ? "Sangria" : "Suprimento")} de {Dinheiro.Formatar(movimento.ValorCentavos)} registrado.");
             Valor.Centavos = 0;
             Motivo = "";

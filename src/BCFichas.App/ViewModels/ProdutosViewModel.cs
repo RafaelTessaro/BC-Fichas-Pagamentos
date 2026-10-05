@@ -379,9 +379,17 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
     [RelayCommand]
     private void EscolherCor(OpcaoCor cor) => Cor = cor.Hex;
 
+    /// <summary>Quando o último produto novo foi gravado (para reconhecer o segundo toque de um toque duplo).</summary>
+    private long _novoGravadoEm = long.MinValue / 2;
+
     [RelayCommand]
     private void Salvar()
     {
+        // Toque duplo no Salvar: o primeiro gravou e limpou a tela; o segundo dava "Digite o preço" em vermelho e
+        // parecia que o produto não tinha sido gravado (e ele era cadastrado de novo).
+        if (Id == 0 && string.IsNullOrWhiteSpace(Nome) && string.IsNullOrWhiteSpace(Preco) &&
+            Environment.TickCount64 - _novoGravadoEm < 1000)
+            return;
         if (!Dinheiro.TentarLer(Preco, out var preco))
         {
             Principal.MostrarAviso("Digite o preço, por exemplo 10,00.", erro: true);
@@ -393,7 +401,16 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
             Principal.MostrarAviso("Custo inválido.", erro: true);
             return;
         }
-        if (!int.TryParse(Estoque, out var estoque)) estoque = 0;
+        if (!int.TryParse(Estoque, out var estoque))
+        {
+            // Com o estoque controlado, "1.000" ou "10,5" não podem virar 0 (o produto aparecia ESGOTADO na venda).
+            if (ControlaEstoque)
+            {
+                Principal.MostrarAviso("Digite a quantidade em estoque só com números, por exemplo 100.", erro: true);
+                return;
+            }
+            estoque = 0;
+        }
         // Produto escondido da tela de venda (ex.: vale usado só em combos) não precisa de posição.
         if (Ativo && Posicao is null)
         {
@@ -439,6 +456,7 @@ public sealed partial class ProdutosViewModel : PaginaViewModel
             }, TotalPosicoes);
             Principal.MostrarAviso($"{produto.Nome} salvo.");
             var novo = Id == 0;
+            if (novo) _novoGravadoEm = Environment.TickCount64;
             Atualizar();
             if (novo) Novo();
             else Selecionado = Lista.FirstOrDefault(p => p.Produto.Id == produto.Id);

@@ -1,9 +1,11 @@
 using System.ComponentModel;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using BCFichas.App.ViewModels;
 
 namespace BCFichas.App.Views;
@@ -19,6 +21,51 @@ public partial class JanelaPrincipal : Window
         AddHandler(GotFocusEvent, AoFocar, RoutingStrategies.Bubble, handledEventsToo: true);
         // F1 (com teclado ligado ao tablet) é o atalho escondido do modo teste.
         AddHandler(KeyDownEvent, AoTeclar, RoutingStrategies.Tunnel);
+        AddHandler(PointerReleasedEvent, AoSoltarToque, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(PointerPressedEvent, AoTocar, RoutingStrategies.Tunnel);
+    }
+
+    /// <summary>Até quanto tempo depois de um toque o seguinte ainda conta como toque duplo.</summary>
+    private const int ToqueDuplo = 350;
+
+    private long _ultimoToque;
+    private Point _pontoApertado;
+    private Point _pontoDoUltimoToque;
+    private Button? _botaoDoUltimoToque;
+    private bool _toqueIgnorado;
+
+    private void AoSoltarToque(object? sender, PointerReleasedEventArgs e)
+    {
+        _ultimoToque = Environment.TickCount64;
+        // Toques seguidos em cima da tela nova continuam ignorados até o dedo parar um instante.
+        if (_toqueIgnorado)
+        {
+            _toqueIgnorado = false;
+            return;
+        }
+        _pontoDoUltimoToque = e.GetPosition(this);
+        // Arrastar o dedo (rolar uma lista) não é toque num botão: não protege nada.
+        var arrastou = Math.Abs(_pontoDoUltimoToque.X - _pontoApertado.X) > 12 ||
+                       Math.Abs(_pontoDoUltimoToque.Y - _pontoApertado.Y) > 12;
+        _botaoDoUltimoToque = arrastou ? null : BotaoEm(_pontoDoUltimoToque);
+    }
+
+    private Button? BotaoEm(Point ponto) =>
+        (this.InputHitTest(ponto) as Visual)?.FindAncestorOfType<Button>(includeSelf: true);
+
+    /// <summary>
+    /// Toque duplo num botão que troca a tela: o segundo toque caía no que apareceu embaixo do dedo (o Abrir caixa
+    /// punha um produto no pedido, o Dinheiro trocava o valor da venda pela nota de R$ 5). Se logo depois do toque o
+    /// botão já não está mais lá, o toque seguinte é ignorado. Tocar duas vezes no mesmo botão (um produto, o +, as
+    /// teclas) continua valendo.
+    /// </summary>
+    private void AoTocar(object? sender, PointerPressedEventArgs e)
+    {
+        _pontoApertado = e.GetPosition(this);
+        if (_botaoDoUltimoToque is null || Environment.TickCount64 - _ultimoToque > ToqueDuplo) return;
+        if (BotaoEm(_pontoDoUltimoToque) == _botaoDoUltimoToque) return;
+        e.Handled = true;
+        _toqueIgnorado = true;
     }
 
     private void AoTeclar(object? sender, KeyEventArgs e)

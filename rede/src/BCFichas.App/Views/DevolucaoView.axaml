@@ -39,7 +39,9 @@
             <StackPanel Grid.Row="1" Spacing="8" Margin="0,0,16,0">
               <TextBlock Text="Valor das fichas devolvidas" Classes="rotulo" Margin="2,0,0,0" />
               <Border Background="{StaticResource Fundo}" CornerRadius="12" Padding="16,8">
-                <TextBlock Text="{Binding Valor.Texto}" FontSize="44" FontWeight="ExtraBold" TextAlignment="Right" />
+                <!-- Em tela pequena a letra diminui para o valor inteiro caber -->
+                <v:TextoQueCabe Text="{Binding Valor.Texto}" TamanhoMaximo="44" LinhaUnica="True" FontWeight="ExtraBold"
+                                TextAlignment="Right" />
               </Border>
               <TextBlock Text="{Binding Depois}" FontSize="15" FontWeight="SemiBold" TextAlignment="Right"
                          Foreground="{StaticResource PrimariaEscura}" Classes.alerta="{Binding DepoisNegativo}"
