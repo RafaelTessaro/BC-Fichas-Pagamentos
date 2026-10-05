@@ -106,6 +106,7 @@ public static class TransporteWindows
             var documento = new DocInfo1 { NomeDocumento = nomeDocumento, TipoDados = "RAW" };
             if (StartDocPrinter(handle, 1, ref documento) == 0)
                 throw new ErroDeNegocio($"A impressora \"{impressora}\" recusou o trabalho (erro {Marshal.GetLastWin32Error()}).");
+            var enviado = false;
             try
             {
                 StartPagePrinter(handle);
@@ -121,10 +122,14 @@ public static class TransporteWindows
                     Marshal.FreeHGlobal(ponteiro);
                 }
                 EndPagePrinter(handle);
+                enviado = true;
             }
             finally
             {
-                EndDocPrinter(handle);
+                // Deu erro no meio: cancela o trabalho em vez de mandar imprimir a parte que chegou (o pedido fica
+                // como não impresso e, ao imprimir de novo, não sairiam fichas repetidas)
+                if (enviado) EndDocPrinter(handle);
+                else AbortPrinter(handle);
             }
         }
         finally
@@ -182,6 +187,9 @@ public static class TransporteWindows
 
     [DllImport("winspool.drv", SetLastError = true)]
     private static extern bool ClosePrinter(IntPtr handle);
+
+    [DllImport("winspool.drv", SetLastError = true)]
+    private static extern bool AbortPrinter(IntPtr handle);
 
     [DllImport("winspool.drv", EntryPoint = "StartDocPrinterW", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern int StartDocPrinter(IntPtr handle, int nivel, ref DocInfo1 documento);
