@@ -37,11 +37,13 @@ public class TelasDaVersao32Tests
         t.Tocar("HEINEKEN");
         t.Foto("02-venda-barra-lateral");
 
-        // Nada da barra de cima: menu, evento, caixa e relógio estão na lateral esquerda
+        // Nada da barra de cima: logo, menu, caixa e relógio estão na lateral esquerda (o logo sem o nome escrito)
         var menu = t.Achar<Button>(b => b.Command == t.Venda.AbrirMenuCommand);
         var posicaoMenu = menu.TranslatePoint(new Point(0, 0), t.Janela)!.Value;
         Assert.True(posicaoMenu.X < 40, "o menu fica na lateral esquerda");
-        Assert.Contains(t.Janela.GetVisualDescendants().OfType<TextBlock>(), b => b.Text == "BC-FICHAS" && b.IsEffectivelyVisible);
+        var logo = t.Achar<Button>(b => b.Classes.Contains("marca") && b.IsEffectivelyVisible);
+        Assert.True(logo.TranslatePoint(new Point(0, 0), t.Janela)!.Value.Y < posicaoMenu.Y, "o logo fica em cima do menu");
+        Assert.DoesNotContain(t.Janela.GetVisualDescendants().OfType<TextBlock>(), b => b.Text == "BC-FICHAS" && b.IsEffectivelyVisible);
         Assert.Contains(t.Janela.GetVisualDescendants().OfType<TextBlock>(), b => b.Text == "CAIXA 01" && b.IsEffectivelyVisible);
 
         // O total de cada linha do pedido fica inteiro dentro do cartão do pedido

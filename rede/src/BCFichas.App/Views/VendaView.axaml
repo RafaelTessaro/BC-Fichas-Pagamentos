@@ -5,94 +5,148 @@
              x:Class="BCFichas.App.Views.VendaView"
              x:DataType="vm:VendaViewModel">
 
-  <Grid ColumnDefinitions="136,*">
+  <!-- Barra escura da marca na borda ESQUERDA, na largura de hoje (136), para os produtos não perderem espaço.
+       Depois vêm os produtos e, à direita, o Pedido (estes dois não mudaram).
+       De cima para baixo: só o símbolo do logo (pequeno, sem o nome), ● CAIXA 01, MENU verde cheio, ── ABAS ── com
+       as abas (no máximo 4, as maiores que couberem, sem rolar), SANGRIA e FECHAR CAIXA um sobre o outro na
+       largura toda, e no pé uma linha fina com o relógio, a data e a versão.
+       Botões cheios de cor, em tons fechados: Menu verde-escuro (o PAGAMENTO continua o verde mais vivo da tela),
+       Sangria âmbar com letra escura e Fechar caixa vermelho-escuro. No modo teste o de baixo vira Sair do teste
+       (escuro com contorno laranja, a cor do modo teste).
+       Medidas: barra 136 com 12 de folga dos lados = 112 de largura útil, a mesma em tudo; raio 12 em tudo;
+       os três botões com 48 de altura (56 na tela alta); 8 entre itens do mesmo bloco e 16 entre blocos (12 em
+       cima do Menu e do ── ABAS ── na tela baixa, para as abas ficarem maiores).
+       "alta" = tela com 720 ou mais de altura (1280x800). -->
+  <UserControl.Resources>
+    <x:Double x:Key="Zero">0</x:Double>
+    <x:Int32 x:Key="Duas">2</x:Int32>
+    <x:Int32 x:Key="Tres">3</x:Int32>
+    <x:Int32 x:Key="Quatro">4</x:Int32>
+    <CornerRadius x:Key="Raio">12</CornerRadius>
+    <!-- X de traço grosso (cheio, como a nota e o cadeado), para o Sair do teste -->
+    <StreamGeometry x:Key="IconeFecharGrosso">M20,6.91L17.09,4L12,9.09L6.91,4L4,6.91L9.09,12L4,17.09L6.91,20L12,14.91L17.09,20L20,17.09L14.91,12L20,6.91Z</StreamGeometry>
+  </UserControl.Resources>
 
-    <!-- Barra lateral com a marca da BC Fichas (antes era a barra de cima) -->
-    <Border Background="{StaticResource FundoLateral}" BorderBrush="{StaticResource MarcaBorda}" BorderThickness="0,0,1,0">
-      <Grid RowDefinitions="Auto,Auto,Auto,*,Auto,Auto,Auto" Margin="10,14,10,10">
-        <!-- Tocar 5 vezes seguidas no logo liga/desliga o modo teste (atalho escondido) -->
-        <Button Classes="marca" Command="{Binding ToqueNaMarcaCommand}" Focusable="False">
-          <v:MarcaBC Tamanho="54" />
-        </Button>
+  <Grid x:Name="Raiz" ColumnDefinitions="Auto,*"
+        Classes.alta="{Binding $self.Bounds.Height, Converter={x:Static v:Conversores.TelaAlta}}">
 
-        <Button Grid.Row="1" Classes="lateral" Command="{Binding AbrirMenuCommand}" Height="70" Margin="0,12,0,0"
-                ToolTip.Tip="Menu">
-          <StackPanel Spacing="4">
-            <PathIcon Data="{StaticResource IconeMenu}" Width="30" Height="30" Foreground="White" />
-            <TextBlock Text="MENU" Foreground="White" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" />
+    <!-- Barra escura da marca, na borda esquerda -->
+    <Border Classes="barra-esquerda">
+      <!-- "duas"/"tres"/"quatro" = quantas abas há (o teto de altura de cada aba depende disso).
+           "rola" = as abas não cabem e a lista rola (só com mais de 4 abas, de um backup antigo). -->
+      <Grid Classes="miolo-barra" RowDefinitions="Auto,Auto,*,Auto,Auto"
+            Classes.rola="{Binding #ListaAbas.ScrollBarMaximum.Y, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter={StaticResource Zero}}"
+            Classes.duas="{Binding Abas.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={StaticResource Duas}}"
+            Classes.tres="{Binding Abas.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={StaticResource Tres}}"
+            Classes.quatro="{Binding Abas.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={StaticResource Quatro}}">
+
+        <!-- 1. Logo (só o símbolo) e a etiqueta do caixa -->
+        <StackPanel Classes="bloco-marca">
+          <!-- Tocar 5 vezes seguidas no logo liga/desliga o modo teste (atalho escondido) -->
+          <Button Classes="marca" Command="{Binding ToqueNaMarcaCommand}" Focusable="False">
+            <LayoutTransformControl Classes="logo">
+              <v:MarcaBC Tamanho="48" />
+            </LayoutTransformControl>
+          </Button>
+
+          <!-- Etiqueta do caixa: só texto com um ponto de status (não tem fundo nem borda, para não parecer um botão) -->
+          <Panel>
+            <StackPanel Classes="selo-caixa" IsVisible="{Binding !Principal.ModoTeste}">
+              <StackPanel Classes="linha-selo">
+                <Ellipse Classes="ponto" />
+                <TextBlock Classes="caixa" Text="{Binding Principal.CaixaTexto}" />
+              </StackPanel>
+              <!-- Só caixas abertos antes da versão 3.1 têm operador: o nome usa a largura toda antes de cortar -->
+              <TextBlock Classes="operador" Text="{Binding Principal.Operador}"
+                         IsVisible="{Binding Principal.Operador, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
+            <StackPanel Classes="selo-caixa teste" IsVisible="{Binding Principal.ModoTeste}">
+              <StackPanel Classes="linha-selo">
+                <Ellipse Classes="ponto" />
+                <TextBlock Classes="caixa" Text="MODO TESTE" />
+              </StackPanel>
+            </StackPanel>
+          </Panel>
+        </StackPanel>
+
+        <!-- 2. Menu: logo abaixo da etiqueta, verde-escuro cheio -->
+        <Button Grid.Row="1" Classes="acao-barra menu" Command="{Binding AbrirMenuCommand}" ToolTip.Tip="Menu">
+          <StackPanel>
+            <PathIcon Data="{StaticResource IconeMenu}" />
+            <TextBlock Text="Menu" />
           </StackPanel>
         </Button>
 
-        <StackPanel Grid.Row="2" Spacing="10" Margin="0,12,0,0">
-          <Border Background="{StaticResource Primaria}" CornerRadius="10" Padding="6,6" IsVisible="{Binding !Principal.ModoTeste}">
-            <StackPanel>
-              <TextBlock Text="{Binding Principal.CaixaTexto}" Foreground="White" FontWeight="Bold" FontSize="16"
-                         HorizontalAlignment="Center" />
-              <!-- Só caixas abertos antes da versão 3.1 têm operador -->
-              <TextBlock Text="{Binding Principal.Operador}" Foreground="#DCFCE7" FontSize="13" HorizontalAlignment="Center"
-                         TextTrimming="CharacterEllipsis"
-                         IsVisible="{Binding Principal.Operador, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-            </StackPanel>
-          </Border>
-          <Border Background="{StaticResource Teste}" CornerRadius="10" Padding="6,6" IsVisible="{Binding Principal.ModoTeste}">
-            <TextBlock Text="MODO TESTE" Foreground="White" FontWeight="Bold" FontSize="15" HorizontalAlignment="Center" />
-          </Border>
-        </StackPanel>
-
-        <!-- Abas do cardápio (Comidas, Bebidas...): na barra lateral, uma embaixo da outra -->
-        <Grid Grid.Row="3" RowDefinitions="Auto,*" Margin="0,12,0,8" IsVisible="{Binding MostrarAbas}">
-          <TextBlock Text="ABAS" Foreground="{StaticResource MarcaTextoSuave}" FontSize="11" FontWeight="Bold"
-                     Margin="4,0,0,6"
-                     IsVisible="{Binding $parent[Window].Bounds.Height, Converter={x:Static v:Conversores.TelaAlta}}" />
-          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding Abas}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><StackPanel Spacing="5" /></ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
+        <!-- 3. Abas do cardápio, no meio da barra: no máximo 4, todas inteiras, as maiores que couberem (dividem o
+             espaço em partes iguais, com um teto para não ficarem enormes com 2 ou 3; aí sobra espaço embaixo da
+             última, e a 1ª aba fica sempre no mesmo lugar). Se houver mais de 4 (backup antigo), a lista rola e a
+             ponta de baixo esmaece. -->
+        <Grid Grid.Row="2" Classes="bloco-abas" RowDefinitions="Auto,*" IsVisible="{Binding MostrarAbas}">
+          <!-- A divisa já leva o rótulo: ── ABAS ── -->
+          <Grid Classes="divisa" ColumnDefinitions="*,Auto,*">
+            <Border Classes="fio" />
+            <TextBlock Grid.Column="1" Classes="rotulo-divisa" Text="ABAS" />
+            <Border Grid.Column="2" Classes="fio" />
+          </Grid>
+          <ScrollViewer Grid.Row="1" x:Name="ListaAbas" VerticalScrollBarVisibility="Hidden"
+                        HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl Classes="abas" ItemsSource="{Binding Abas}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:AbaItem">
-                  <Button Classes="aba-lateral" Classes.ativa="{Binding Ativa}"
-                          Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).SelecionarAbaCommand}"
-                          CommandParameter="{Binding}">
-                    <TextBlock Classes="aba" Text="{Binding Nome}" TextWrapping="Wrap" MaxLines="2"
-                               TextTrimming="CharacterEllipsis" TextAlignment="Center" FontSize="14" FontWeight="Bold" />
-                  </Button>
+                  <Panel>
+                    <Button Classes="aba-cartao" Classes.ativa="{Binding Ativa}"
+                            Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).SelecionarAbaCommand}"
+                            CommandParameter="{Binding}">
+                      <!-- A letra diminui só se a maior palavra não couber (não quebra no meio da palavra) -->
+                      <v:TextoQueCabe Classes="aba" Text="{Binding Nome}" TamanhoMinimo="11"
+                                      TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                                      TextAlignment="Center" VerticalAlignment="Center" />
+                    </Button>
+                    <!-- Faixa verde da escolhida: recortada pelo mesmo canto de 12 do cartão, reta do lado de dentro -->
+                    <Border Classes="recorte-faixa" IsVisible="{Binding Ativa}" IsHitTestVisible="False">
+                      <Border Classes="faixa" />
+                    </Border>
+                  </Panel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </ScrollViewer>
+          <!-- Quando rola: a ponta de baixo esmaece (só desenho, não muda o tamanho de nada) -->
+          <Border Grid.Row="1" Classes="esmaece" IsHitTestVisible="False" VerticalAlignment="Bottom" />
         </Grid>
 
-        <!-- Sangria e fechar o caixa à mão, sem abrir o menu (no modo teste, o "fechar" sai do teste).
-             Um embaixo do outro, na largura toda da barra: fáceis de acertar com o dedo. -->
-        <StackPanel Grid.Row="4" Spacing="6" Margin="0,0,0,10">
-          <Button Classes="lateral acao" Command="{Binding AbrirSangriaCommand}" ToolTip.Tip="Sangria e suprimento">
-            <StackPanel Spacing="2">
+        <!-- 4. Embaixo: Sangria em cima e Fechar caixa embaixo, um sobre o outro na largura toda, no mesmo molde do
+             Menu (ícone em cima, nome inteiro embaixo). No modo teste, o de baixo sai do teste. -->
+        <StackPanel Grid.Row="3" Classes="acoes-baixo">
+          <Button Classes="acao-barra sangria" Command="{Binding AbrirSangriaCommand}"
+                  ToolTip.Tip="Sangria e suprimento">
+            <StackPanel>
               <PathIcon Data="{StaticResource IconeDinheiro}" />
               <TextBlock Text="Sangria" />
             </StackPanel>
           </Button>
-          <Button Classes="lateral acao" Command="{Binding FecharCaixaCommand}" ToolTip.Tip="Fechar o caixa">
-            <StackPanel Spacing="2">
-              <PathIcon Data="{StaticResource IconeCadeado}" />
-              <TextBlock Text="Fechar caixa" IsVisible="{Binding !Principal.ModoTeste}" />
-              <TextBlock Text="Sair do teste" IsVisible="{Binding Principal.ModoTeste}" />
+          <Button Classes="acao-barra fechar" Classes.teste="{Binding Principal.ModoTeste}"
+                  Command="{Binding FecharCaixaCommand}" ToolTip.Tip="Fechar o caixa">
+            <StackPanel>
+              <Panel>
+                <PathIcon Data="{StaticResource IconeCadeado}" IsVisible="{Binding !Principal.ModoTeste}" />
+                <PathIcon Data="{StaticResource IconeFecharGrosso}" IsVisible="{Binding Principal.ModoTeste}" />
+              </Panel>
+              <Panel>
+                <TextBlock Text="Fechar caixa" IsVisible="{Binding !Principal.ModoTeste}" />
+                <TextBlock Text="Sair do teste" IsVisible="{Binding Principal.ModoTeste}" />
+              </Panel>
             </StackPanel>
           </Button>
         </StackPanel>
 
-        <StackPanel Grid.Row="5" Spacing="0" Margin="0,0,0,8">
-          <TextBlock Text="{Binding Principal.Relogio}" Foreground="White" FontSize="34" FontWeight="Bold"
-                     HorizontalAlignment="Center" />
-          <TextBlock Text="{Binding Principal.Data}" Foreground="{StaticResource MarcaTextoSuave}" FontSize="14"
-                     HorizontalAlignment="Center" />
+        <!-- 5. No pé, só para ler: uma linha fina e o relógio, a data e a versão -->
+        <StackPanel Grid.Row="4" Classes="rodape">
+          <Border Classes="fio-rodape" />
+          <TextBlock Classes="relogio" Text="{Binding Principal.Relogio}" />
+          <TextBlock Classes="data" Text="{Binding Principal.Data}" />
+          <TextBlock Classes="versao" Text="{Binding Principal.Versao}" />
         </StackPanel>
-
-        <!-- Versão (o telefone do suporte fica no menu e na abertura do caixa) -->
-        <Border Grid.Row="6" BorderBrush="{StaticResource MarcaBorda}" BorderThickness="0,1,0,0" Padding="0,6,0,0">
-          <TextBlock Text="{Binding Principal.Versao}" FontSize="11" Foreground="{StaticResource MarcaTextoSuave}"
-                     HorizontalAlignment="Center" />
-        </Border>
       </Grid>
     </Border>
 
@@ -294,24 +348,386 @@
   </Grid>
 
   <UserControl.Styles>
-    <!-- Sangria e Fechar caixa na barra lateral -->
-    <Style Selector="Button.lateral.acao">
-      <Setter Property="Height" Value="58" />
-      <Setter Property="Padding" Value="4,4" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <!-- ===== Barra: 136 de largura, 12 de folga dos lados (112 úteis) =====
+         Contas da altura (as abas ficam com o que sobra, divididas em partes iguais, 8 entre elas):
+         1024x600: 12 + logo 36 + 8 + caixa 16 + 12 + Menu 48 + 8 + ABAS 16 + 4 + [abas 248] + 16
+                   + Sangria 48 + 8 + Fechar 48 + linha 16 + relógio 24 + data 13 + versão 11 + 8 = 600
+                   → 4 abas de 56 (4×56 + 3×8 = 248) ou 3 de 76 (teto; sobram 4 embaixo); com operador (mais 16
+                   em cima) 4 abas de 52 ou 3 de 72.
+         1280x800: 16 + logo 48 + 8 + caixa 18 + 16 + Menu 56 + 12 + ABAS 16 + 8 + [abas 376] + 16
+                   + Sangria 56 + 8 + Fechar 56 + linha 16 + relógio 30 + data 15 + versão 13 + 16 = 800
+                   → 4 abas de 88 ou 3 de 120; com operador 4 abas de 84.
+         Mudou alguma altura aqui? Refaça a conta e rode BarraLateralTests: ele confere que as abas cabem inteiras
+         (sem rolar) e com 48 ou mais, inclusive em 1024x600 com operador e 4 abas. -->
+    <Style Selector="Border.barra-esquerda">
+      <Setter Property="Background" Value="{StaticResource FundoLateral}" />
+      <Setter Property="Width" Value="136" />
     </Style>
-    <Style Selector="Button.lateral.acao PathIcon">
-      <Setter Property="Width" Value="24" />
-      <Setter Property="Height" Value="24" />
-      <Setter Property="Foreground" Value="{StaticResource Marca}" />
+    <Style Selector="Grid.miolo-barra">
+      <Setter Property="Margin" Value="12,12,12,8" />
+    </Style>
+    <Style Selector=".alta Grid.miolo-barra">
+      <Setter Property="Margin" Value="12,16,12,16" />
+    </Style>
+
+    <!-- Espaço ENTRE blocos maior que DENTRO deles (8). Na tela alta, 16 entre blocos; na baixa, 12 entre o
+         caixa e o Menu e entre o Menu e o ── ABAS ── (sobra mais para as abas, que são o que mais se toca). -->
+    <Style Selector="StackPanel.bloco-marca, StackPanel.acoes-baixo">
+      <Setter Property="Spacing" Value="8" />
+    </Style>
+    <Style Selector="Button.menu">
+      <Setter Property="Margin" Value="0,12,0,0" />
+    </Style>
+    <Style Selector=".alta Button.menu">
+      <Setter Property="Margin" Value="0,16,0,0" />
+    </Style>
+    <!-- 8 (12 na alta) + a folga de cima do rótulo (4) = 12 (16) até as letras de ABAS -->
+    <Style Selector="Grid.bloco-abas">
+      <Setter Property="Margin" Value="0,8,0,16" />
+    </Style>
+    <Style Selector=".alta Grid.bloco-abas">
+      <Setter Property="Margin" Value="0,12,0,16" />
+    </Style>
+
+    <!-- 1. Logo: só o símbolo, sem o nome, pequeno. 36 na tela baixa (3/4 de 48), 48 na alta. O botão tem sempre
+         48 de altura para o toque; na tela baixa avança 6 nas folgas de cima e de baixo (ocupa só os 36 do
+         desenho). -->
+    <Style Selector="Button.marca">
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Height" Value="48" />
+      <Setter Property="Margin" Value="0,-6,0,-6" />
+    </Style>
+    <Style Selector=".alta Button.marca">
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <Style Selector="LayoutTransformControl.logo">
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="LayoutTransform">
+        <ScaleTransform ScaleX="0.75" ScaleY="0.75" />
+      </Setter>
+    </Style>
+    <Style Selector=".alta LayoutTransformControl.logo">
+      <Setter Property="LayoutTransform">
+        <ScaleTransform ScaleX="1" ScaleY="1" />
+      </Setter>
+    </Style>
+    <Style Selector="LayoutTransformControl.logo TextBlock#Nome">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+
+    <!-- Etiqueta do caixa: ponto verde + CAIXA 01, sem fundo e sem borda (é um aviso, não um botão).
+         No modo teste, ponto e letra laranja. Com operador, o nome vem embaixo, na largura toda. -->
+    <Style Selector="StackPanel.linha-selo">
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Spacing" Value="6" />
       <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
-    <Style Selector="Button.lateral.acao TextBlock">
+    <Style Selector="Ellipse.ponto">
+      <Setter Property="Width" Value="8" />
+      <Setter Property="Height" Value="8" />
+      <Setter Property="Fill" Value="{StaticResource Marca}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.selo-caixa TextBlock.caixa">
       <Setter Property="Foreground" Value="White" />
       <Setter Property="FontSize" Value="14" />
+      <Setter Property="LineHeight" Value="16" />
       <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="LetterSpacing" Value="0.5" />
+      <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
+    <Style Selector=".alta StackPanel.selo-caixa TextBlock.caixa">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="LineHeight" Value="18" />
+    </Style>
+    <Style Selector="StackPanel.selo-caixa.teste Ellipse.ponto">
+      <Setter Property="Fill" Value="#FB923C" />
+    </Style>
+    <!-- MODO TESTE é mais comprido que CAIXA 01: letra 13 nas duas telas para caber nos 112 com folga
+         (a altura da linha não muda, nada abaixo sai do lugar) -->
+    <Style Selector="StackPanel.selo-caixa.teste TextBlock.caixa">
+      <Setter Property="Foreground" Value="#FDBA74" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+    <Style Selector="StackPanel.selo-caixa TextBlock.operador">
+      <Setter Property="Foreground" Value="#CFE3D6" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="LineHeight" Value="14" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,2,0,0" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <!-- 2. Botões de ação (Menu, Sangria, Fechar caixa): um só molde, CHEIO de cor, na largura toda (112).
+         Ícone em cima e o nome inteiro numa linha embaixo, no eixo do meio. Altura 48 (56 na tela alta). -->
+    <Style Selector="Button.acao-barra">
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="{StaticResource Raio}" />
+      <Setter Property="Height" Value="48" />
+      <Setter Property="MinHeight" Value="48" />
+      <!-- 2 a mais em cima: as letras têm folga embaixo da linha, assim ícone e nome ficam no meio do botão -->
+      <Setter Property="Padding" Value="4,2,4,0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <!-- O conteúdo ocupa a largura toda e o nome se centraliza dentro dela (sem arredondar a posição do texto
+           para o pixel, o que deixava o nome 1 px fora do eixo) -->
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector=".alta Button.acao-barra">
+      <Setter Property="Height" Value="56" />
+      <Setter Property="MinHeight" Value="56" />
+    </Style>
+    <Style Selector="Button.acao-barra > StackPanel">
+      <Setter Property="Spacing" Value="2" />
+    </Style>
+    <Style Selector=".alta Button.acao-barra > StackPanel">
+      <Setter Property="Spacing" Value="4" />
+    </Style>
+    <Style Selector="Button.acao-barra PathIcon">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector=".alta Button.acao-barra PathIcon">
+      <Setter Property="Width" Value="24" />
+      <Setter Property="Height" Value="20" />
+    </Style>
+    <Style Selector="Button.acao-barra TextBlock">
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="LineHeight" Value="16" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="TextAlignment" Value="Center" />
+    </Style>
+    <Style Selector=".alta Button.acao-barra TextBlock">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="LineHeight" Value="18" />
+    </Style>
+
+    <!-- As cores, em tons fechados: verde-escuro (Menu; o PAGAMENTO continua o verde mais vivo da tela),
+         âmbar com letra escura (Sangria, dinheiro), vermelho-escuro (Fechar caixa). Ao tocar, um tom abaixo. -->
+    <Style Selector="Button.menu">
+      <Setter Property="Background" Value="{StaticResource PrimariaEscura}" />
+    </Style>
+    <Style Selector="Button.menu:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.menu:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#166534" />
+    </Style>
+    <Style Selector="Button.sangria">
+      <Setter Property="Background" Value="#D97706" />
+    </Style>
+    <Style Selector="Button.sangria:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.sangria:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#B45309" />
+    </Style>
+    <Style Selector="Button.sangria TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Escuro}" />
+    </Style>
+    <Style Selector="Button.sangria PathIcon">
+      <Setter Property="Foreground" Value="{StaticResource Escuro}" />
+    </Style>
+    <!-- O desenho das 3 linhas (Menu) e o da nota (Sangria) é mais largo que alto: na caixa de 22x18 (24x20)
+         sobrariam 2 vazios em cima e embaixo e o conteúdo pareceria mais baixo que o do Fechar caixa. A caixa
+         fica na altura do desenho (o ícone continua do mesmo tamanho). -->
+    <Style Selector="Button.menu PathIcon, Button.sangria PathIcon">
+      <Setter Property="Height" Value="15" />
+    </Style>
+    <Style Selector=".alta Button.menu PathIcon, .alta Button.sangria PathIcon">
+      <Setter Property="Height" Value="16" />
+    </Style>
+    <Style Selector="Button.fechar">
+      <Setter Property="Background" Value="#B91C1C" />
+    </Style>
+    <Style Selector="Button.fechar:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.fechar:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#991B1B" />
+    </Style>
+    <!-- Sair do teste: escuro com contorno laranja (a cor do modo teste), para não se confundir com a Sangria -->
+    <Style Selector="Button.fechar.teste">
+      <Setter Property="Background" Value="#1FFFFFFF" />
+      <Setter Property="BorderBrush" Value="#FB923C" />
+      <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="Button.fechar.teste:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.fechar.teste:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#33FFFFFF" />
+      <Setter Property="BorderBrush" Value="#FB923C" />
+    </Style>
+    <Style Selector="Button.fechar.teste PathIcon">
+      <Setter Property="Foreground" Value="#FB923C" />
+    </Style>
+
+    <!-- 3. Abas. Divisa fina ── ABAS ──: 16 de altura com o fio no meio, e 4 (8 na alta) até a primeira aba.
+         O rótulo fica mais perto das abas (as letras a 8 da 1ª aba) do que do Menu (12), porque é delas. -->
+    <Style Selector="Grid.divisa">
+      <Setter Property="Height" Value="16" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector=".alta Grid.divisa">
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="Grid.divisa Border.fio">
+      <Setter Property="Height" Value="1" />
+      <Setter Property="Background" Value="{StaticResource MarcaBorda}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.rotulo-divisa">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{StaticResource MarcaTextoSuave}" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="LetterSpacing" Value="1.5" />
+      <Setter Property="Margin" Value="8,0" />
+    </Style>
+
+    <!-- Lista das abas. Mais de 4 (backup antigo): uma embaixo da outra, na altura mínima, e a lista rola. -->
+    <Style Selector="ItemsControl.abas">
+      <Setter Property="ItemsPanel">
+        <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+      </Setter>
+    </Style>
+    <!-- Até 4 abas: a lista tem a altura da janela da rolagem (o espaço entre o ── ABAS ── e a Sangria) e as abas
+         a dividem em partes iguais, 8 entre elas. Com 4 elas enchem o espaço nas duas telas (56 na baixa, 88 na
+         alta). Mínimo de 48 por aba (abaixo disso a lista rola em vez de espremer as abas). Teto de 76 por aba na
+         tela baixa e 120 na alta, só para não ficarem enormes com 2 ou 3: aí as abas continuam logo abaixo do
+         ── ABAS ── (sempre no mesmo lugar) e o que sobra fica entre a última aba e a Sangria.
+         Mínimo e teto = abas × 48 (ou o teto) + 8 entre elas. -->
+    <Style Selector=".duas ItemsControl.abas, .tres ItemsControl.abas, .quatro ItemsControl.abas">
+      <Setter Property="Height" Value="{Binding #ListaAbas.Viewport.Height}" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="ItemsPanel">
+        <ItemsPanelTemplate><UniformGrid Columns="1" RowSpacing="8" /></ItemsPanelTemplate>
+      </Setter>
+    </Style>
+    <Style Selector=".duas ItemsControl.abas">
+      <Setter Property="MinHeight" Value="104" />
+      <Setter Property="MaxHeight" Value="160" />
+    </Style>
+    <Style Selector=".tres ItemsControl.abas">
+      <Setter Property="MinHeight" Value="160" />
+      <Setter Property="MaxHeight" Value="244" />
+    </Style>
+    <Style Selector=".quatro ItemsControl.abas">
+      <Setter Property="MinHeight" Value="216" />
+      <Setter Property="MaxHeight" Value="328" />
+    </Style>
+    <Style Selector=".alta .duas ItemsControl.abas">
+      <Setter Property="MaxHeight" Value="248" />
+    </Style>
+    <Style Selector=".alta .tres ItemsControl.abas">
+      <Setter Property="MaxHeight" Value="376" />
+    </Style>
+    <Style Selector=".alta .quatro ItemsControl.abas">
+      <Setter Property="MaxHeight" Value="504" />
+    </Style>
+
+    <!-- Mais de 4 abas (backup antigo): a ponta de baixo da lista esmaece -->
+    <Style Selector="Border.esmaece">
+      <Setter Property="IsVisible" Value="False" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="Background">
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+          <GradientStop Offset="0" Color="#00050B07" />
+          <GradientStop Offset="1" Color="#CC050B07" />
+        </LinearGradientBrush>
+      </Setter>
+    </Style>
+    <Style Selector="Grid.miolo-barra.rola Border.esmaece">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+
+    <!-- Abas em cartões: nome no meio, em até 2 linhas, com a mesma folga dos dois lados (o nome não sai do
+         lugar ao escolher). A escolhida fica branca com uma faixa verde de 6 do lado direito (o dos produtos). -->
+    <Style Selector="Button.aba-cartao">
+      <Setter Property="Background" Value="#12FFFFFF" />
+      <Setter Property="BorderBrush" Value="{StaticResource MarcaBorda}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Raio}" />
+      <Setter Property="MinHeight" Value="48" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector=".alta Button.aba-cartao">
+      <Setter Property="MinHeight" Value="56" />
+      <Setter Property="Padding" Value="8,0" />
+    </Style>
+    <Style Selector="Button.aba-cartao:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.aba-cartao:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#26FFFFFF" />
+      <Setter Property="BorderBrush" Value="{StaticResource Marca}" />
+    </Style>
+    <Style Selector="Button.aba-cartao TextBlock.aba">
+      <Setter Property="Foreground" Value="#DDE9E1" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="LineHeight" Value="20" />
+      <Setter Property="(v:TextoQueCabe.TamanhoMaximo)" Value="18" />
+    </Style>
+    <Style Selector=".alta Button.aba-cartao TextBlock.aba">
+      <Setter Property="LineHeight" Value="22" />
+      <Setter Property="(v:TextoQueCabe.TamanhoMaximo)" Value="19" />
+    </Style>
+    <Style Selector="Button.aba-cartao.ativa">
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="White" />
+    </Style>
+    <Style Selector="Button.aba-cartao.ativa:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.aba-cartao.ativa:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderBrush" Value="White" />
+    </Style>
+    <Style Selector="Button.aba-cartao.ativa TextBlock.aba">
+      <Setter Property="Foreground" Value="{StaticResource Escuro}" />
+      <Setter Property="FontWeight" Value="ExtraBold" />
+    </Style>
+    <Style Selector="Border.recorte-faixa">
+      <Setter Property="CornerRadius" Value="{StaticResource Raio}" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Border.faixa">
+      <Setter Property="Width" Value="6" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="Background" Value="{StaticResource Marca}" />
+    </Style>
+
+    <!-- 5. Linha fina (no meio de 16), relógio, data e versão: só para ler, discretos e no eixo do meio -->
+    <Style Selector="Border.fio-rodape">
+      <Setter Property="Height" Value="1" />
+      <Setter Property="Background" Value="{StaticResource MarcaBorda}" />
+      <Setter Property="Margin" Value="0,8,0,7" />
+    </Style>
+    <Style Selector="StackPanel.rodape > TextBlock">
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{StaticResource MarcaTextoSuave}" />
+    </Style>
+    <Style Selector="StackPanel.rodape > TextBlock.relogio">
+      <Setter Property="Foreground" Value="#E6F0EA" />
+      <Setter Property="FontSize" Value="24" />
+      <Setter Property="LineHeight" Value="24" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+    <Style Selector=".alta StackPanel.rodape > TextBlock.relogio">
+      <Setter Property="FontSize" Value="28" />
+      <Setter Property="LineHeight" Value="30" />
+    </Style>
+    <Style Selector="StackPanel.rodape > TextBlock.data">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="LineHeight" Value="13" />
+    </Style>
+    <Style Selector=".alta StackPanel.rodape > TextBlock.data">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="LineHeight" Value="15" />
+    </Style>
+    <Style Selector="StackPanel.rodape > TextBlock.versao">
+      <Setter Property="FontSize" Value="10" />
+      <Setter Property="LineHeight" Value="11" />
+      <Setter Property="Opacity" Value="0.8" />
+    </Style>
+    <Style Selector=".alta StackPanel.rodape > TextBlock.versao">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="LineHeight" Value="13" />
+    </Style>
+
     <Style Selector="Border.troco">
       <Setter Property="Background" Value="{StaticResource AvisoClara}" />
       <Setter Property="BorderBrush" Value="{StaticResource Aviso}" />

@@ -201,7 +201,7 @@ public class TelasDaVersao39Tests
         t.AbrirCaixa();
         TelaDeTeste.Atualizar();
         var abas = t.Janela.GetVisualDescendants().OfType<Avalonia.Controls.Button>()
-            .Where(b => b.Classes.Contains("aba-lateral") && b.IsEffectivelyVisible).ToList();
+            .Where(b => b.Classes.Contains("aba-cartao") && b.IsEffectivelyVisible).ToList();
         Assert.Equal(4, abas.Count);
         t.Venda.SelecionarAbaCommand.Execute(t.Venda.Abas[1]);
         TelaDeTeste.Atualizar();
