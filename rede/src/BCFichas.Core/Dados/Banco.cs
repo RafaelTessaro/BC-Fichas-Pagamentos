@@ -409,6 +409,17 @@ public sealed class Banco
             t.Commit();
         }
 
+        // Versão 3.11.7: até que ficha já saiu de um pedido cuja impressão parou no meio (porta COM sem papel). Ao
+        // imprimir de novo, mesmo depois de fechar o programa, só saem as que faltam.
+        if (versao < 7)
+        {
+            using var t = conexao.BeginTransaction();
+            if (Escalar<long>(conexao, t, "SELECT COUNT(*) FROM pragma_table_info('pedidos') WHERE name = 'fichas_saidas'") == 0)
+                Executar(conexao, t, "ALTER TABLE pedidos ADD COLUMN fichas_saidas INTEGER NOT NULL DEFAULT 0");
+            Executar(conexao, t, "INSERT INTO versao (v) VALUES (7)");
+            t.Commit();
+        }
+
         // Ao abrir, o programa procura os pedidos que ficaram esperando a maquininha (status 0). Sem índice isso lia a
         // tabela de pedidos inteira (todas as festas guardadas). O índice só guarda esses poucos pedidos, então não
         // pesa na venda nem no disco. Conferido a cada abertura (não muda a versão do banco): vale também para um

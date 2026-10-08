@@ -426,7 +426,7 @@ public class ProgramacaoTests : IDisposable
         config.Linhas = 2;
         a.Config.Salvar(config);
         // Volta o banco para a versão 5 (antes da 3.10 a grade era uma só, nas configurações)
-        a.Banco.Executar("ALTER TABLE abas DROP COLUMN colunas; ALTER TABLE abas DROP COLUMN linhas; DELETE FROM versao WHERE v = 6;");
+        a.Banco.Executar("ALTER TABLE abas DROP COLUMN colunas; ALTER TABLE abas DROP COLUMN linhas; DELETE FROM versao WHERE v >= 6;");
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
 
         var atualizado = Sistema.Iniciar(_a.Pasta, criarExemplos: false);

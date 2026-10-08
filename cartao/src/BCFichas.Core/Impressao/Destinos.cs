@@ -66,31 +66,63 @@ public sealed class DestinoSerial(string porta, Func<Stream> abrir, TipoCorte co
 {
     private const int Pedaco = 4096;
 
-    /// <summary>Por porta: quantos bytes faltaram da última imagem que ficou pela metade.</summary>
+    /// <summary>
+    /// Folga a mais nos zeros que completam a imagem: o Windows guarda uns KB na fila da porta (que se perdem ao
+    /// fechar) e um envio pode voltar sem erro tendo entrado só em parte. Zero a mais, fora da imagem, não faz nada.
+    /// </summary>
+    private const int Folga = Pedaco + 4096;
+
+    /// <summary>Por porta: quantos bytes podem ter faltado da última imagem que ficou pela metade.</summary>
     private static readonly ConcurrentDictionary<string, int> Faltaram = new(StringComparer.OrdinalIgnoreCase);
 
     public string Descricao => "Porta " + porta;
 
     public void Imprimir(IEnumerable<SKBitmap> paginas)
     {
-        using var saida = abrir();
-        if (Faltaram.TryRemove(porta, out var faltam) && faltam > 0)
-            Mandar(saida, new byte[faltam], 0, enviadas: 0);
-        var enviadas = 0;
-        foreach (var pagina in paginas)
-        {
-            var bytes = EscPos.Trabalho([pagina], corte);
-            // Só a primeira começa reiniciando a impressora (as outras seguem, como num trabalho só)
-            Mandar(saida, bytes, enviadas == 0 ? 0 : EscPos.Inicializar().Length, enviadas);
-            enviadas++;
-        }
+        var saida = abrir();
         try
         {
-            saida.Flush();
+            if (Faltaram.TryRemove(porta, out var faltam) && faltam > 0)
+                Mandar(saida, new byte[faltam], 0, enviadas: 0);
+            var enviadas = 0;
+            using var proxima = paginas.GetEnumerator();
+            while (true)
+            {
+                SKBitmap pagina;
+                try
+                {
+                    if (!proxima.MoveNext()) break;
+                    pagina = proxima.Current;
+                }
+                catch (Exception e) when (enviadas > 0)
+                {
+                    // Erro ao desenhar a próxima ficha: as que já foram continuam contando
+                    throw new FalhaNoMeio(enviadas, e);
+                }
+                var bytes = EscPos.Trabalho([pagina], corte);
+                // Só a primeira começa reiniciando a impressora (as outras seguem, como num trabalho só)
+                Mandar(saida, bytes, enviadas == 0 ? 0 : EscPos.Inicializar().Length, enviadas);
+                enviadas++;
+            }
+            try
+            {
+                saida.Flush();
+            }
+            catch (Exception e)
+            {
+                throw new FalhaNoMeio(enviadas, e);
+            }
         }
-        catch (Exception e) when (e is TimeoutException or IOException)
+        finally
         {
-            throw new FalhaNoMeio(enviadas, e);
+            try
+            {
+                saida.Dispose();
+            }
+            catch (Exception)
+            {
+                // Cabo arrancado: fechar a porta também falha. Não troca o erro que já está indo (com a contagem).
+            }
         }
     }
 
@@ -106,10 +138,10 @@ public sealed class DestinoSerial(string porta, Func<Stream> abrir, TipoCorte co
                 escritos = i + n;
             }
         }
-        catch (Exception e) when (e is TimeoutException or IOException)
+        catch (Exception e) when (e is not ErroDeNegocio)
         {
-            // O pedaço que estava indo pode ter entrado em parte: completa a mais (fora da imagem, zero não faz nada)
-            Faltaram[porta] = bytes.Length - escritos;
+            // Tempo esgotado, cabo solto (acesso negado à porta), porta fechada...: completa a mais no próximo envio
+            Faltaram[porta] = bytes.Length - escritos + Folga;
             throw new FalhaNoMeio(enviadas, e);
         }
     }

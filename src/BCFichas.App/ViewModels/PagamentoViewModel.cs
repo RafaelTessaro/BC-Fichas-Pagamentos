@@ -263,6 +263,17 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     [RelayCommand]
     private Task GravarDeNovo() => Etapa == EtapaPagamento.ErroGravacao ? GravarPago() : Task.CompletedTask;
 
+    /// <summary>
+    /// O disco continua com erro: sai do programa. O pedido fica esperando e, ao abrir, o programa pergunta dele
+    /// (nada é cobrado de novo).
+    /// </summary>
+    [RelayCommand]
+    private void SairDoPrograma()
+    {
+        if (Etapa != EtapaPagamento.ErroGravacao || _gravandoPago) return;
+        _principal.ExecutarProtegido(TelaProtegida.SairDoPrograma, _principal.Sair);
+    }
+
     /// <summary>Cancela o pedido que não foi pago. Se nem isso o disco deixar, ele fica esperando e é resolvido ao abrir.</summary>
     private void CancelarPedido(long id)
     {
@@ -350,7 +361,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
         var fichas = GeradorFichas.Gerar(pedido, _principal.Config);
         var resultado = await Task.Run(() =>
         {
-            var r = _principal.Sistema.Impressao.Fichas(fichas);
+            var r = _principal.Sistema.ImprimirFichas(pedido, fichas);
             if (r.Ok) _principal.Sistema.Vendas.RegistrarImpressao(pedido.Id);
             return r;
         });

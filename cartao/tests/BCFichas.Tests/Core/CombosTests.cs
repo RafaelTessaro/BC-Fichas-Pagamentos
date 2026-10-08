@@ -321,7 +321,7 @@ public class CombosTests : IDisposable
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
 
         var banco = new Banco(S.Banco.Caminho);
-        Assert.Equal(6, banco.Escalar<long>("SELECT MAX(v) FROM versao"));
+        Assert.Equal(7, banco.Escalar<long>("SELECT MAX(v) FROM versao"));
         Assert.Equal(1000, banco.Escalar<long>("SELECT valor FROM itens_devolucao"));
         var sistema = Sistema.Iniciar(_t.Pasta, criarExemplos: false);
         Assert.Equal(1000, sistema.Caixa.Resumo(sessao.Id).TotalDevolvido);

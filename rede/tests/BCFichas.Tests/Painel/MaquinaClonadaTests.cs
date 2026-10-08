@@ -50,6 +50,16 @@ public sealed class MaquinaClonadaTests : IDisposable
     }
 
     [Fact]
+    public void Tirar_um_adaptador_do_mesmo_tablet_nao_muda_a_identidade()
+    {
+        var original = Identidade();
+        // Criado quando havia também um adaptador USB (que depois foi tirado): continua a mesma máquina
+        var partes = File.ReadAllText(Arquivo).Split('|');
+        File.WriteAllText(Arquivo, partes[0] + "|00E04C000001," + partes[1]);
+        Assert.Equal(original, Identidade());
+    }
+
+    [Fact]
     public void Arquivo_da_versao_antiga_ganha_um_numero_novo_desta_maquina()
     {
         File.WriteAllText(Arquivo, Guid.NewGuid().ToString("N"));

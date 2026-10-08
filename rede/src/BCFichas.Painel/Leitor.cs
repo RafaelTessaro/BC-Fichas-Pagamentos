@@ -201,9 +201,10 @@ public sealed class Leitor : IDisposable
     /// Identidade deste tablet com este banco: um número guardado na pasta de dados (painel-maquina.id) junto com
     /// o nome do computador (a pasta copiada para outro tablet não vira a mesma máquina). Sem poder gravar na pasta,
     /// vale só enquanto o programa está aberto.
-    /// O número fica amarrado à placa de rede em que foi criado: num tablet clonado de outro (a mesma imagem do
-    /// disco, com o mesmo nome de computador e o mesmo arquivo) a placa é outra, então ele cria um número novo e
-    /// o painel não junta os dois como se fossem um só.
+    /// O número fica amarrado às placas de rede do tablet em que foi criado: num tablet clonado de outro (a mesma
+    /// imagem do disco, com o mesmo nome de computador e o mesmo arquivo) nenhuma delas existe, então ele cria um número
+    /// novo e o painel não junta os dois como se fossem um só. No mesmo tablet basta uma delas continuar lá (tirar um
+    /// adaptador USB não muda a identidade).
     /// </summary>
     private static string IdentidadeDaMaquina(string pastaDados, string instancia)
     {
@@ -213,17 +214,17 @@ public sealed class Leitor : IDisposable
             var arquivo = Path.Combine(pastaDados, "painel-maquina.id");
             var guardado = File.Exists(arquivo) ? File.ReadAllText(arquivo).Trim().Split('|') : [];
             var id = guardado.Length > 0 ? guardado[0] : "";
-            var placa = guardado.Length > 1 ? guardado[1] : "";
+            var guardadas = guardado.Length > 1 ? guardado[1].Split(',', StringSplitOptions.RemoveEmptyEntries) : [];
             var placas = PlacasDeRede();
             var valido = id.Length is >= 16 and <= 64 && id.All(char.IsAsciiHexDigit);
-            // Placa guardada que não existe aqui: é a cópia do disco de outro tablet (ou um arquivo de versão antiga)
-            var outraMaquina = placas.Count > 0 && !placas.Contains(placa);
+            // Nenhuma das placas guardadas existe aqui: é a cópia do disco de outro tablet (ou um arquivo da versão
+            // antiga, sem placas). Sem nenhuma placa ligada agora, não dá para saber: fica como está.
+            var outraMaquina = placas.Count > 0 && !guardadas.Any(placas.Contains);
             if (!valido || outraMaquina)
             {
                 id = Guid.NewGuid().ToString("N");
-                placa = placas.Count > 0 ? placas[0] : "";
                 Directory.CreateDirectory(pastaDados);
-                File.WriteAllText(arquivo, id + "|" + placa);
+                File.WriteAllText(arquivo, id + "|" + string.Join(",", placas));
             }
             numero = id;
         }

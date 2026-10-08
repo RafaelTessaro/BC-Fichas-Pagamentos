@@ -133,7 +133,7 @@ public sealed partial class ReimpressaoViewModel(PrincipalViewModel principal, b
                 Principal.MostrarAviso("As fichas deste pedido foram devolvidas: não há o que reimprimir.", erro: true);
                 return;
             }
-            var resultado = await Principal.ImprimirAsync(() => Sistema.Impressao.Fichas(fichas));
+            var resultado = await Principal.ImprimirAsync(() => Sistema.ImprimirFichas(pedido, fichas));
             if (resultado.Ok)
             {
                 Sistema.Vendas.RegistrarImpressao(pedido.Id);

@@ -295,12 +295,15 @@
                      FontWeight="Bold" TextWrapping="Wrap" TextAlignment="Center" />
           <TextBlock Text="{Binding Mensagem}" HorizontalAlignment="Center" FontSize="17" Classes="suave"
                      TextWrapping="Wrap" TextAlignment="Center" />
-          <TextBlock Text="O cliente já pagou: não cobre de novo. Toque em Tentar de novo. Se continuar dando erro, feche e abra o programa: ao abrir, ele pergunta deste pedido."
+          <TextBlock Text="O cliente já pagou: não cobre de novo. Toque em Tentar de novo. Se continuar dando erro, toque em Sair do programa e abra de novo: ao abrir, ele pergunta deste pedido."
                      HorizontalAlignment="Center" FontSize="15" Classes="suave" TextWrapping="Wrap" TextAlignment="Center" />
-          <Button Classes="primario" Command="{Binding GravarDeNovoCommand}" Height="58" Padding="30,0"
-                  HorizontalAlignment="Center">
-            <TextBlock Text="Tentar de novo" Foreground="White" FontSize="18" FontWeight="Bold" />
-          </Button>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
+            <Button Classes="suave" Content="Sair do programa" Command="{Binding SairDoProgramaCommand}" Height="58"
+                    Padding="24,0" />
+            <Button Classes="primario" Command="{Binding GravarDeNovoCommand}" Height="58" Padding="30,0">
+              <TextBlock Text="Tentar de novo" Foreground="White" FontSize="18" FontWeight="Bold" />
+            </Button>
+          </StackPanel>
         </StackPanel>
       </Panel>
     </Grid>

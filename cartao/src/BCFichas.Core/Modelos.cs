@@ -167,6 +167,8 @@ public sealed class Pedido
     public StatusPedido Status { get; set; }
     public string? Autorizacao { get; set; }
     public int Impressoes { get; set; }
+    /// <summary>A impressão parou no meio: até que ficha (1, 2, 3...) já saiu. Zero quando saíram todas ou nenhuma.</summary>
+    public int FichasSaidas { get; set; }
     public bool Teste { get; set; }
     public List<ItemPedido> Itens { get; set; } = new();
 

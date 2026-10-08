@@ -9,7 +9,7 @@ namespace BCFichas.Core.Servicos;
 public sealed class VendaServico
 {
     private const string ColunasPedido =
-        "id, numero, sessao_id, caixa, criado_em, total, forma, recebido, troco, status, autorizacao, impressoes, teste";
+        "id, numero, sessao_id, caixa, criado_em, total, forma, recebido, troco, status, autorizacao, impressoes, teste, fichas_saidas";
 
     private readonly Banco _banco;
     private readonly Func<DateTime> _agora;
@@ -166,7 +166,14 @@ public sealed class VendaServico
     }
 
     public void RegistrarImpressao(long pedidoId) =>
-        _banco.Executar("UPDATE pedidos SET impressoes = impressoes + 1 WHERE id = $id", ("$id", pedidoId));
+        _banco.Executar("UPDATE pedidos SET impressoes = impressoes + 1, fichas_saidas = 0 WHERE id = $id", ("$id", pedidoId));
+
+    /// <summary>
+    /// A impressão parou no meio (porta COM sem papel): as fichas até a <paramref name="ate"/> já saíram e estão com
+    /// o cliente. A próxima impressão do pedido manda só as que faltam.
+    /// </summary>
+    public void RegistrarFichasSaidas(long pedidoId, int ate) =>
+        _banco.Executar("UPDATE pedidos SET fichas_saidas = $a WHERE id = $id", ("$a", ate), ("$id", pedidoId));
 
     public Pedido? Pedido(long id)
     {
@@ -379,5 +386,6 @@ public sealed class VendaServico
         Autorizacao = l.IsDBNull(10) ? null : l.GetString(10),
         Impressoes = l.GetInt32(11),
         Teste = l.GetInt64(12) != 0,
+        FichasSaidas = l.GetInt32(13),
     };
 }

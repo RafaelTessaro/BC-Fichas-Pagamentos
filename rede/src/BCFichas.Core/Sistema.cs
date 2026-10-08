@@ -36,6 +36,24 @@ public sealed class Sistema
     public CatalogoServico Catalogo { get; }
     public CaixaServico Caixa { get; }
     public VendaServico Vendas { get; }
+
+    /// <summary>
+    /// Imprime as fichas de um pedido. Se a impressão parar no meio (porta COM sem papel), grava no pedido até que
+    /// ficha já saiu: a próxima impressão dele (mesmo depois de fechar o programa) manda só as que faltam.
+    /// </summary>
+    public ResultadoImpressao ImprimirFichas(Pedido pedido, IReadOnlyList<Ficha> fichas) =>
+        Impressao.Fichas(fichas, pedido.FichasSaidas, ate =>
+        {
+            pedido.FichasSaidas = ate;
+            try
+            {
+                Vendas.RegistrarFichasSaidas(pedido.Id, ate);
+            }
+            catch (Exception)
+            {
+                // Disco com erro: vale o que ficou no pedido em memória (a tela de pagamento tenta de novo com ele)
+            }
+        });
     public DevolucaoServico Devolucoes { get; }
     public ServicoImpressao Impressao { get; }
     public ProgramacaoServico Programacao { get; }

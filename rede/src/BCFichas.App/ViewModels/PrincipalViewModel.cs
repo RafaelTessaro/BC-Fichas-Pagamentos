@@ -439,7 +439,7 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
                     }
                     var pago = Sistema.Vendas.ConfirmarPagamento(pendente.Id, null);
                     var fichas = GeradorFichas.Gerar(pago, Config);
-                    var resultado = await ImprimirAsync(() => Sistema.Impressao.Fichas(fichas));
+                    var resultado = await ImprimirAsync(() => Sistema.ImprimirFichas(pago, fichas));
                     if (resultado.Ok) Sistema.Vendas.RegistrarImpressao(pago.Id);
                 }
                 return;

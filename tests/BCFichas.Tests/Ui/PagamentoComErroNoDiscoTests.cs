@@ -62,6 +62,12 @@ public class PagamentoComErroNoDiscoTests
         Assert.Equal(StatusPedido.AguardandoPagamento, pedido.Status);
         Assert.False(t.Venda.Vazio); // o pedido continua na tela
 
+        // Se o disco continuar com erro, dá para sair do programa (ao abrir, ele pergunta deste pedido)
+        var fechou = false;
+        t.Principal.FecharPrograma = () => fechou = true;
+        pagamento.SairDoProgramaCommand.Execute(null);
+        Assert.True(fechou);
+
         // O disco voltou: tentar de novo grava e as fichas saem
         t.Sistema.Banco.Executar("DROP TRIGGER falha_confirmar");
         await pagamento.GravarDeNovoCommand.ExecuteAsync(null);

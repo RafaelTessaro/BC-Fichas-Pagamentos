@@ -32,12 +32,6 @@ public sealed class ServicoImpressao
     /// <summary>Abre a porta COM (os testes trocam por uma impressora de mentira).</summary>
     internal Func<string, int, Stream> AbrirPorta { get; set; } = TransporteSerial.Abrir;
 
-    /// <summary>
-    /// Pedidos que pararam no meio da impressão (porta COM): até que ficha já saiu. A próxima impressão do pedido
-    /// (Tentar de novo, Fichas não impressas) manda só as que faltam, porque as que saíram já estão com o cliente.
-    /// </summary>
-    private readonly Dictionary<(int Caixa, long Pedido), int> _jaSairam = new();
-
     public IDestinoImpressao CriarDestino(Configuracao c) => c.Impressora switch
     {
         TipoImpressora.Serial => new DestinoSerial(c.PortaSerial, () => AbrirPorta(c.PortaSerial, c.BaudRate), c.Corte),
@@ -48,39 +42,33 @@ public sealed class ServicoImpressao
 
     public string Descricao() => CriarDestino(_config()).Descricao;
 
-    public ResultadoImpressao Fichas(IReadOnlyList<Ficha> fichas)
+    /// <param name="jaSairam">
+    /// Até que ficha já saiu numa impressão do pedido que parou no meio (porta COM sem papel): essas não saem de novo.
+    /// Na reimpressão (fichas marcadas REIMPRESSÃO) sai tudo.
+    /// </param>
+    /// <param name="aoParar">A impressora parou no meio: recebe até que ficha já saiu (para gravar no pedido).</param>
+    public ResultadoImpressao Fichas(IReadOnlyList<Ficha> fichas, int jaSairam = 0, Action<int>? aoParar = null)
     {
         if (fichas.Count == 0) return new ResultadoImpressao(true, "Nada para imprimir.");
         var config = _config();
-        lock (_trava)
+        var primeira = fichas[0];
+        var pular = primeira.Reimpressao ? 0 : jaSairam;
+        var faltam = fichas.Where(f => f.Sequencia > pular).ToList();
+        if (faltam.Count == 0) return new ResultadoImpressao(true, "As fichas deste pedido já tinham saído.");
+        return Executar(config, () =>
         {
-            var primeira = fichas[0];
-            var pedido = (primeira.Caixa, primeira.NumeroPedido);
-            // Reimpressão sai inteira (vem marcada REIMPRESSÃO); a primeira impressão pula as que já saíram
-            var pular = primeira.Reimpressao ? 0 : _jaSairam.GetValueOrDefault(pedido);
-            var faltam = fichas.Where(f => f.Sequencia > pular).ToList();
-            if (faltam.Count == 0)
-            {
-                _jaSairam.Remove(pedido);
-                return new ResultadoImpressao(true, "As fichas deste pedido já tinham saído.");
-            }
-            var resultado = Executar(config, () =>
-            {
-                var logo = Logo(config);
-                return faltam.Select(f => RenderizadorFicha.Renderizar(f, config, logo));
-            }, faltam.Count == 1 ? "1 ficha impressa" : $"{faltam.Count} fichas impressas", enviadas =>
-            {
-                if (primeira.Reimpressao) return null;
-                var ate = enviadas > 0 ? faltam[enviadas - 1].Sequencia : pular;
-                if (ate == 0) return null;
-                _jaSairam[pedido] = ate;
-                return $"A impressora parou no meio: saíram as fichas 1 a {ate} de {primeira.TotalFichas}. Entregue essas " +
-                       "ao cliente (as que ficaram dentro da impressora saem quando trocar o papel). Ao tentar de novo, " +
-                       "só saem as que faltam.";
-            });
-            if (resultado.Ok) _jaSairam.Remove(pedido);
-            return resultado;
-        }
+            var logo = Logo(config);
+            return faltam.Select(f => RenderizadorFicha.Renderizar(f, config, logo));
+        }, faltam.Count == 1 ? "1 ficha impressa" : $"{faltam.Count} fichas impressas", enviadas =>
+        {
+            if (primeira.Reimpressao) return null;
+            var ate = enviadas > 0 ? faltam[enviadas - 1].Sequencia : pular;
+            if (ate == 0) return null;
+            aoParar?.Invoke(ate);
+            return $"A impressora parou no meio: saíram as fichas 1 a {ate} de {primeira.TotalFichas}. Entregue essas " +
+                   "ao cliente (as que ficaram dentro da impressora saem quando trocar o papel). Ao imprimir de novo, " +
+                   "só saem as que faltam.";
+        });
     }
 
     public ResultadoImpressao Documento(Documento documento, string descricao = "Relatório impresso")
