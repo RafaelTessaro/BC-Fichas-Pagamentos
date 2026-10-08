@@ -362,7 +362,7 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     }
 
     /// <summary>
-    /// Grava as abas como estão na lista: cria as novas (as sem nome ficam de fora), exclui as tiradas, troca os
+    /// Grava as abas como estão na lista: exclui as tiradas, cria as novas (as sem nome ficam de fora), troca os
     /// nomes e a ordem.
     /// </summary>
     private bool GravarAbas()
@@ -374,18 +374,33 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
             Principal.MostrarAviso("Escreva o nome de todas as abas.", erro: true);
             return false;
         }
+        var ficam = Abas.Where(a => !a.Nova || a.NomeLimpo.Length > 0).ToList();
+        if (ficam.Count == 0 || ficam.Count > CatalogoServico.MaximoAbas)
+        {
+            AbaSelecionada = AbaBotoes;
+            Principal.MostrarAviso(ficam.Count == 0
+                ? "É preciso ter pelo menos uma aba."
+                : $"No máximo {CatalogoServico.MaximoAbas} abas na tela de venda. Exclua as que sobram.", erro: true);
+            return false;
+        }
         try
         {
-            // Primeiro cria as novas: assim dá para trocar a única aba por outra
-            var ids = new List<long>();
-            foreach (var aba in Abas.Where(a => !a.Nova || a.NomeLimpo.Length > 0).ToList())
+            var novas = ficam.Where(a => a.Nova).ToList();
+            var criadas = new Dictionary<AbaEdicao, long>();
+            void Criar(AbaEdicao aba) => criadas[aba] =
+                Sistema.Catalogo.SalvarAba(new Aba { Nome = aba.Nome, Colunas = aba.Colunas, Linhas = aba.Linhas }).Id;
+
+            // Primeiro exclui, para as novas não passarem do máximo de abas. Trocando todas as abas por outras (ex.: a
+            // única aba), a última só sai depois de criar uma nova: nunca fica sem nenhuma aba.
+            var ultima = ficam.Any(a => !a.Nova) ? null : _abasExcluidas.LastOrDefault();
+            foreach (var excluida in _abasExcluidas.Where(a => a != ultima)) Sistema.Catalogo.ExcluirAba(excluida.Aba!.Id);
+            if (ultima is not null)
             {
-                if (aba.Nova)
-                    ids.Add(Sistema.Catalogo.SalvarAba(new Aba { Nome = aba.Nome, Colunas = aba.Colunas, Linhas = aba.Linhas }).Id);
-                else
-                    ids.Add(aba.Aba!.Id);
+                Criar(novas[0]);
+                Sistema.Catalogo.ExcluirAba(ultima.Aba!.Id);
             }
-            foreach (var excluida in _abasExcluidas) Sistema.Catalogo.ExcluirAba(excluida.Aba!.Id);
+            foreach (var nova in novas.Where(a => !criadas.ContainsKey(a))) Criar(nova);
+            var ids = ficam.Select(a => a.Nova ? criadas[a] : a.Aba!.Id).ToList();
             foreach (var aba in Abas.Where(a => !a.Nova && a.Mudou))
             {
                 aba.Aba!.Nome = aba.Nome;
@@ -944,9 +959,20 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
     [RelayCommand]
     private void RemoverLogo() => Logo = null;
 
-    /// <summary>Linha nova e vazia para escrever o nome (a tela põe o cursor nela). Gravada ao tocar em Salvar.</summary>
+    /// <summary>
+    /// Linha nova e vazia para escrever o nome (a tela põe o cursor nela). Gravada ao tocar em Salvar. No máximo
+    /// <see cref="CatalogoServico.MaximoAbas"/> abas.
+    /// </summary>
     [RelayCommand]
-    private void NovaAba() => Abas.Add(Linha(null));
+    private void NovaAba()
+    {
+        if (Abas.Count >= CatalogoServico.MaximoAbas)
+        {
+            Principal.MostrarAviso($"No máximo {CatalogoServico.MaximoAbas} abas na tela de venda.", erro: true);
+            return;
+        }
+        Abas.Add(Linha(null));
+    }
 
     [RelayCommand]
     private async Task ExcluirAba(AbaEdicao aba)

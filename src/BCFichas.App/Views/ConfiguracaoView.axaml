@@ -473,7 +473,7 @@
                     <StackPanel Grid.Column="1">
                       <TextBlock Classes="titulo-bloco" Text="Abas da tela de venda" />
                       <TextBlock Classes="texto-bloco"
-                                 Text="Cada aba tem a sua grade de botões: toque nela para escolher. Com uma aba só, a barra de abas fica escondida." />
+                                 Text="Cada aba tem a sua grade de botões: toque nela para escolher. Até 4 abas. Com uma aba só, a barra de abas fica escondida." />
                     </StackPanel>
                     <Button Grid.Column="2" Classes="suave branco" Command="{Binding NovaAbaCommand}" VerticalAlignment="Center"
                             Height="44" Padding="12,0" Margin="8,0,0,0">

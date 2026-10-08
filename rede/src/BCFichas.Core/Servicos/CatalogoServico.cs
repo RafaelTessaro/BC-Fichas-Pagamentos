@@ -30,6 +30,9 @@ public sealed class CatalogoServico
     public const int MaximoColunas = 6;
     public const int MaximoLinhas = 8;
 
+    /// <summary>A tela de venda mostra no máximo 4 abas, em botões grandes na barra lateral.</summary>
+    public const int MaximoAbas = 4;
+
     public Aba SalvarAba(Aba aba)
     {
         aba.Nome = (aba.Nome ?? "").Trim().ToUpperInvariant();
@@ -48,6 +51,8 @@ public sealed class CatalogoServico
 
         if (aba.Id == 0)
         {
+            if (_banco.Escalar<long>("SELECT COUNT(*) FROM abas") >= MaximoAbas)
+                throw new ErroDeNegocio($"No máximo {MaximoAbas} abas. Exclua uma antes de criar outra.");
             aba.Ordem = (int)(_banco.Escalar<long?>("SELECT MAX(ordem) FROM abas") ?? 0) + 1;
             aba.Id = _banco.Escalar<long>(
                 "INSERT INTO abas (nome, ordem, colunas, linhas) VALUES ($n, $o, $c, $l) RETURNING id",

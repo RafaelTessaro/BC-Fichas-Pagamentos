@@ -51,23 +51,55 @@ public class TelasDaVersao39Tests
         var salgados = tela.Abas.Last();
         Assert.Equal("", salgados.Nome);
         salgados.Nome = "Salgados";
+        // No máximo 4 abas: a 5ª nem aparece
         tela.NovaAbaCommand.Execute(null);
-        tela.Abas.Last().Nome = "Porções";
-        tela.NovaAbaCommand.Execute(null); // ficou sem nome: não é criada
+        Assert.Equal(4, tela.Abas.Count);
+        Assert.Equal("No máximo 4 abas na tela de venda.", t.Principal.Aviso);
         TelaDeTeste.Atualizar();
         Assert.Equal("Salgados", salgados.Nome); // o nome digitado continua lá
         Assert.True(tela.TemAlteracoes);
         t.Foto("50-config-abas-novas");
 
         // Trocar a ordem e excluir também só valem ao salvar
-        tela.SubirAbaCommand.Execute(tela.Abas.Single(a => a.Nome == "Porções"));
+        tela.SubirAbaCommand.Execute(salgados);
         Assert.Equal(["COMIDAS", "BEBIDAS", "DOCES"], t.Sistema.Catalogo.Abas().Select(a => a.Nome));
 
         tela.SalvarCommand.Execute(null);
         Assert.Equal("Configurações salvas.", t.Principal.Aviso);
-        Assert.Equal(["COMIDAS", "BEBIDAS", "DOCES", "PORÇÕES", "SALGADOS"], t.Sistema.Catalogo.Abas().Select(a => a.Nome));
+        Assert.Equal(["COMIDAS", "BEBIDAS", "SALGADOS", "DOCES"], t.Sistema.Catalogo.Abas().Select(a => a.Nome));
         Assert.False(tela.TemAlteracoes);
-        Assert.Equal(5, tela.Abas.Count);
+        Assert.Equal(4, tela.Abas.Count);
+    }
+
+    [AvaloniaFact]
+    public async Task No_maximo_quatro_abas_e_da_para_trocar_uma_por_outra()
+    {
+        using var t = new TelaDeTeste();
+        // O catálogo também não deixa passar de 4 (backup, outra tela)
+        t.Sistema.Catalogo.SalvarAba(new BCFichas.Core.Aba { Nome = "Vazia" });
+        var erro = Assert.Throws<BCFichas.Core.ErroDeNegocio>(() => t.Sistema.Catalogo.SalvarAba(new BCFichas.Core.Aba { Nome = "Quinta" }));
+        Assert.Equal("No máximo 4 abas. Exclua uma antes de criar outra.", erro.Message);
+
+        // Com 4 abas: tirar uma e pôr outra no mesmo Salvar
+        var tela = AbrirConfiguracao(t, AbaBotoes);
+        var excluir = tela.ExcluirAbaCommand.ExecuteAsync(tela.Abas.Single(a => a.Nome == "VAZIA"));
+        await TelaDeTeste.Esperar(() => t.Principal.Dialogo is MensagemViewModel);
+        ((MensagemViewModel)t.Principal.Dialogo!).SimCommand.Execute(null);
+        await excluir;
+        tela.NovaAbaCommand.Execute(null);
+        tela.Abas.Last().Nome = "Porções";
+        tela.SalvarCommand.Execute(null);
+        Assert.Equal("Configurações salvas.", t.Principal.Aviso);
+        Assert.Equal(["COMIDAS", "BEBIDAS", "DOCES", "PORÇÕES"], t.Sistema.Catalogo.Abas().Select(a => a.Nome));
+
+        // Uma linha nova deixada sem nome não é criada
+        excluir = tela.ExcluirAbaCommand.ExecuteAsync(tela.Abas.Single(a => a.Nome == "PORÇÕES"));
+        await TelaDeTeste.Esperar(() => t.Principal.Dialogo is MensagemViewModel);
+        ((MensagemViewModel)t.Principal.Dialogo!).SimCommand.Execute(null);
+        await excluir;
+        tela.NovaAbaCommand.Execute(null);
+        tela.SalvarCommand.Execute(null);
+        Assert.Equal(["COMIDAS", "BEBIDAS", "DOCES"], t.Sistema.Catalogo.Abas().Select(a => a.Nome));
     }
 
     [AvaloniaFact]
@@ -162,16 +194,15 @@ public class TelasDaVersao39Tests
     }
 
     [AvaloniaFact]
-    public void Abas_ficam_na_barra_lateral_e_cabem_seis()
+    public void Abas_ficam_na_barra_lateral_e_cabem_as_quatro()
     {
         using var t = new TelaDeTeste();
-        foreach (var nome in new[] { "Salgados", "Porções", "Sobremesas" })
-            t.Sistema.Catalogo.SalvarAba(new BCFichas.Core.Aba { Nome = nome });
+        t.Sistema.Catalogo.SalvarAba(new BCFichas.Core.Aba { Nome = "Salgados" });
         t.AbrirCaixa();
         TelaDeTeste.Atualizar();
         var abas = t.Janela.GetVisualDescendants().OfType<Avalonia.Controls.Button>()
             .Where(b => b.Classes.Contains("aba-lateral") && b.IsEffectivelyVisible).ToList();
-        Assert.Equal(6, abas.Count);
+        Assert.Equal(4, abas.Count);
         t.Venda.SelecionarAbaCommand.Execute(t.Venda.Abas[1]);
         TelaDeTeste.Atualizar();
         t.Foto("52-venda-abas-na-lateral");
