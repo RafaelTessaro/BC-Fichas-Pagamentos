@@ -38,9 +38,11 @@ public class AuditoriaDasTelasTests
     private static Button Botao(TelaDeTeste t, string texto) =>
         t.Janela.GetVisualDescendants().OfType<Button>().First(b => b.IsEffectivelyVisible && TemTexto(b, texto));
 
+    /// <summary>O botão do comando (no pedido, o − ou o + pequeno, não a linha inteira, que também tira 1).</summary>
     private static Button BotaoDoComando(TelaDeTeste t, System.Windows.Input.ICommand comando, object? parametro = null) =>
         t.Janela.GetVisualDescendants().OfType<Button>()
-            .First(b => b.IsEffectivelyVisible && b.Command == comando && (parametro is null || Equals(b.CommandParameter, parametro)));
+            .First(b => b.IsEffectivelyVisible && b.Command == comando && !b.Classes.Contains("linha-pedido") &&
+                        (parametro is null || Equals(b.CommandParameter, parametro)));
 
     // ---------- Toque duplo: o segundo toque não pode cair na tela que acabou de abrir ----------
 

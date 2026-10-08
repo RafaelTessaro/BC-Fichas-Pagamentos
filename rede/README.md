@@ -1,6 +1,6 @@
 # BC Fichas Rede
 
-O mesmo BC Fichas (versão 3.11.5) com uma novidade: o **painel no celular**. O dono do evento conecta o celular no
+O mesmo BC Fichas (versão 3.11.6) com uma novidade: o **painel no celular**. O dono do evento conecta o celular no
 Wi-Fi do roteador das máquinas e vê, com um toque em **Atualizar**, as vendas de todas as máquinas juntas: total vendido, formas de
 pagamento, cada máquina, os produtos mais vendidos e as vendas por hora.
 

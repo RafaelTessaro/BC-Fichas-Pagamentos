@@ -1,6 +1,6 @@
 # BC Fichas Cartão
 
-O mesmo BC Fichas (versão 3.11.5) com a **maquininha de cartão ligada ao caixa**: a **Moderninha Smart 2 do
+O mesmo BC Fichas (versão 3.11.6) com a **maquininha de cartão ligada ao caixa**: a **Moderninha Smart 2 do
 PagBank**, por **Bluetooth**. O operador toca em Débito, Crédito ou PIX e o valor vai sozinho para a maquininha. O
 cliente paga nela (cartão ou QR Code do PIX na tela dela) e, quando ela aprova, as fichas saem na impressora do caixa.
 Ninguém digita valor na maquininha e ninguém toca em "aprovado".

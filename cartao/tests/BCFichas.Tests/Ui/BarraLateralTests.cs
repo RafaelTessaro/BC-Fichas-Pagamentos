@@ -235,4 +235,25 @@ public class BarraLateralTests(ITestOutputHelper saida)
         ConferirAbas(t, "x-1280x800-2-abas", 2);
         t.Foto("barra-x-1280x800-2-abas");
     }
+
+    /// <summary>
+    /// Nenhum texto da barra é recortado na própria caixa: as alturas de linha da barra são justas e a letra
+    /// do Windows é mais alta que a destes testes; com o recorte, no tablet a perna do "g" de Sangria saía cortada.
+    /// </summary>
+    [AvaloniaFact]
+    public void Nenhum_texto_da_barra_e_recortado()
+    {
+        using var t = new TelaDeTeste(1024, 600);
+        CriarQuartaAba(t);
+        t.AbrirCaixa();
+        t.Principal.Operador = Operador;
+        TelaDeTeste.Atualizar();
+        var barra = t.Janela.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("barra-esquerda"));
+        var textos = barra.GetVisualDescendants().OfType<TextBlock>().ToList();
+        Assert.Contains(textos, x => x.Text == "Sangria");
+        Assert.Contains(textos, x => x.Text == QuartaAba);
+        Assert.Contains(textos, x => x.Text == Operador);
+        Assert.Contains(textos, x => x.Text == "MODO TESTE"); // escondido, mas também solto
+        Assert.All(textos, x => Assert.False(x.ClipToBounds, $"\"{x.Text}\" é recortado na própria caixa"));
+    }
 }

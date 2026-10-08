@@ -296,8 +296,12 @@
             <ItemsControl ItemsSource="{Binding Linhas}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:LinhaItem">
-                  <!-- Nome em cima (pode ocupar duas linhas) e o valor sempre visível à direita -->
-                  <Border BorderBrush="{StaticResource Borda}" BorderThickness="0,0,0,1" Padding="6,8">
+                  <!-- Nome em cima (pode ocupar duas linhas) e o valor sempre visível à direita. A linha inteira é um
+                       botão: tocar no item tira 1, igual ao − (com 1, o item sai do pedido); é um alvo grande, para
+                       quem tem dificuldade de acertar o − pequeno. O − e o + continuam por cima, cada um no seu. -->
+                  <Button Classes="linha-pedido"
+                          Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).MenosCommand}"
+                          CommandParameter="{Binding}">
                     <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
                       <TextBlock Text="{Binding Nome}" FontWeight="Bold" FontSize="16" TextWrapping="Wrap" MaxLines="2"
                                  TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -319,7 +323,7 @@
                         </Button>
                       </StackPanel>
                     </Grid>
-                  </Border>
+                  </Button>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -362,6 +366,13 @@
     <Style Selector="Border.barra-esquerda">
       <Setter Property="Background" Value="{StaticResource FundoLateral}" />
       <Setter Property="Width" Value="136" />
+    </Style>
+    <!-- Nenhum texto da barra é recortado na própria caixa. As alturas de linha da conta acima são justas, e a
+         letra do Windows é mais alta que a dos testes: com o recorte, a perna do "g" de Sangria saía cortada no
+         tablet (e sairia a de um "g" ou "ç" no nome de uma aba). Sem ele, a letra passa 1 ou 2 pontos da caixa,
+         por cima da folga do botão, e nada muda de tamanho nem de lugar. -->
+    <Style Selector="Border.barra-esquerda TextBlock">
+      <Setter Property="ClipToBounds" Value="False" />
     </Style>
     <Style Selector="Grid.miolo-barra">
       <Setter Property="Margin" Value="12,12,12,8" />
@@ -726,6 +737,29 @@
     <Style Selector=".alta StackPanel.rodape > TextBlock.versao">
       <Setter Property="FontSize" Value="11" />
       <Setter Property="LineHeight" Value="13" />
+    </Style>
+
+    <!-- Linha do pedido (um botão): parece a linha de sempre, só com o fio embaixo. Ao tocar, fica vermelho-clara
+         (vai tirar 1). Sem cor ao passar o dedo/mouse: no tablet ela ficaria acesa depois do toque. -->
+    <Style Selector="Button.linha-pedido">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{StaticResource Borda}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Padding" Value="6,8" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.linha-pedido:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{StaticResource Borda}" />
+    </Style>
+    <Style Selector="Button.linha-pedido:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource PerigoClara}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Borda}" />
     </Style>
 
     <Style Selector="Border.troco">
