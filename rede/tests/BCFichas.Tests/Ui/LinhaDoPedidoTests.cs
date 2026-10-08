@@ -1,17 +1,21 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
+using Avalonia.Input.GestureRecognizers;
 using Avalonia.VisualTree;
 using BCFichas.App.ViewModels;
+using BCFichas.App.Views;
 using Xunit;
 
 namespace BCFichas.Tests.Ui;
 
 /// <summary>
 /// Tocar em cima de um item do pedido tira 1, igual ao − (com 1, o item sai do pedido). O − e o +
-/// continuam valendo cada um no seu (o toque neles não tira mais 1 pela linha). Toques de verdade, como o dedo.
+/// continuam valendo cada um no seu, e logo em volta deles (errou por pouco) o toque não faz nada. Toques de
+/// verdade, como o dedo.
 /// </summary>
 public class LinhaDoPedidoTests
 {
@@ -24,6 +28,9 @@ public class LinhaDoPedidoTests
 
     private static Point Centro(TelaDeTeste t, Control alvo) =>
         alvo.TranslatePoint(new Point(alvo.Bounds.Width / 2, alvo.Bounds.Height / 2), t.Janela)!.Value;
+
+    private static Rect Retangulo(TelaDeTeste t, Control alvo) =>
+        new(alvo.TranslatePoint(new Point(0, 0), t.Janela)!.Value, alvo.Bounds.Size);
 
     private static Button Linha(TelaDeTeste t, string produto) =>
         t.Janela.GetVisualDescendants().OfType<Button>().First(b =>
@@ -98,10 +105,48 @@ public class LinhaDoPedidoTests
         Assert.Equal(3, Quantidade(t, "PASTEL"));
         Assert.Equal("R$ 30,00", t.Venda.Total);
 
-        // No número da quantidade (entre o − e o +) é a linha: tira 1
+        // No número da quantidade e logo em volta do − e do + (errou por pouco) não faz nada: errar o + não pode
+        // tirar 1 pela linha
         await Task.Delay(400);
-        TocarEm(t, Centro(t, Texto(Linha(t, "PASTEL"), "3")));
+        var linha = Linha(t, "PASTEL");
+        var menos = Retangulo(t, Botao(linha, t.Venda.MenosCommand));
+        var maisR = Retangulo(t, Botao(linha, t.Venda.MaisCommand));
+        Point[] pertinho =
+        [
+            Centro(t, Texto(linha, "3")),
+            new(maisR.Right + 3, maisR.Center.Y), // à direita do +
+            new(maisR.Center.X, maisR.Bottom + 5), // embaixo do +
+            new(maisR.Center.X, maisR.Y - 6), // em cima do +
+            new(menos.X - 5, menos.Center.Y), // à esquerda do −
+            new(menos.Center.X, menos.Bottom + 5), // embaixo do −
+        ];
+        foreach (var ponto in pertinho)
+        {
+            TocarEm(t, ponto);
+            Assert.Equal(3, Quantidade(t, "PASTEL"));
+            Assert.False(linha.IsPressed);
+        }
+
+        // Já no nome, no preço ou no valor da linha, tira 1
+        TocarEm(t, Centro(t, Texto(linha, "R$ 30,00")));
         Assert.Equal(2, Quantidade(t, "PASTEL"));
+    }
+
+    /// <summary>
+    /// A lista do pedido não segue rolando sozinha (um toque para frear cairia numa linha e tiraria 1) e aguenta um
+    /// toque um pouco tremido sem virar rolagem (16 em vez dos 5 do Windows).
+    /// </summary>
+    [AvaloniaFact]
+    public void A_lista_do_pedido_nao_embala_e_aguenta_um_toque_tremido()
+    {
+        using var t = new TelaDeTeste(1024, 600);
+        t.AbrirCaixa();
+        t.Tocar("PASTEL");
+        var lista = t.Janela.GetVisualDescendants().OfType<ScrollViewer>().First(s => s.Name == "ListaPedido");
+        Assert.False(lista.IsScrollInertiaEnabled);
+        var miolo = lista.GetVisualDescendants().OfType<ScrollContentPresenter>().First();
+        var rolagem = Assert.Single(miolo.GestureRecognizers.OfType<ScrollGestureRecognizer>());
+        Assert.Equal(VendaView.FolgaDoToqueNoPedido, rolagem.ScrollStartDistance);
     }
 
     [AvaloniaFact]

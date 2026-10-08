@@ -237,8 +237,9 @@ public class BarraLateralTests(ITestOutputHelper saida)
     }
 
     /// <summary>
-    /// Nenhum texto da barra é recortado na própria caixa: as alturas de linha da barra são justas e a letra
-    /// do Windows é mais alta que a destes testes; com o recorte, no tablet a perna do "g" de Sangria saía cortada.
+    /// Nenhum texto da barra é recortado na própria caixa: as alturas de linha da barra são justas (16 para a letra
+    /// 14, que pede uns 17) e, com o recorte, a última fileira de pontos da perna do "g" de Sangria ficava de fora
+    /// (no tablet e nestas fotos, que saem iguais).
     /// </summary>
     [AvaloniaFact]
     public void Nenhum_texto_da_barra_e_recortado()

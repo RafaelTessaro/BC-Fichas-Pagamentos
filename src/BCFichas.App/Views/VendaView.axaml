@@ -292,7 +292,9 @@
                        TextWrapping="Wrap" FontSize="16" />
           </StackPanel>
 
-          <ScrollViewer Grid.Row="2" IsVisible="{Binding !Vazio}" Padding="10,0">
+          <!-- Sem embalo: a lista para quando o dedo sai, e um toque para "frear" não cai numa linha (que tiraria 1) -->
+          <ScrollViewer Grid.Row="2" x:Name="ListaPedido" IsVisible="{Binding !Vazio}" Padding="10,0"
+                        IsScrollInertiaEnabled="False">
             <ItemsControl ItemsSource="{Binding Linhas}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:LinhaItem">
@@ -308,20 +310,25 @@
                       <TextBlock Grid.Column="1" Text="{Binding Total}" FontWeight="ExtraBold" FontSize="17"
                                  TextAlignment="Right" VerticalAlignment="Top" />
                       <TextBlock Grid.Row="1" Text="{Binding Unitario}" Classes="suave" FontSize="13" VerticalAlignment="Center" />
-                      <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,4,0,0">
-                        <Button Classes="suave" Width="40" Height="40" MinHeight="40" Padding="0" CornerRadius="999"
-                                Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).MenosCommand}"
-                                CommandParameter="{Binding}">
-                          <PathIcon Data="{StaticResource IconeMenos}" Width="18" Height="18" />
-                        </Button>
-                        <TextBlock Text="{Binding Quantidade}" FontSize="19" FontWeight="Bold" MinWidth="38"
-                                   TextAlignment="Center" VerticalAlignment="Center" />
-                        <Button Classes="suave" Width="40" Height="40" MinHeight="40" Padding="0" CornerRadius="999"
-                                Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).MaisCommand}"
-                                CommandParameter="{Binding}">
-                          <PathIcon Data="{StaticResource IconeMais}" Width="18" Height="18" />
-                        </Button>
-                      </StackPanel>
+                      <!-- Em volta do −, do número e do + (8 a mais de cada lado) o toque não faz nada: errar o + por
+                           pouco não pode tirar 1 pela linha. Não muda o tamanho nem o lugar de nada. -->
+                      <Border Grid.Row="1" Grid.Column="1" Classes="zona-quantidade" Background="Transparent"
+                              Padding="8,8,6,8" Margin="-8,-4,-6,-8" PointerPressed="AoTocarPertoDaQuantidade">
+                        <StackPanel Orientation="Horizontal">
+                          <Button Classes="suave" Width="40" Height="40" MinHeight="40" Padding="0" CornerRadius="999"
+                                  Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).MenosCommand}"
+                                  CommandParameter="{Binding}">
+                            <PathIcon Data="{StaticResource IconeMenos}" Width="18" Height="18" />
+                          </Button>
+                          <TextBlock Text="{Binding Quantidade}" FontSize="19" FontWeight="Bold" MinWidth="38"
+                                     TextAlignment="Center" VerticalAlignment="Center" />
+                          <Button Classes="suave" Width="40" Height="40" MinHeight="40" Padding="0" CornerRadius="999"
+                                  Command="{Binding $parent[UserControl].((vm:VendaViewModel)DataContext).MaisCommand}"
+                                  CommandParameter="{Binding}">
+                            <PathIcon Data="{StaticResource IconeMais}" Width="18" Height="18" />
+                          </Button>
+                        </StackPanel>
+                      </Border>
                     </Grid>
                   </Button>
                 </DataTemplate>
@@ -367,10 +374,10 @@
       <Setter Property="Background" Value="{StaticResource FundoLateral}" />
       <Setter Property="Width" Value="136" />
     </Style>
-    <!-- Nenhum texto da barra é recortado na própria caixa. As alturas de linha da conta acima são justas, e a
-         letra do Windows é mais alta que a dos testes: com o recorte, a perna do "g" de Sangria saía cortada no
-         tablet (e sairia a de um "g" ou "ç" no nome de uma aba). Sem ele, a letra passa 1 ou 2 pontos da caixa,
-         por cima da folga do botão, e nada muda de tamanho nem de lugar. -->
+    <!-- Nenhum texto da barra é recortado na própria caixa. As alturas de linha da conta acima são justas (16 para a
+         letra 14, que pede uns 17): com o recorte, a última fileira de pontos da perna do "g" de Sangria ficava de
+         fora (e ficaria a de um "g" ou "ç" no nome de uma aba). Sem ele, a letra passa até 1 ponto da caixa, por
+         cima da folga do botão, e nada muda de tamanho nem de lugar. -->
     <Style Selector="Border.barra-esquerda TextBlock">
       <Setter Property="ClipToBounds" Value="False" />
     </Style>
