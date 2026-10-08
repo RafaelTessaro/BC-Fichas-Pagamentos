@@ -32,7 +32,7 @@ public partial class App : Application
             };
             Erros = ErrosNaTela.Instalar(principal);
             IntegracaoWindows.Aplicar(Sistema.Config.Atual);
-            PainelDaRede.Iniciar(Sistema);
+            PainelDaRede.Iniciar(Sistema, () => principal.Liberacao.Liberada);
             desktop.MainWindow = new JanelaPrincipal { DataContext = principal };
             desktop.ShutdownMode = ShutdownMode.OnMainWindowClose;
             principal.Iniciar();

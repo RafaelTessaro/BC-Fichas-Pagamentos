@@ -51,8 +51,9 @@ public sealed partial class DevolucaoViewModel(PrincipalViewModel principal) : P
             {
                 var config = Principal.Config;
                 var noCaixa = _esperado;
+                var teste = sessao.Teste;
                 await Principal.ImprimirAsync(() =>
-                    Sistema.Impressao.Documento(Relatorios.Movimento(devolucao, config, noCaixa), "Comprovante impresso"));
+                    Sistema.Impressao.Documento(Relatorios.Movimento(devolucao, config, noCaixa, teste), "Comprovante impresso"));
             }
         }
         catch (ErroDeNegocio e)

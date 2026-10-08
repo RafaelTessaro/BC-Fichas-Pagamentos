@@ -201,6 +201,9 @@ public sealed class Leitor : IDisposable
     /// Identidade deste tablet com este banco: um número guardado na pasta de dados (painel-maquina.id) junto com
     /// o nome do computador (a pasta copiada para outro tablet não vira a mesma máquina). Sem poder gravar na pasta,
     /// vale só enquanto o programa está aberto.
+    /// O número fica amarrado à placa de rede em que foi criado: num tablet clonado de outro (a mesma imagem do
+    /// disco, com o mesmo nome de computador e o mesmo arquivo) a placa é outra, então ele cria um número novo e
+    /// o painel não junta os dois como se fossem um só.
     /// </summary>
     private static string IdentidadeDaMaquina(string pastaDados, string instancia)
     {
@@ -208,20 +211,48 @@ public sealed class Leitor : IDisposable
         try
         {
             var arquivo = Path.Combine(pastaDados, "painel-maquina.id");
-            var guardado = File.Exists(arquivo) ? File.ReadAllText(arquivo).Trim() : "";
-            if (guardado.Length is < 16 or > 64 || !guardado.All(char.IsAsciiHexDigit))
+            var guardado = File.Exists(arquivo) ? File.ReadAllText(arquivo).Trim().Split('|') : [];
+            var id = guardado.Length > 0 ? guardado[0] : "";
+            var placa = guardado.Length > 1 ? guardado[1] : "";
+            var placas = PlacasDeRede();
+            var valido = id.Length is >= 16 and <= 64 && id.All(char.IsAsciiHexDigit);
+            // Placa guardada que não existe aqui: é a cópia do disco de outro tablet (ou um arquivo de versão antiga)
+            var outraMaquina = placas.Count > 0 && !placas.Contains(placa);
+            if (!valido || outraMaquina)
             {
-                guardado = Guid.NewGuid().ToString("N");
+                id = Guid.NewGuid().ToString("N");
+                placa = placas.Count > 0 ? placas[0] : "";
                 Directory.CreateDirectory(pastaDados);
-                File.WriteAllText(arquivo, guardado);
+                File.WriteAllText(arquivo, id + "|" + placa);
             }
-            numero = guardado;
+            numero = id;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
             // Pasta só de leitura: fica a identidade desta abertura do programa
         }
         return Servidor.Resumo(Environment.MachineName + "/" + numero);
+    }
+
+    /// <summary>Endereços físicos (MAC) das placas de rede de verdade deste tablet, em ordem.</summary>
+    private static List<string> PlacasDeRede()
+    {
+        try
+        {
+            return System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.NetworkInterfaceType is System.Net.NetworkInformation.NetworkInterfaceType.Ethernet
+                    or System.Net.NetworkInformation.NetworkInterfaceType.Wireless80211
+                    or System.Net.NetworkInformation.NetworkInterfaceType.GigabitEthernet)
+                .Select(n => n.GetPhysicalAddress().ToString())
+                .Where(m => m.Length >= 12 && m.Any(c => c != '0'))
+                .Distinct()
+                .Order(StringComparer.Ordinal)
+                .ToList();
+        }
+        catch (Exception)
+        {
+            return [];
+        }
     }
 
     internal static string Chave(FormaPagamento forma) => forma switch

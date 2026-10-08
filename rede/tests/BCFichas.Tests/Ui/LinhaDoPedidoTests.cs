@@ -176,4 +176,44 @@ public class LinhaDoPedidoTests
         Assert.False(linha.IsPressed);
         Assert.Equal(0, Quantidade(t, "ESPETINHO"));
     }
+
+    /// <summary>
+    /// O troco da venda anterior some depois de 5 s: com itens no pedido, as linhas não podem subir (um toque bem
+    /// nessa hora tiraria o item de baixo). Com o pedido vazio, o lugar do troco some de vez.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Troco_sumindo_nao_mexe_nas_linhas_do_pedido()
+    {
+        using var t = new TelaDeTeste(1024, 600);
+        t.AbrirCaixa();
+        t.Tocar("PASTEL");
+        t.Venda.PagarCommand.Execute(null);
+        var pagamento = Assert.IsType<PagamentoViewModel>(t.Principal.Dialogo);
+        pagamento.EscolherDinheiroCommand.Execute(null);
+        pagamento.Recebido.SomarCommand.Execute("2000");
+        await pagamento.ConfirmarDinheiroCommand.ExecuteAsync(null);
+        pagamento.FecharCommand.Execute(null);
+        Assert.True(t.Venda.MostrarTroco);
+
+        t.Tocar("PASTEL");
+        t.Tocar("ESPETINHO");
+        t.Tocar("CALDO");
+        var pastel = Linha(t, "PASTEL");
+        var mira = Centro(t, Texto(pastel, "PASTEL"));
+        var antes = pastel.TranslatePoint(new Point(0, 0), t.Janela)!.Value.Y;
+
+        // Os 5 s acabam enquanto o dedo vai até o PASTEL (o mesmo que o tique do relógio do troco faz)
+        t.Venda.EsconderTroco();
+        TelaDeTeste.Atualizar();
+        Assert.False(t.Venda.MostrarTroco);
+        Assert.Equal(antes, Linha(t, "PASTEL").TranslatePoint(new Point(0, 0), t.Janela)!.Value.Y);
+        TocarEm(t, mira);
+        Assert.Equal(0, Quantidade(t, "PASTEL"));
+        Assert.Equal(1, Quantidade(t, "ESPETINHO"));
+
+        // Pedido vazio: o lugar do troco some (as linhas da próxima venda começam lá em cima)
+        t.Venda.LimparPedido();
+        TelaDeTeste.Atualizar();
+        Assert.False(t.Venda.LugarDoTroco);
+    }
 }

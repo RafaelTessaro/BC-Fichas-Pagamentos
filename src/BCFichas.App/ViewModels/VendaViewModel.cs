@@ -157,6 +157,12 @@ public sealed partial class VendaViewModel : ViewModelBase
     [ObservableProperty] private string _ultimoTroco = "";
     [ObservableProperty] private string _ultimoRecebido = "";
 
+    /// <summary>
+    /// O lugar do troco. Com itens no pedido, o troco some só na cor e o lugar fica: senão as linhas subiriam bem na
+    /// hora de um toque, e o toque (que tira 1) cairia no item de baixo. O lugar some quando o pedido esvazia.
+    /// </summary>
+    [ObservableProperty] private bool _lugarDoTroco;
+
     /// <summary>Depois de uma venda em dinheiro com troco: mostra quanto devolver ao cliente.</summary>
     public void MostrarUltimoTroco(long troco, long recebido)
     {
@@ -164,6 +170,7 @@ public sealed partial class VendaViewModel : ViewModelBase
         UltimoTroco = Dinheiro.Formatar(troco);
         UltimoRecebido = $"Recebido {Dinheiro.Formatar(recebido)}";
         MostrarTroco = true;
+        LugarDoTroco = true;
         _timerTroco.Stop();
         _timerTroco.Start();
     }
@@ -172,6 +179,12 @@ public sealed partial class VendaViewModel : ViewModelBase
     {
         _timerTroco.Stop();
         MostrarTroco = false;
+        if (Vazio) LugarDoTroco = false;
+    }
+
+    partial void OnVazioChanged(bool value)
+    {
+        if (value && !MostrarTroco) LugarDoTroco = false;
     }
 
     internal Carrinho Carrinho => _carrinho;

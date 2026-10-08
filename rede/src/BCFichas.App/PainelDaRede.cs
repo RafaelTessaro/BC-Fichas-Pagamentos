@@ -19,6 +19,7 @@ internal static class PainelDaRede
 
     private static readonly object Trava = new();
     private static Func<Configuracao>? _config;
+    private static Func<bool> _liberado = () => true;
     private static string _pastaDados = "";
     private static Process? _processo;
     private static DateTime _esperarAte;
@@ -26,12 +27,16 @@ internal static class PainelDaRede
 
     public static string Exe => Path.Combine(AppContext.BaseDirectory, NomeExe + ".exe");
 
-    /// <summary>Ao abrir o caixa: abre o painel (se ligado) e confere a cada 30 s se ele continua aberto.</summary>
-    public static void Iniciar(Sistema sistema)
+    /// <summary>
+    /// Ao abrir o caixa: abre o painel (se ligado) e confere a cada 30 s se ele continua aberto. Num tablet não
+    /// liberado (programa copiado) o painel não abre; liberado com a senha técnica, abre na próxima conferida.
+    /// </summary>
+    public static void Iniciar(Sistema sistema, Func<bool> liberado)
     {
         if (!OperatingSystem.IsWindows()) return;
         _pastaDados = sistema.PastaDados;
         _config = () => sistema.Config.Atual;
+        _liberado = liberado;
         Garantir(agora: true);
         _vigia ??= new Timer(_ => Garantir(agora: false), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
     }
@@ -59,6 +64,7 @@ internal static class PainelDaRede
                 }
                 var config = _config();
                 if (!config.PainelAtivo || !Configuracao.PinValido(config.PainelPin) || !File.Exists(Exe)) return;
+                if (!_liberado()) return;
                 if (!agora && DateTime.UtcNow < _esperarAte) return;
 
                 var inicio = new ProcessStartInfo(Exe)

@@ -230,18 +230,33 @@ internal sealed class Layout
         }));
     }
 
-    /// <summary>Três textos na mesma linha: esquerda, centro e direita.</summary>
+    /// <summary>
+    /// Três textos na mesma linha: esquerda, centro e direita. O do meio fica no meio do espaço entre os outros dois
+    /// (centralizado quando os dois têm a mesma largura). Se os três não couberem (pedido de 4 ou 5 números com
+    /// "(10/12)", papel de 58 mm), a letra diminui até caberem, sem um texto passar por cima do outro.
+    /// </summary>
     public void Tres(string esquerda, string centro, string direita, SKTypeface fonte, float tamanho)
     {
-        using var medida = Pincel(fonte, tamanho);
-        var altura = (int)Math.Ceiling(medida.FontMetrics.Descent - medida.FontMetrics.Ascent + 4);
+        const float folga = 8;
+        using (var medida = Pincel(fonte, tamanho))
+        {
+            var textos = medida.MeasureText(esquerda) + medida.MeasureText(centro) + medida.MeasureText(direita);
+            var cabe = LarguraUtil - 2 * folga;
+            if (textos > cabe) tamanho *= cabe / textos;
+        }
+        using var p0 = Pincel(fonte, tamanho);
+        var altura = (int)Math.Ceiling(p0.FontMetrics.Descent - p0.FontMetrics.Ascent + 4);
         _blocos.Add((altura, (canvas, y) =>
         {
             using var p = Pincel(fonte, tamanho);
             var baseline = y + 2 - p.FontMetrics.Ascent;
+            var larguraEsquerda = p.MeasureText(esquerda);
+            var larguraCentro = p.MeasureText(centro);
+            var larguraDireita = p.MeasureText(direita);
+            var sobra = LarguraUtil - larguraEsquerda - larguraCentro - larguraDireita;
             canvas.DrawText(esquerda, Margem, baseline, p);
-            canvas.DrawText(centro, (Largura - p.MeasureText(centro)) / 2, baseline, p);
-            canvas.DrawText(direita, Largura - Margem - p.MeasureText(direita), baseline, p);
+            canvas.DrawText(centro, Margem + larguraEsquerda + sobra / 2, baseline, p);
+            canvas.DrawText(direita, Largura - Margem - larguraDireita, baseline, p);
         }));
     }
 

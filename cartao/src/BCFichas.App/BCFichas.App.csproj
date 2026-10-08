@@ -29,6 +29,10 @@
   <ItemGroup>
     <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="5" />
     <RuntimeHostConfigurationOption Include="System.GC.RetainVM" Value="false" />
+    <!-- Sem o GC concorrente, a área das alocações novas (gen0) cresce até metade do segmento: 8 MB no pacote de
+         32 bits e até 128 MB no de 64. Limitada a 4 MB: o GC passa um pouco mais vezes, cada vez mais rápido, e a
+         memória não incha entre as coletas grandes (no de 64 bits, dezenas de MB a menos no pico). -->
+    <RuntimeHostConfigurationOption Include="System.GC.Gen0MaxBudget" Value="4194304" />
   </ItemGroup>
 
   <ItemGroup>
@@ -39,7 +43,6 @@
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
-    <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
   </ItemGroup>
 

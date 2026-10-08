@@ -152,7 +152,8 @@ no logo da BC Fichas** (na barra lateral ou na tela de abrir o caixa) ou aperte 
 tablet, e digite a senha master.
 
 - Aparece a faixa laranja **MODO TESTE**; as vendas vão para um caixa separado, com numeração própria (começa do 1).
-- As fichas saem marcadas **FICHA DE TESTE • SEM VALOR** e o estoque não é mexido.
+- As fichas saem marcadas **FICHA DE TESTE • SEM VALOR** e o estoque não é mexido. Os comprovantes (sangria,
+  suprimento, devolução, parcial e fechamento) saem com a faixa **TESTE • SEM VALOR** em cima e embaixo.
 - A aba **Máquina** das Configurações abre sem a senha técnica (quem está no modo teste é a BC Fichas).
 - Para sair: **Menu → Sair do modo teste** (ou o botão na faixa laranja, ou **Sair do teste** na barra lateral). Tudo o que foi feito no teste é apagado
   e o programa volta ao caixa normal.
@@ -215,6 +216,22 @@ Antes de apagar ou restaurar, o programa sempre guarda uma **cópia de seguranç
    você tinha posto um atalho em `shell:startup`, pode apagar (não tem problema deixar: o programa não abre duas
    vezes).
 
+4. **Liberar o tablet (uma vez):** na primeira vez o programa mostra "Este tablet não está liberado". Digite a
+   **senha técnica** da BC Fichas e pronto: ele não pede mais naquele tablet. Vale para as três versões
+   (original, Rede e Cartão).
+
+### Liberação do tablet (contra cópia)
+
+O BC Fichas só abre num tablet liberado com a senha técnica. A liberação fica escondida em
+`C:\ProgramData\BCFichas` e vale só para aquela instalação do Windows: **copiar a pasta do programa** (num
+pendrive, por exemplo) para outro computador não leva a liberação, e copiar o arquivo também não adianta.
+
+- **Imagem do disco (clonar um tablet para outros):** libere o tablet principal antes de criar a imagem; as
+  cópias já abrem liberadas. Se a imagem passar pelo `sysprep`, cada tablet pede a senha técnica uma vez.
+- Reinstalou o Windows: é só liberar de novo.
+- Não pesa nada: é a leitura de um arquivo pequeno ao abrir. Sem internet, nenhuma proteção é impossível de
+  quebrar: esta segura quem copia o programa, não um programador decidido.
+
 Dicas para o tablet ficar como um "caixa" de verdade:
 
 - Para o programa abrir sem ninguém tocar, o Windows precisa entrar sozinho: aperte Windows + R, digite
@@ -242,7 +259,9 @@ Windows.
 1. Instale o driver da Elgin i9 no Windows (site da Elgin).
 2. No BC Fichas: **Menu → Configurações → Impressora**, escolha "Impressora instalada no Windows", selecione a i9
    e toque em **Imprimir teste**. A lista de impressoras se atualiza sozinha cada vez que você abre essa aba.
-3. Se a i9 aparecer só como porta COM no Gerenciador de Dispositivos, escolha "Porta COM" e a porta certa.
+3. Se a i9 aparecer só como porta COM no Gerenciador de Dispositivos, escolha "Porta COM" e a porta certa. Pela
+   porta COM as fichas vão uma de cada vez: se o papel acabar no meio do pedido, o aviso diz quais fichas já
+   saíram (entregue ao cliente) e, ao tentar de novo, só saem as que faltam.
 
 As fichas são desenhadas como imagem e mandadas em ESC/POS, então a fonte, os acentos, o logotipo e o código de
 barras saem iguais à prévia da tela.
@@ -265,7 +284,8 @@ caixas), reimpressão, devolução e fechamento abrem em menos de 0,2 s (teste `
 - **Venda:** depois de cada venda só o "restam X" dos botões muda (a grade não é refeita); tocar num produto muda
   só a linha dele no pedido; a tela de venda e a de pagamento são montadas uma vez e usadas de novo. Gravar o
   pedido e imprimir acontecem fora da tela, que não trava enquanto o disco trabalha.
-- **Memória:** as fotos ficam guardadas já reduzidas (no máximo 64 de cada vez); a impressão desenha, manda e
+- **Memória:** a coleta de memória trabalha com uma área pequena (4 MB) para as alocações novas, e só as
+  espessuras da letra que as telas usam são carregadas; as fotos ficam guardadas já reduzidas (no máximo 64 de cada vez); a impressão desenha, manda e
   solta uma ficha de cada vez (pedido com 50 fichas não junta 50 imagens); a foto escolhida no cadastro é lida
   já reduzida; a prévia da ficha nas Configurações solta a anterior.
 - **Disco:** depois de apagar as vendas, restaurar ou zerar, o banco devolve o espaço vazio (VACUUM) e o arquivo

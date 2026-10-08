@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Headless;
+using BCFichas.App;
 using BCFichas.Tests.Ui;
 
 [assembly: AvaloniaTestApplication(typeof(AppDeTeste))]
@@ -12,6 +13,6 @@ public static class AppDeTeste
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<BCFichas.App.App>()
             .UseSkia()
-            .WithInterFont()
+            .ComFontes()
             .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false });
 }

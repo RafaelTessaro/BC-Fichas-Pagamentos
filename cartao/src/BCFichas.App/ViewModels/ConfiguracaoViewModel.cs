@@ -1124,7 +1124,13 @@ public sealed partial class ConfiguracaoViewModel : PaginaViewModel
         try
         {
             // Direto dos pontos da imagem (sem gravar e ler um PNG a cada letra digitada) e soltando a prévia anterior.
-            using var bitmap = Sistema.Impressao.Previa(Montar());
+            // Impressora ocupada (um teste pela porta COM esperando): tenta de novo daqui a pouco, sem travar a tela.
+            using var bitmap = Sistema.Impressao.PreviaSeLivre(Montar());
+            if (bitmap is null)
+            {
+                _timerPrevia.Start();
+                return;
+            }
             var antiga = Previa;
             Previa = new Bitmap(Avalonia.Platform.PixelFormat.Rgba8888, Avalonia.Platform.AlphaFormat.Premul,
                 bitmap.GetPixels(), new Avalonia.PixelSize(bitmap.Width, bitmap.Height), new Avalonia.Vector(96, 96),

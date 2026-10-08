@@ -29,10 +29,18 @@ public sealed class ServicoImpressao
 
     public string PastaPadraoArquivo => Path.Combine(_pastaDados, PastaArquivoPadrao);
 
+    /// <summary>Abre a porta COM (os testes trocam por uma impressora de mentira).</summary>
+    internal Func<string, int, Stream> AbrirPorta { get; set; } = TransporteSerial.Abrir;
+
+    /// <summary>
+    /// Pedidos que pararam no meio da impressão (porta COM): até que ficha já saiu. A próxima impressão do pedido
+    /// (Tentar de novo, Fichas não impressas) manda só as que faltam, porque as que saíram já estão com o cliente.
+    /// </summary>
+    private readonly Dictionary<(int Caixa, long Pedido), int> _jaSairam = new();
+
     public IDestinoImpressao CriarDestino(Configuracao c) => c.Impressora switch
     {
-        TipoImpressora.Serial => new DestinoEscPos($"Porta {c.PortaSerial}",
-            dados => TransporteSerial.Enviar(c.PortaSerial, c.BaudRate, dados), c.Corte),
+        TipoImpressora.Serial => new DestinoSerial(c.PortaSerial, () => AbrirPorta(c.PortaSerial, c.BaudRate), c.Corte),
         TipoImpressora.Arquivo => new DestinoArquivo(string.IsNullOrWhiteSpace(c.PastaArquivo) ? PastaPadraoArquivo : c.PastaArquivo),
         _ => new DestinoEscPos(string.IsNullOrWhiteSpace(c.NomeImpressora) ? "Impressora não escolhida" : c.NomeImpressora,
             dados => TransporteWindows.Enviar(c.NomeImpressora, dados), c.Corte),
@@ -44,11 +52,35 @@ public sealed class ServicoImpressao
     {
         if (fichas.Count == 0) return new ResultadoImpressao(true, "Nada para imprimir.");
         var config = _config();
-        return Executar(config, () =>
+        lock (_trava)
         {
-            var logo = Logo(config);
-            return fichas.Select(f => RenderizadorFicha.Renderizar(f, config, logo));
-        }, fichas.Count == 1 ? "1 ficha impressa" : $"{fichas.Count} fichas impressas");
+            var primeira = fichas[0];
+            var pedido = (primeira.Caixa, primeira.NumeroPedido);
+            // Reimpressão sai inteira (vem marcada REIMPRESSÃO); a primeira impressão pula as que já saíram
+            var pular = primeira.Reimpressao ? 0 : _jaSairam.GetValueOrDefault(pedido);
+            var faltam = fichas.Where(f => f.Sequencia > pular).ToList();
+            if (faltam.Count == 0)
+            {
+                _jaSairam.Remove(pedido);
+                return new ResultadoImpressao(true, "As fichas deste pedido já tinham saído.");
+            }
+            var resultado = Executar(config, () =>
+            {
+                var logo = Logo(config);
+                return faltam.Select(f => RenderizadorFicha.Renderizar(f, config, logo));
+            }, faltam.Count == 1 ? "1 ficha impressa" : $"{faltam.Count} fichas impressas", enviadas =>
+            {
+                if (primeira.Reimpressao) return null;
+                var ate = enviadas > 0 ? faltam[enviadas - 1].Sequencia : pular;
+                if (ate == 0) return null;
+                _jaSairam[pedido] = ate;
+                return $"A impressora parou no meio: saíram as fichas 1 a {ate} de {primeira.TotalFichas}. Entregue essas " +
+                       "ao cliente (as que ficaram dentro da impressora saem quando trocar o papel). Ao tentar de novo, " +
+                       "só saem as que faltam.";
+            });
+            if (resultado.Ok) _jaSairam.Remove(pedido);
+            return resultado;
+        }
     }
 
     public ResultadoImpressao Documento(Documento documento, string descricao = "Relatório impresso")
@@ -72,12 +104,23 @@ public sealed class ServicoImpressao
     }
 
     /// <summary>Imagem da ficha em preto e branco, como vai sair no papel (prévia na tela).</summary>
-    public SKBitmap Previa(Configuracao config)
+    public SKBitmap Previa(Configuracao config) => PreviaSeLivre(config, Timeout.Infinite)!;
+
+    /// <summary>
+    /// A prévia, se a impressão não estiver ocupada: com a porta COM esperando a impressora (até 15 s), a tela das
+    /// Configurações não pode ficar parada esperando junto. Ocupada: devolve nulo (a tela tenta de novo depois).
+    /// </summary>
+    public SKBitmap? PreviaSeLivre(Configuracao config, int esperaMs = 50)
     {
-        lock (_trava)
+        if (!Monitor.TryEnter(_trava, esperaMs)) return null;
+        try
         {
             using var colorida = RenderizadorFicha.Renderizar(RenderizadorFicha.Exemplo(config), config, Logo(config));
             return ImagemUtil.Monocromatico(colorida);
+        }
+        finally
+        {
+            Monitor.Exit(_trava);
         }
     }
 
@@ -91,7 +134,11 @@ public sealed class ServicoImpressao
     /// Desenha as páginas sob demanda: cada ficha é desenhada, mandada e solta antes da próxima (um pedido com 50
     /// fichas não junta 50 imagens de ~1 MB na memória do tablet).
     /// </param>
-    private ResultadoImpressao Executar(Configuracao config, Func<IEnumerable<SKBitmap>> paginas, string sucesso)
+    /// <param name="noMeio">
+    /// A impressora parou depois de algumas páginas (porta COM): recebe quantas foram inteiras e devolve o aviso.
+    /// </param>
+    private ResultadoImpressao Executar(Configuracao config, Func<IEnumerable<SKBitmap>> paginas, string sucesso,
+        Func<int, string?>? noMeio = null)
     {
         ResultadoImpressao resultado;
         lock (_trava)
@@ -104,6 +151,10 @@ public sealed class ServicoImpressao
             catch (ErroDeNegocio e)
             {
                 resultado = new ResultadoImpressao(false, e.Message);
+            }
+            catch (FalhaNoMeio e)
+            {
+                resultado = new ResultadoImpressao(false, noMeio?.Invoke(e.Enviadas) ?? "Erro na impressora: " + e.Message);
             }
             catch (Exception e)
             {

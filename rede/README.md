@@ -1,6 +1,6 @@
 # BC Fichas Rede
 
-O mesmo BC Fichas (versão 3.11.6) com uma novidade: o **painel no celular**. O dono do evento conecta o celular no
+O mesmo BC Fichas (versão 3.11.7) com uma novidade: o **painel no celular**. O dono do evento conecta o celular no
 Wi-Fi do roteador das máquinas e vê, com um toque em **Atualizar**, as vendas de todas as máquinas juntas: total vendido, formas de
 pagamento, cada máquina, os produtos mais vendidos e as vendas por hora.
 
@@ -55,6 +55,9 @@ configurações, e o painel fecha sozinho quando o caixa fecha.
 
 > O `BCFichasPainel.exe` tem que ficar na mesma pasta do `BCFichasRede.exe` (o pacote já vem assim).
 
+4. Num tablet novo, o programa pede a **senha técnica** uma vez ("Este tablet não está liberado"), como o original.
+   O painel no celular só liga depois que o tablet está liberado.
+
 ## Preparar o roteador (uma vez)
 
 | O quê | Como |
@@ -78,6 +81,8 @@ configurações, e o painel fecha sozinho quando o caixa fecha.
 5. Nas outras máquinas, o jeito mais fácil é **fazer o backup** na primeira e **restaurar** nas outras: o painel, o
    PIN e a lista vão junto (só muda o número do caixa). "Zerar programação" (novo evento) mantém o painel ligado e
    o mesmo PIN, porque eles são do kit (roteador e máquinas), não do evento.
+6. **Tablets clonados** (a mesma imagem do disco em vários tablets) também funcionam: cada um aparece no painel como
+   uma máquina (o painel reconhece a placa de rede de cada tablet). Só troque o **número do caixa** em cada um.
 
 ## No celular
 

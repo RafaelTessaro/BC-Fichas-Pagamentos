@@ -50,12 +50,18 @@ public static class Relatorios
             .Linha("ASSINATURA", Alinhamento.Centro, tamanho: 20);
     }
 
+    /// <summary>Faixa dos comprovantes feitos no modo teste (como a das fichas): não valem como comprovante de verdade.</summary>
+    private const string MarcaTeste = "TESTE • SEM VALOR";
+
+    private static Documento Teste(this Documento doc, bool teste) => teste ? doc.Faixa(MarcaTeste).Espaco(6) : doc;
+
     /// <summary>Fechamento (ou parcial) do caixa com totais por forma de pagamento.</summary>
     public static Documento Fechamento(ResumoCaixa resumo, Configuracao config, bool parcial = false)
     {
         var s = resumo.Sessao;
         var doc = new Documento()
             .Titulo(config.NomeEvento)
+            .Teste(s.Teste)
             .Faixa(parcial ? "PARCIAL DO CAIXA" : "FECHAMENTO DE CAIXA")
             .Espaco(6)
             .Par($"CAIXA {s.Caixa:00}", $"SESSÃO {s.Id}")
@@ -126,14 +132,17 @@ public static class Relatorios
                 .Linha("______________________________", Alinhamento.Centro)
                 .Linha("ASSINATURA DO OPERADOR", Alinhamento.Centro, tamanho: 20);
         }
+        if (s.Teste) doc.Espaco(12).Faixa(MarcaTeste);
         return doc;
     }
 
     /// <summary>Comprovante de sangria, suprimento ou devolução de fichas (fica com o caixa).</summary>
-    public static Documento Movimento(Movimento m, Configuracao config, long dinheiroNoCaixa)
+    /// <param name="teste">Feito no modo teste: sai marcado em cima e embaixo, como as fichas de teste.</param>
+    public static Documento Movimento(Movimento m, Configuracao config, long dinheiroNoCaixa, bool teste = false)
     {
         var doc = new Documento()
             .Titulo(config.NomeEvento)
+            .Teste(teste)
             .Faixa(m.Tipo switch
             {
                 TipoMovimento.Sangria => "SANGRIA (RETIRADA)",
@@ -153,7 +162,8 @@ public static class Relatorios
             .Par("DINHEIRO NO CAIXA", Dinheiro.Formatar(dinheiroNoCaixa))
             .Espaco(30)
             .Linha("______________________________", Alinhamento.Centro)
-            .Linha("ASSINATURA", Alinhamento.Centro, tamanho: 20);
+            .Linha("ASSINATURA", Alinhamento.Centro, tamanho: 20)
+            .Teste(teste);
     }
 
     public static Documento Teste(Configuracao config, string destino) =>

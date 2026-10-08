@@ -44,9 +44,10 @@ public partial class JanelaPrincipal : Window
             return;
         }
         _pontoDoUltimoToque = e.GetPosition(this);
-        // Arrastar o dedo (rolar uma lista) não é toque num botão: não protege nada.
-        var arrastou = Math.Abs(_pontoDoUltimoToque.X - _pontoApertado.X) > 12 ||
-                       Math.Abs(_pontoDoUltimoToque.Y - _pontoApertado.Y) > 12;
+        // Arrastar o dedo (rolar uma lista) não é toque num botão: não protege nada. A mesma folga da lista do pedido
+        // (lá, um toque tremido de até 16 ainda vale como toque e tira 1: a proteção também tem de valer).
+        var arrastou = Math.Abs(_pontoDoUltimoToque.X - _pontoApertado.X) > VendaView.FolgaDoToqueNoPedido ||
+                       Math.Abs(_pontoDoUltimoToque.Y - _pontoApertado.Y) > VendaView.FolgaDoToqueNoPedido;
         _botaoDoUltimoToque = arrastou ? null : BotaoEm(_pontoDoUltimoToque);
     }
 

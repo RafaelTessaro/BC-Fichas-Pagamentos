@@ -17,6 +17,8 @@ public enum EtapaPagamento
     ErroImpressao,
     /// <summary>A maquininha parou de responder depois de receber a cobrança: o operador confere nela.</summary>
     SemResposta,
+    /// <summary>A maquininha aprovou, mas o pedido não foi gravado como pago (erro no disco): tentar de novo.</summary>
+    ErroGravacao,
 }
 
 /// <summary>
@@ -68,7 +70,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(EmEscolher), nameof(EmDinheiro), nameof(EmMaquininha), nameof(EmConcluido),
-        nameof(EmRecusado), nameof(EmErroImpressao), nameof(EmSemResposta), nameof(PodeFechar))]
+        nameof(EmRecusado), nameof(EmErroImpressao), nameof(EmErroGravacao), nameof(EmSemResposta), nameof(PodeFechar))]
     private EtapaPagamento _etapa = EtapaPagamento.Escolher;
 
     /// <summary>Perguntando de novo à maquininha (botão Consultar de novo).</summary>
@@ -93,6 +95,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     public bool EmConcluido => Etapa == EtapaPagamento.Concluido;
     public bool EmRecusado => Etapa == EtapaPagamento.Recusado;
     public bool EmErroImpressao => Etapa == EtapaPagamento.ErroImpressao;
+    public bool EmErroGravacao => Etapa == EtapaPagamento.ErroGravacao;
     public bool EmSemResposta => Etapa == EtapaPagamento.SemResposta;
     public bool PodeFechar => !Gravando && Etapa is EtapaPagamento.Escolher or EtapaPagamento.Dinheiro or EtapaPagamento.Recusado;
 
@@ -183,9 +186,12 @@ public sealed partial class PagamentoViewModel : ViewModelBase
         {
             _pedido = await Task.Run(() => _principal.Sistema.Vendas.CriarPedido(_sessao, _linhas, forma));
         }
-        catch (ErroDeNegocio e)
+        catch (Exception e)
         {
-            Mensagem = e.Message;
+            // Erro no disco também: nada foi para a maquininha ainda, então dá para escolher de novo (a janela não
+            // pode ficar presa em "Enviando para a maquininha...")
+            if (e is not ErroDeNegocio) Log.Erro("Gravar pedido", e);
+            Mensagem = e is ErroDeNegocio ? e.Message : "Não consegui gravar o pedido: " + e.Message;
             Etapa = EtapaPagamento.Recusado;
             return;
         }
@@ -213,7 +219,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
         }
         catch (OperationCanceledException)
         {
-            _principal.Sistema.Vendas.Cancelar(_pedido.Id);
+            CancelarPedido(_pedido.Id);
             _pedido = null;
             Etapa = EtapaPagamento.Escolher;
             return;
@@ -222,7 +228,7 @@ public sealed partial class PagamentoViewModel : ViewModelBase
         {
             // Não chegou a cobrar (não ligou na maquininha, maquininha não ativada): o pedido pode ser cancelado
             if (e is not ErroDeNegocio) Log.Erro("Maquininha", e);
-            _principal.Sistema.Vendas.Cancelar(_pedido.Id);
+            CancelarPedido(_pedido.Id);
             _pedido = null;
             Mensagem = e is ErroDeNegocio ? e.Message : "Não consegui falar com a maquininha: " + e.Message;
             Etapa = EtapaPagamento.Recusado;
@@ -237,16 +243,14 @@ public sealed partial class PagamentoViewModel : ViewModelBase
 
         if (!resultado.Aprovado)
         {
-            _principal.Sistema.Vendas.Cancelar(_pedido.Id);
+            CancelarPedido(_pedido.Id);
             _pedido = null;
             Mensagem = resultado.Mensagem;
             Etapa = EtapaPagamento.Recusado;
             return;
         }
 
-        var pedidoId = _pedido.Id;
-        _pedido = await Task.Run(() => _principal.Sistema.Vendas.ConfirmarPagamento(pedidoId, resultado.Autorizacao));
-        await Concluir();
+        await Pago(resultado.Autorizacao);
     }
 
     /// <summary>Maquininha voltou a responder (ou o operador aproximou o tablet): pergunta pelo mesmo pedido.</summary>
@@ -344,19 +348,57 @@ public sealed partial class PagamentoViewModel : ViewModelBase
     /// <summary>Ainda na tela "A maquininha não respondeu" (a confirmação pode ter ficado aberta enquanto algo mudou).</summary>
     private bool AindaSemResposta() => !_fechada && _pedido is not null && Etapa == EtapaPagamento.SemResposta;
 
-    private async Task Pago(string? autorizacao)
+    private string? _autorizacao;
+    private bool _gravandoPago;
+
+    private Task Pago(string? autorizacao)
     {
-        var pedidoId = _pedido!.Id;
+        _autorizacao = autorizacao;
+        return GravarPago();
+    }
+
+    /// <summary>
+    /// A maquininha aprovou: grava o pedido como pago e as fichas saem. Se o disco falhar aqui, o cliente já pagou:
+    /// o pedido não é cancelado nem volta para escolher a forma (seria cobrar de novo). Fica "Tentar de novo"; se o
+    /// programa for fechado, ao abrir ele pergunta deste pedido.
+    /// </summary>
+    private async Task GravarPago()
+    {
+        if (_pedido is null || _gravandoPago) return;
+        _gravandoPago = true;
+        var pedidoId = _pedido.Id;
         try
         {
-            _pedido = await Task.Run(() => _principal.Sistema.Vendas.ConfirmarPagamento(pedidoId, autorizacao));
+            _pedido = await Task.Run(() => _principal.Sistema.Vendas.ConfirmarPagamento(pedidoId, _autorizacao));
         }
-        catch (ErroDeNegocio e)
+        catch (Exception e)
         {
-            Mensagem = e.Message;
+            Log.Erro("Confirmar pagamento", e);
+            Mensagem = "A maquininha aprovou, mas não consegui gravar a venda: " + e.Message;
+            Etapa = EtapaPagamento.ErroGravacao;
             return;
         }
+        finally
+        {
+            _gravandoPago = false;
+        }
         await Concluir();
+    }
+
+    [RelayCommand]
+    private Task GravarDeNovo() => Etapa == EtapaPagamento.ErroGravacao ? GravarPago() : Task.CompletedTask;
+
+    /// <summary>Cancela o pedido que não foi pago. Se nem isso o disco deixar, ele fica esperando e é resolvido ao abrir.</summary>
+    private void CancelarPedido(long id)
+    {
+        try
+        {
+            _principal.Sistema.Vendas.Cancelar(id);
+        }
+        catch (Exception e)
+        {
+            Log.Erro("Cancelar pedido", e);
+        }
     }
 
     private bool NaoPago(string mensagem)
@@ -365,9 +407,11 @@ public sealed partial class PagamentoViewModel : ViewModelBase
         {
             _principal.Sistema.Vendas.Cancelar(_pedido!.Id);
         }
-        catch (ErroDeNegocio e)
+        catch (Exception e)
         {
-            Mensagem = e.Message;
+            // Erro no disco: continua na tela "sem resposta" (o pedido fica esperando, nada é cobrado de novo)
+            if (e is not ErroDeNegocio) Log.Erro("Cancelar pedido", e);
+            Mensagem = e is ErroDeNegocio ? e.Message : "Não consegui cancelar o pedido: " + e.Message;
             return false;
         }
         _pedido = null;

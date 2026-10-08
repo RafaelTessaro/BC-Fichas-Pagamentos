@@ -287,7 +287,7 @@ public sealed partial class SangriaViewModel(PrincipalViewModel principal) : Pag
             {
                 var noCaixa = Sistema.Caixa.Resumo(sessao.Id).DinheiroEsperado;
                 await Principal.ImprimirAsync(() =>
-                    Sistema.Impressao.Documento(Relatorios.Movimento(movimento, Principal.Config, noCaixa), "Comprovante impresso"));
+                    Sistema.Impressao.Documento(Relatorios.Movimento(movimento, Principal.Config, noCaixa, sessao.Teste), "Comprovante impresso"));
             }
         }
         catch (ErroDeNegocio e)

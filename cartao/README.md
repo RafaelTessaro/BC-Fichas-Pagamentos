@@ -1,6 +1,6 @@
 # BC Fichas Cartão
 
-O mesmo BC Fichas (versão 3.11.6) com a **maquininha de cartão ligada ao caixa**: a **Moderninha Smart 2 do
+O mesmo BC Fichas (versão 3.11.7) com a **maquininha de cartão ligada ao caixa**: a **Moderninha Smart 2 do
 PagBank**, por **Bluetooth**. O operador toca em Débito, Crédito ou PIX e o valor vai sozinho para a maquininha. O
 cliente paga nela (cartão ou QR Code do PIX na tela dela) e, quando ela aprova, as fichas saem na impressora do caixa.
 Ninguém digita valor na maquininha e ninguém toca em "aprovado".
@@ -104,7 +104,8 @@ fila anda mais rápido e gasta menos papel.
    **BCFichasCartao-win-x64**.
 2. Descompacte numa pasta **só dele**, por exemplo `C:\BCFichasCartao` (não na pasta do BC Fichas original nem na do
    Rede).
-3. Abra o **BCFichasCartao.exe**. Os dados ficam na pasta `dados` ao lado dele.
+3. Abra o **BCFichasCartao.exe**. Os dados ficam na pasta `dados` ao lado dele. Num tablet novo, o programa pede a
+   **senha técnica** uma vez ("Este tablet não está liberado"), como o original.
 
 O app da maquininha sai no mesmo lugar: **BCFichasPonte-apk-teste** (para o terminal de desenvolvimento) e
 **BCFichasPonte-apk-release-sem-assinatura** (para assinar com a chave da empresa e mandar para a homologação).

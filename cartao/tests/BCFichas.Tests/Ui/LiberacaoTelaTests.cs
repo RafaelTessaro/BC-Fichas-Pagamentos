@@ -1,4 +1,6 @@
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using BCFichas.App.ViewModels;
 using BCFichas.Core;
 using Xunit;
@@ -68,5 +70,19 @@ public class LiberacaoTelaTests
         t.Principal.FecharPrograma = () => fechou = true;
         Assert.IsType<LiberacaoViewModel>(t.Principal.Pagina).SairCommand.Execute(null);
         Assert.True(fechou);
+    }
+
+    /// <summary>F1 (o atalho do modo teste) na tela de liberação não abre o caixa, nem de teste.</summary>
+    [AvaloniaFact]
+    public async Task F1_na_tela_de_liberacao_nao_abre_o_programa()
+    {
+        using var t = new TelaDeTeste(liberada: false);
+        t.Janela.KeyPress(Key.F1, RawInputModifiers.None, PhysicalKey.F1, null);
+        TelaDeTeste.Atualizar();
+        Assert.Null(t.Principal.Dialogo);
+        await t.Principal.EntrarNoModoTeste();
+        Assert.False(t.Principal.ModoTeste);
+        Assert.IsType<LiberacaoViewModel>(t.Principal.Pagina);
+        Assert.False(t.Liberacao.Liberada);
     }
 }

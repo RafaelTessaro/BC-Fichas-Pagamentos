@@ -37,7 +37,7 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<App>()
             .UsePlatformDetect()
-            .WithInterFont()
+            .ComFontes()
             .With(new Win32PlatformOptions
             {
                 // Tablets simples às vezes têm driver de vídeo ruim: cai para desenho por software se precisar.

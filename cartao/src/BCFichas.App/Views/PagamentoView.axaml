@@ -285,6 +285,23 @@
             </Button>
           </StackPanel>
         </StackPanel>
+
+        <!-- A maquininha aprovou, mas a venda não foi gravada (erro no disco): o cliente já pagou -->
+        <StackPanel IsVisible="{Binding EmErroGravacao}" Spacing="14" Margin="10">
+          <Border Width="96" Height="96" CornerRadius="999" Background="{StaticResource AvisoClara}" HorizontalAlignment="Center">
+            <PathIcon Data="{StaticResource IconeAlerta}" Width="52" Height="52" Foreground="{StaticResource Aviso}" />
+          </Border>
+          <TextBlock Text="Pago na maquininha, mas não foi gravado" HorizontalAlignment="Center" FontSize="24"
+                     FontWeight="Bold" TextWrapping="Wrap" TextAlignment="Center" />
+          <TextBlock Text="{Binding Mensagem}" HorizontalAlignment="Center" FontSize="17" Classes="suave"
+                     TextWrapping="Wrap" TextAlignment="Center" />
+          <TextBlock Text="O cliente já pagou: não cobre de novo. Toque em Tentar de novo. Se continuar dando erro, feche e abra o programa: ao abrir, ele pergunta deste pedido."
+                     HorizontalAlignment="Center" FontSize="15" Classes="suave" TextWrapping="Wrap" TextAlignment="Center" />
+          <Button Classes="primario" Command="{Binding GravarDeNovoCommand}" Height="58" Padding="30,0"
+                  HorizontalAlignment="Center">
+            <TextBlock Text="Tentar de novo" Foreground="White" FontSize="18" FontWeight="Bold" />
+          </Button>
+        </StackPanel>
       </Panel>
     </Grid>
   </Border>

@@ -30,6 +30,8 @@
   <ItemGroup>
     <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="7" />
     <RuntimeHostConfigurationOption Include="System.GC.RetainVM" Value="false" />
+    <!-- Área das alocações novas (gen0) de no máximo 4 MB, como no caixa -->
+    <RuntimeHostConfigurationOption Include="System.GC.Gen0MaxBudget" Value="4194304" />
   </ItemGroup>
 
   <ItemGroup>

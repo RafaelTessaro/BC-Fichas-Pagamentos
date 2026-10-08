@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.IO.Ports;
 using System.Runtime.InteropServices;
 using SkiaSharp;
@@ -49,12 +50,78 @@ public sealed class DestinoArquivo(string pasta) : IDestinoImpressao
     }
 }
 
+/// <summary>A impressora parou no meio de um trabalho: as primeiras <see cref="Enviadas"/> páginas foram inteiras.</summary>
+public sealed class FalhaNoMeio(int enviadas, Exception causa) : Exception(causa.Message, causa)
+{
+    public int Enviadas { get; } = enviadas;
+}
+
+/// <summary>
+/// Porta COM, uma ficha de cada vez. Se a impressora parar no meio (papel acabou, tampa aberta, cabo solto), avisa
+/// quantas fichas foram mandadas inteiras: elas saíram (ou saem quando o papel for trocado) e não podem sair de novo.
+/// No envio seguinte completa com zeros a imagem que ficou pela metade dentro da impressora (saem linhas em branco):
+/// senão o começo do próximo trabalho seria lido como desenho e a primeira ficha sairia embaralhada.
+/// </summary>
+public sealed class DestinoSerial(string porta, Func<Stream> abrir, TipoCorte corte) : IDestinoImpressao
+{
+    private const int Pedaco = 4096;
+
+    /// <summary>Por porta: quantos bytes faltaram da última imagem que ficou pela metade.</summary>
+    private static readonly ConcurrentDictionary<string, int> Faltaram = new(StringComparer.OrdinalIgnoreCase);
+
+    public string Descricao => "Porta " + porta;
+
+    public void Imprimir(IEnumerable<SKBitmap> paginas)
+    {
+        using var saida = abrir();
+        if (Faltaram.TryRemove(porta, out var faltam) && faltam > 0)
+            Mandar(saida, new byte[faltam], 0, enviadas: 0);
+        var enviadas = 0;
+        foreach (var pagina in paginas)
+        {
+            var bytes = EscPos.Trabalho([pagina], corte);
+            // Só a primeira começa reiniciando a impressora (as outras seguem, como num trabalho só)
+            Mandar(saida, bytes, enviadas == 0 ? 0 : EscPos.Inicializar().Length, enviadas);
+            enviadas++;
+        }
+        try
+        {
+            saida.Flush();
+        }
+        catch (Exception e) when (e is TimeoutException or IOException)
+        {
+            throw new FalhaNoMeio(enviadas, e);
+        }
+    }
+
+    private void Mandar(Stream saida, byte[] bytes, int inicio, int enviadas)
+    {
+        var escritos = inicio;
+        try
+        {
+            for (var i = inicio; i < bytes.Length; i += Pedaco)
+            {
+                var n = Math.Min(Pedaco, bytes.Length - i);
+                saida.Write(bytes, i, n);
+                escritos = i + n;
+            }
+        }
+        catch (Exception e) when (e is TimeoutException or IOException)
+        {
+            // O pedaço que estava indo pode ter entrado em parte: completa a mais (fora da imagem, zero não faz nada)
+            Faltaram[porta] = bytes.Length - escritos;
+            throw new FalhaNoMeio(enviadas, e);
+        }
+    }
+}
+
 /// <summary>Porta COM: a Elgin i9 USB aparece como porta serial no Windows.</summary>
 public static class TransporteSerial
 {
-    public static void Enviar(string porta, int baudRate, byte[] dados)
+    /// <summary>Abre a porta para escrever (fechar o que volta fecha a porta).</summary>
+    public static Stream Abrir(string porta, int baudRate)
     {
-        using var serial = new SerialPort(porta, baudRate, Parity.None, 8, StopBits.One)
+        var serial = new SerialPort(porta, baudRate, Parity.None, 8, StopBits.One)
         {
             Handshake = Handshake.None,
             WriteTimeout = 15000,
@@ -67,13 +134,30 @@ public static class TransporteSerial
         }
         catch (Exception e)
         {
+            serial.Dispose();
             throw new ErroDeNegocio($"Não consegui abrir a porta {porta}: {e.Message}");
         }
+        return new PortaAberta(serial);
+    }
 
-        const int pedaco = 4096;
-        for (var i = 0; i < dados.Length; i += pedaco)
-            serial.Write(dados, i, Math.Min(pedaco, dados.Length - i));
-        serial.BaseStream.Flush();
+    private sealed class PortaAberta(SerialPort serial) : Stream
+    {
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Write(byte[] buffer, int offset, int count) => serial.Write(buffer, offset, count);
+        public override void Flush() => serial.BaseStream.Flush();
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) serial.Dispose();
+            base.Dispose(disposing);
+        }
     }
 
     public static string[] Portas()

@@ -311,7 +311,8 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
     /// <summary>Liga o modo teste (pedindo a senha master, se houver) ou oferece para desligar.</summary>
     public void PedirModoTeste()
     {
-        if (TemDialogo) return;
+        // Tablet não liberado: o F1 não pode abrir o caixa (o de teste e, ao sair dele, o de verdade) sem a senha técnica
+        if (TemDialogo || Pagina is LiberacaoViewModel) return;
         if (ModoTeste)
         {
             _ = SairDoModoTeste();
@@ -323,7 +324,7 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
 
     public async Task EntrarNoModoTeste()
     {
-        if (ModoTeste) return;
+        if (ModoTeste || Pagina is LiberacaoViewModel) return;
         if (!await Confirmar("Entrar no modo teste?",
                 "Para programar e testar a máquina. As vendas feitas no modo teste não entram no relatório do " +
                 "cliente e as fichas saem marcadas \"TESTE – SEM VALOR\".\n\nAo sair do modo teste, tudo o que foi " +
