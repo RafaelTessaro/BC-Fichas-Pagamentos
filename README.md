@@ -229,6 +229,9 @@ pendrive, por exemplo) para outro computador não leva a liberação, e copiar o
 - **Imagem do disco (clonar um tablet para outros):** libere o tablet principal antes de criar a imagem; as
   cópias já abrem liberadas. Se a imagem passar pelo `sysprep`, cada tablet pede a senha técnica uma vez.
 - Reinstalou o Windows: é só liberar de novo.
+
+![Tablet não liberado](docs/telas/61-liberacao-do-tablet.png)
+
 - Não pesa nada: é a leitura de um arquivo pequeno ao abrir. Sem internet, nenhuma proteção é impossível de
   quebrar: esta segura quem copia o programa, não um programador decidido.
 
