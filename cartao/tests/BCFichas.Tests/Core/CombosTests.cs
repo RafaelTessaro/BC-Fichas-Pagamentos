@@ -63,7 +63,8 @@ public class CombosTests : IDisposable
         Assert.Equal(6, fichas.Count);
         Assert.All(fichas, f => Assert.Equal("HEINEKEN LATA", f.Produto));
         Assert.All(fichas.Take(5), f => Assert.Equal(650, f.PrecoCentavos));
-        Assert.All(fichas.Take(5), f => Assert.Equal("COMBO HEINEKEN", f.Detalhe));
+        // Sem o nome do combo embaixo: a ficha do combo é igual à da Heineken vendida sozinha
+        Assert.All(fichas, f => Assert.Equal("", f.Detalhe));
         Assert.Equal(Enumerable.Range(1, 6), fichas.Select(f => f.Sequencia));
         Assert.All(fichas, f => Assert.Equal(6, f.TotalFichas));
 
@@ -264,18 +265,22 @@ public class CombosTests : IDisposable
     }
 
     [Fact]
-    public void Ficha_de_combo_mostra_o_nome_do_combo_embaixo()
+    public void Ficha_de_combo_sai_igual_a_do_produto_vendido_sozinho()
     {
+        var heineken = NovoProduto("Heineken", 650);
+        var combo = NovoCombo("Combo Heineken", 3000, (heineken, 5, 650));
+        var sessao = S.Caixa.Abrir(1, null, 0);
+        var doCombo = GeradorFichas.Gerar(S.Vendas.Pedido(Vender(sessao, (combo, 1)).Id)!, S.Config.Atual)[0];
+        var avulsa = GeradorFichas.Gerar(S.Vendas.Pedido(Vender(sessao, (heineken, 1)).Id)!, S.Config.Atual)[0];
+        Assert.Equal(avulsa.Produto, doCombo.Produto);
+        Assert.Equal(avulsa.Detalhe, doCombo.Detalhe);
+
+        // Desenhada, tem a mesma altura (nenhuma linha a mais embaixo)
         var config = S.Config.Atual.Clonar();
         config.Modelo = ModeloFicha.Classico4;
-        Ficha Ficha(string detalhe) => new()
-        {
-            NomeEvento = "FESTA", Produto = "HEINEKEN", Detalhe = detalhe, PrecoCentavos = 650, NumeroPedido = 1,
-            Caixa = 1, Data = DateTime.Now, Sequencia = 1, TotalFichas = 5,
-        };
-        using var avulsa = RenderizadorFicha.Renderizar(Ficha(""), config, null);
-        using var doCombo = RenderizadorFicha.Renderizar(Ficha("COMBO HEINEKEN"), config, null);
-        Assert.True(doCombo.Height > avulsa.Height);
+        using var desenhoCombo = RenderizadorFicha.Renderizar(doCombo, config, null);
+        using var desenhoAvulsa = RenderizadorFicha.Renderizar(avulsa, config, null);
+        Assert.Equal(desenhoAvulsa.Height, desenhoCombo.Height);
     }
 
     [Fact]

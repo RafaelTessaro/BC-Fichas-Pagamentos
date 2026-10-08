@@ -4,7 +4,7 @@ public static class GeradorFichas
 {
     /// <summary>
     /// Uma ficha por unidade vendida (vezes as fichas por unidade do produto). No combo saem as fichas dos
-    /// produtos do combo, com o valor de cada uma e o nome do combo embaixo.
+    /// produtos do combo, com o valor de cada uma, iguais às do produto vendido sozinho.
     /// Com <paramref name="somenteItemId"/>, reimprime só as fichas daquele item.
     /// Na reimpressão, as fichas que o cliente devolveu ficam de fora (a numeração "1/6" não muda).
     /// </summary>

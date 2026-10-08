@@ -9,6 +9,7 @@
     <!-- Venda e pagamento: a mesma tela é usada de novo (montar do zero pesa no tablet) -->
     <v:TelaDeVenda />
     <DataTemplate DataType="vm:AberturaViewModel"><v:AberturaView /></DataTemplate>
+    <DataTemplate DataType="vm:LiberacaoViewModel"><v:LiberacaoView /></DataTemplate>
     <DataTemplate DataType="vm:FechamentoViewModel"><v:FechamentoView /></DataTemplate>
     <DataTemplate DataType="vm:ConfiguracaoViewModel"><v:ConfiguracaoView /></DataTemplate>
     <DataTemplate DataType="vm:ProdutosViewModel"><v:ProdutosView /></DataTemplate>

@@ -43,6 +43,9 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
 
     /// <summary>Senha técnica da aba Máquina (os testes trocam por uma senha conhecida).</summary>
     public SenhaTecnica SenhaTecnica { get; set; } = SenhaTecnica.Padrao;
+
+    /// <summary>Liberação deste tablet, contra cópia do programa (os testes trocam por uma numa pasta temporária).</summary>
+    public Liberacao Liberacao { get; set; } = Liberacao.DaMaquina();
     public VendaViewModel Venda { get; }
     public SessaoCaixa? Sessao { get; private set; }
 
@@ -120,6 +123,14 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
 
     public void Iniciar()
     {
+        _timerRelogio.Start();
+        // Programa copiado para outra máquina (ou tablet novo): só abre depois da senha técnica.
+        if (!Liberacao.Liberada)
+        {
+            Pagina = new LiberacaoViewModel(this);
+            return;
+        }
+
         // Se o programa fechou no meio do modo teste, volta para ele (as vendas de teste continuam separadas).
         var teste = Sistema.Caixa.SessaoTesteAberta(Config.NumeroCaixa);
         ModoTeste = teste is not null;
@@ -129,7 +140,6 @@ public sealed partial class PrincipalViewModel : ViewModelBase, IDisposable
             Pagina = new AberturaViewModel(this);
         else
             IrParaVenda(recarregar: true);
-        _timerRelogio.Start();
         _ = ResolverPendentesAsync();
     }
 

@@ -30,9 +30,13 @@ public sealed class TelaDeTeste : IDisposable
         Convert.FromHexString("7b8a16ca60db69463a996ada81e479ad"),
         Convert.FromHexString("b7e59b8ab14c2a3acfd3dde7af2e47c5622883b489c55ee13458684aa57b4cbd"), 1000);
 
+    /// <summary>Código da máquina nos testes (a liberação fica na pasta temporária, não no Windows de quem testa).</summary>
+    public const string CodigoDaMaquina = "MAQUINA-DE-TESTE";
+
     /// <param name="catalogoPadrao">Usa os produtos de exemplo do programa em vez do catálogo dos testes.</param>
+    /// <param name="liberada">O tablet já está liberado (falso: abre na tela de liberação).</param>
     public TelaDeTeste(int largura = 1280, int altura = 800, Action<Configuracao>? configurar = null,
-        bool catalogoPadrao = false)
+        bool catalogoPadrao = false, bool liberada = true)
     {
         _temporario = new SistemaTemporario(exemplos: !catalogoPadrao);
         if (catalogoPadrao) Sistema.Catalogo.CriarExemplos();
@@ -42,7 +46,9 @@ public sealed class TelaDeTeste : IDisposable
         configurar?.Invoke(config);
         Sistema.Config.Salvar(config);
 
-        Principal = new PrincipalViewModel(Sistema) { SenhaTecnica = SenhaTecnicaDeTeste };
+        Liberacao = new Liberacao([ArquivoDaLiberacao], () => CodigoDaMaquina);
+        if (liberada) Liberacao.Liberar();
+        Principal = new PrincipalViewModel(Sistema) { SenhaTecnica = SenhaTecnicaDeTeste, Liberacao = Liberacao };
         Janela = new JanelaPrincipal { DataContext = Principal, Width = largura, Height = altura };
         Janela.Show();
         Principal.Iniciar();
@@ -50,6 +56,8 @@ public sealed class TelaDeTeste : IDisposable
     }
 
     public Sistema Sistema => _temporario.Sistema;
+    public Liberacao Liberacao { get; }
+    public string ArquivoDaLiberacao => Path.Combine(_temporario.Pasta, "liberacao", "liberacao.dat");
     public PrincipalViewModel Principal { get; }
     public JanelaPrincipal Janela { get; }
     public string PastaImpressoes => _temporario.PastaImpressoes;

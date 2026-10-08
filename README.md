@@ -123,7 +123,9 @@ R$ 30,00); `COMBO R$ 100,00` com 5 × `VALE R$ 10,00`, 6 × `VALE R$ 5,00`, 5 ×
 
 Cada ficha do combo vale a sua parte do preço do combo (no COMBO HEINEKEN de R$ 30,00, cada uma das 5 fichas
 vale R$ 6,00; nos vales que somam o preço, cada vale o seu valor). A venda guarda o combo
-como ele era na hora: mudar o combo depois não muda as fichas já vendidas (nem a reimpressão).
+como ele era na hora: mudar o combo depois não muda as fichas já vendidas (nem a reimpressão). A ficha que
+sai do combo é igual à do produto vendido sozinho (o nome do combo não sai embaixo); se a ficha do combo tiver
+um detalhe (ex.: `VAL. 05/10/26`), ele sai na linha de baixo.
 
 | Fichas do combo | Ficha que saiu do combo |
 | --- | --- |

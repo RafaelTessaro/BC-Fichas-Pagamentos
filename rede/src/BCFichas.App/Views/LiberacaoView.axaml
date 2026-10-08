@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:BCFichas.App.ViewModels"
+             xmlns:v="using:BCFichas.App.Views"
+             x:Class="BCFichas.App.Views.LiberacaoView"
+             x:DataType="vm:LiberacaoViewModel">
+  <!-- Tablet não liberado: só abre com a senha técnica. Com rolagem: em tela pequena, com o teclado da tela
+       aberto, o campo e o botão não ficam escondidos embaixo dele. -->
+  <Panel Background="{StaticResource FundoLateral}">
+    <ScrollViewer>
+      <Border Classes="cartao" Width="480" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="16"
+              Padding="28,24">
+        <StackPanel Spacing="12">
+          <v:MarcaBC Tamanho="72" HorizontalAlignment="Center" />
+          <TextBlock Text="Este tablet não está liberado" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center"
+                     TextWrapping="Wrap" TextAlignment="Center" />
+          <TextBlock Classes="suave" FontSize="15" TextWrapping="Wrap" TextAlignment="Center"
+                     Text="O BC Fichas só funciona nas máquinas liberadas pela BC Fichas. Para liberar este tablet, digite a senha técnica." />
+          <TextBox x:Name="CampoSenha" Text="{Binding SenhaDigitada}" PasswordChar="●" Watermark="Senha técnica"
+                   FontSize="20" MaxLength="40" Margin="0,4,0,0">
+            <TextBox.KeyBindings>
+              <KeyBinding Gesture="Enter" Command="{Binding LiberarCommand}" />
+            </TextBox.KeyBindings>
+          </TextBox>
+          <TextBlock Text="{Binding Erro}" Foreground="{StaticResource Perigo}" FontWeight="Bold"
+                     HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"
+                     IsVisible="{Binding Erro, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <Button Classes="primario" Command="{Binding LiberarCommand}" IsEnabled="{Binding !Conferindo}"
+                  HorizontalAlignment="Stretch" Height="56">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <PathIcon Data="{StaticResource IconeCadeado}" Foreground="White" />
+              <TextBlock Text="Liberar este tablet" Foreground="White" FontSize="18" FontWeight="Bold"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="suave" Command="{Binding SairCommand}" HorizontalAlignment="Stretch" Height="48">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <PathIcon Data="{StaticResource IconeDesligar}" />
+              <TextBlock Text="Sair" FontSize="16" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <StackPanel Spacing="2" Margin="0,6,0,0">
+            <TextBlock Text="{Binding Principal.Suporte}" Foreground="{StaticResource PrimariaEscura}" FontSize="14"
+                       FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Classes="suave" Text="{Binding Principal.Versao}" FontSize="12" HorizontalAlignment="Center" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </ScrollViewer>
+  </Panel>
+</UserControl>
