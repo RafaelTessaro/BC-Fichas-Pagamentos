@@ -77,13 +77,22 @@ public sealed class DestinoSerial(string porta, Func<Stream> abrir, TipoCorte co
 
     public string Descricao => "Porta " + porta;
 
+    /// <summary>
+    /// Continuando um pedido que parou no meio. Se o programa foi fechado nesse meio tempo, não se sabe mais quanto
+    /// faltou da imagem que ficou pela metade: completa com zeros uma ficha inteira (a mesma, desenhada igual) e a
+    /// folga. Com a impressora desligada e ligada de novo, os zeros não fazem nada.
+    /// </summary>
+    public bool Retomando { get; set; }
+
+    /// <summary>Esquece os zeros que faltam numa porta (nos testes: como se o programa tivesse sido fechado).</summary>
+    internal static void Esquecer(string porta) => Faltaram.TryRemove(porta, out _);
+
     public void Imprimir(IEnumerable<SKBitmap> paginas)
     {
         var saida = abrir();
         try
         {
-            if (Faltaram.TryRemove(porta, out var faltam) && faltam > 0)
-                Mandar(saida, new byte[faltam], 0, enviadas: 0);
+            Faltaram.TryRemove(porta, out var faltam);
             var enviadas = 0;
             using var proxima = paginas.GetEnumerator();
             while (true)
@@ -100,10 +109,18 @@ public sealed class DestinoSerial(string porta, Func<Stream> abrir, TipoCorte co
                     throw new FalhaNoMeio(enviadas, e);
                 }
                 var bytes = EscPos.Trabalho([pagina], corte);
+                if (enviadas == 0)
+                {
+                    if (faltam <= 0 && Retomando) faltam = bytes.Length + Folga;
+                    if (faltam > 0) Mandar(saida, new byte[faltam], 0, enviadas: 0);
+                    faltam = 0;
+                }
                 // Só a primeira começa reiniciando a impressora (as outras seguem, como num trabalho só)
                 Mandar(saida, bytes, enviadas == 0 ? 0 : EscPos.Inicializar().Length, enviadas);
                 enviadas++;
             }
+            // Nada para mandar desta vez: os zeros ficam para a próxima
+            if (faltam > 0) Faltaram[porta] = faltam;
             try
             {
                 saida.Flush();

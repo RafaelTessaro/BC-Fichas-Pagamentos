@@ -93,7 +93,7 @@
                           <Button Classes="suave" Height="48"
                                   Command="{Binding $parent[UserControl].((vm:ReimpressaoViewModel)DataContext).ReimprimirItemCommand}"
                                   CommandParameter="{Binding}" IsVisible="{Binding TemFichas}"
-                                  IsEnabled="{Binding $parent[UserControl].((vm:ReimpressaoViewModel)DataContext).PodeReimprimir}">
+                                  IsEnabled="{Binding $parent[UserControl].((vm:ReimpressaoViewModel)DataContext).PodeReimprimirItem}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                               <PathIcon Data="{StaticResource IconeImpressora}" Width="18" Height="18" />
                               <TextBlock Text="Só este item" VerticalAlignment="Center" />

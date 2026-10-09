@@ -69,7 +69,8 @@ public sealed partial class ReimpressaoViewModel(PrincipalViewModel principal, b
 
     public bool TemSelecionado => Selecionado is not null;
     public bool PodeReimprimir => Selecionado?.Pago == true && !Ocupado;
-    public bool PodeReimprimirItem => PodeReimprimir && !SoNaoImpressos;
+    /// <summary>Só um item: só de pedido que já saiu (a primeira impressão de um pedido é sempre o pedido inteiro).</summary>
+    public bool PodeReimprimirItem => PodeReimprimir && !SoNaoImpressos && Selecionado?.Pedido.Impressoes > 0;
     public bool Vazio => Pedidos.Count == 0;
 
     public override void AoAbrir() => Atualizar();
@@ -121,6 +122,11 @@ public sealed partial class ReimpressaoViewModel(PrincipalViewModel principal, b
         if (Selecionado is not { Pago: true } || Ocupado) return;
         var pedido = Sistema.Vendas.Pedido(Selecionado.Pedido.Id);
         if (pedido is null || (SoNaoImpressos && pedido.Impressoes > 0)) return;
+        if (itemId is not null && pedido.Impressoes == 0)
+        {
+            Principal.MostrarAviso("As fichas deste pedido ainda não saíram: imprima o pedido inteiro.", erro: true);
+            return;
+        }
 
         Ocupado = true;
         try

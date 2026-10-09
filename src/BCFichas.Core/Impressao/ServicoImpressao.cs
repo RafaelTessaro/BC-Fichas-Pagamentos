@@ -55,15 +55,17 @@ public sealed class ServicoImpressao
         var pular = primeira.Reimpressao ? 0 : jaSairam;
         var faltam = fichas.Where(f => f.Sequencia > pular).ToList();
         if (faltam.Count == 0) return new ResultadoImpressao(true, "As fichas deste pedido já tinham saído.");
-        return Executar(config, () =>
+        return Executar(config, retomando: pular > 0, paginas: () =>
         {
             var logo = Logo(config);
             return faltam.Select(f => RenderizadorFicha.Renderizar(f, config, logo));
-        }, faltam.Count == 1 ? "1 ficha impressa" : $"{faltam.Count} fichas impressas", enviadas =>
+        }, sucesso: faltam.Count == 1 ? "1 ficha impressa" : $"{faltam.Count} fichas impressas", noMeio: enviadas =>
         {
             if (primeira.Reimpressao) return null;
             var ate = enviadas > 0 ? faltam[enviadas - 1].Sequencia : pular;
             if (ate == 0) return null;
+            // "Da 1 até X" só vale quando o que foi mandado é o pedido em sequência (não um item só, no meio dele)
+            if (ate != pular + enviadas) return null;
             aoParar?.Invoke(ate);
             return $"A impressora parou no meio: saíram as fichas 1 a {ate} de {primeira.TotalFichas}. Entregue essas " +
                    "ao cliente (as que ficaram dentro da impressora saem quando trocar o papel). Ao imprimir de novo, " +
@@ -125,15 +127,18 @@ public sealed class ServicoImpressao
     /// <param name="noMeio">
     /// A impressora parou depois de algumas páginas (porta COM): recebe quantas foram inteiras e devolve o aviso.
     /// </param>
+    /// <param name="retomando">Continuação de um pedido que parou no meio (porta COM: completa a imagem que ficou pela metade).</param>
     private ResultadoImpressao Executar(Configuracao config, Func<IEnumerable<SKBitmap>> paginas, string sucesso,
-        Func<int, string?>? noMeio = null)
+        Func<int, string?>? noMeio = null, bool retomando = false)
     {
         ResultadoImpressao resultado;
         lock (_trava)
         {
             try
             {
-                CriarDestino(config).Imprimir(UmaDeCadaVez(paginas(), config));
+                var destino = CriarDestino(config);
+                if (destino is DestinoSerial serial) serial.Retomando = retomando;
+                destino.Imprimir(UmaDeCadaVez(paginas(), config));
                 resultado = new ResultadoImpressao(true, sucesso);
             }
             catch (ErroDeNegocio e)

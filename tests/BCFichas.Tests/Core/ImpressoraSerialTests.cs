@@ -176,6 +176,43 @@ public sealed class ImpressoraSerialTests : IDisposable
     }
 
     [Fact]
+    public void Programa_fechado_depois_de_parar_no_meio_completa_a_ficha_pela_metade_ao_continuar()
+    {
+        var impressora = Configurar("COM97");
+        var pedido = Vender(S.Caixa.Abrir(1, null, 0), 6);
+        impressora.Parar = 3;
+        impressora.MetadeAntes = true;
+        Assert.False(S.ImprimirFichas(pedido, GeradorFichas.Gerar(pedido, S.Config.Atual)).Ok);
+        var tamanhoDaFicha = impressora.FimDosCortes[2] - impressora.FimDosCortes[1];
+        var faltavam = tamanhoDaFicha - (impressora.Recebido.Count - impressora.FimDosCortes[2]);
+
+        // O programa foi fechado: só o que está no banco (até que ficha saiu) continua valendo
+        DestinoSerial.Esquecer("COM97");
+        impressora.Destravar();
+        var antes = impressora.Recebido.Count;
+        var doBanco = S.Vendas.Pedido(pedido.Id)!;
+        var resultado = S.ImprimirFichas(doBanco, GeradorFichas.Gerar(doBanco, S.Config.Atual));
+        Assert.True(resultado.Ok);
+        Assert.Equal("3 fichas impressas", resultado.Mensagem);
+        var zeros = impressora.Recebido.Skip(antes).TakeWhile(b => b == 0).Count();
+        Assert.True(zeros >= faltavam, $"vieram {zeros} zeros, faltavam {faltavam} bytes da 4ª ficha");
+    }
+
+    [Fact]
+    public void Item_so_que_parou_no_meio_nao_marca_fichas_de_outros_itens_como_saidas()
+    {
+        var impressora = Configurar("COM98");
+        var pedido = Vender(S.Caixa.Abrir(1, null, 0), 6);
+        // Só as fichas 3 a 6 (um item no meio do pedido); a impressora para depois de uma
+        var fichas = GeradorFichas.Gerar(pedido, S.Config.Atual).Where(f => f.Sequencia >= 3).ToList();
+        impressora.Parar = 1;
+        var erro = S.ImprimirFichas(pedido, fichas);
+        Assert.False(erro.Ok);
+        Assert.DoesNotContain("saíram as fichas 1 a", erro.Mensagem);
+        Assert.Equal(0, S.Vendas.Pedido(pedido.Id)!.FichasSaidas);
+    }
+
+    [Fact]
     public void Impressora_que_nem_comeca_nao_marca_nenhuma_ficha_como_saida()
     {
         var impressora = Configurar("COM95");
