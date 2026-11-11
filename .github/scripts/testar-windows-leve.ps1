@@ -77,7 +77,8 @@ function Foto {
         $lista = @(Get-Item $c)
         if ($r) { $lista += @(Get-ChildItem $c -Recurse -ErrorAction SilentlyContinue) }
         foreach ($k in $lista) {
-            $f["key|$($k.Name)"] = 'existe'
+            # O Windows cria sozinho as chaves dos aplicativos em segundo plano (o script só mexe nas que existem).
+            if ($k.Name -notmatch '\\BackgroundAccessApplications\\') { $f["key|$($k.Name)"] = 'existe' }
             foreach ($n in $k.GetValueNames()) {
                 if ($mudamSozinhos -contains $n) { continue }
                 $v = $k.GetValue($n, $null, 'DoNotExpandEnvironmentNames')
@@ -87,6 +88,7 @@ function Foto {
         }
     }
     $f['fuso'] = (& tzutil.exe /g)
+    $f['sem-verao'] = [string](Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation').DynamicDaylightTimeDisabled
     return $f
 }
 function Comparar($antes, $depois, [string]$quando) {
@@ -125,7 +127,7 @@ $f1 = Foto
 if ($f1['reg|HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search|AllowCortana'] -ne 'DWord=0') { Erro 'a Cortana não foi desligada' }
 if ($f0.ContainsKey('svc|DiagTrack|Start') -and $f1['svc|DiagTrack|Start'] -ne '4') { Erro 'a telemetria (DiagTrack) não foi desligada' }
 if ($f1['svc|SysMain|Start'] -eq '4') { Erro 'o SysMain ficou desligado' }
-if ($f1['fuso'] -ne 'E. South America Standard Time_dstoff') { Erro "o horário de verão não foi tirado (fuso '$($f1['fuso'])')" }
+if ($f1['sem-verao'] -ne '1') { Erro "o horário de verão não foi tirado (fuso '$($f1['fuso'])', DynamicDaylightTimeDisabled '$($f1['sem-verao'])')" }
 $spooler = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\Spooler').Start
 if ($spooler -eq 4) { Erro 'mexeu na impressora (Spooler)!' }
 if ((Rodar 'Leve') -ne 0) { Erro 'deixar leve (de novo) terminou com erro' }
@@ -143,11 +145,13 @@ $explorerAntes = @(Get-Process explorer -ErrorAction SilentlyContinue | ForEach-
 # De verdade: o "programa" fecha com código 0 (como no Sair do programa) e o arquivo abre a área de trabalho,
 # trocando o Shell por um momento e devolvendo depois.
 $p = Start-Process -FilePath 'cscript.exe' -ArgumentList '//NoLogo', "`"$vbs`"", '"C:\BCFichas\BCFichas.exe"' -PassThru -NoNewWindow
+$null = $p.Handle  # sem isto o PowerShell perde o código de saída
 if (-not $p.WaitForExit(90000)) { Erro 'o modo-caixa.vbs não terminou'; $p.Kill() }
 elseif ($p.ExitCode -ne 0) { Erro "o modo-caixa.vbs terminou com erro ($($p.ExitCode))" }
 if ((Shell) -ne $sh) { Erro "o modo-caixa.vbs não devolveu o Shell (ficou '$(Shell)')" }
 # Sem o programa (versão nova em outra pasta): também tem que terminar e abrir a área de trabalho.
 $p = Start-Process -FilePath 'cscript.exe' -ArgumentList '//NoLogo', "`"$vbs`"", '"C:\NaoExiste\BCFichas.exe"' -PassThru -NoNewWindow
+$null = $p.Handle  # sem isto o PowerShell perde o código de saída
 if (-not $p.WaitForExit(90000)) { Erro 'o modo-caixa.vbs sem o programa não terminou'; $p.Kill() }
 Get-Process explorer -ErrorAction SilentlyContinue | Where-Object { $explorerAntes -notcontains $_.Id } | Stop-Process -Force -ErrorAction SilentlyContinue
 if ((Rodar 'SairDoCaixa') -ne 0) { Erro 'sair do modo caixa terminou com erro' }

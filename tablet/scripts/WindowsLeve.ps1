@@ -185,6 +185,13 @@ function Chave-Que-Falta([string]$caminho) {
     return $falta
 }
 
+# $true se a chave e todas as de dentro não têm nenhum valor.
+function Chave-Vazia([string]$caminho) {
+    if ((Get-Item $caminho).ValueCount -gt 0) { return $false }
+    foreach ($k in @(Get-ChildItem -Path $caminho -Recurse -ErrorAction Stop)) { if ($k.ValueCount -gt 0) { return $false } }
+    return $true
+}
+
 # Guarda o "antes" de um valor (e a chave que vai ser criada). Devolve as chaves guardadas agora.
 function Lembrar-Valor([string]$caminho, [string]$nome, $antes) {
     $novas = @()
@@ -712,15 +719,20 @@ function Parte-Relogio {
     # O Brasil acabou com o horário de verão em 2019, mas o Windows 1511 sem internet ainda adianta o relógio
     # em outubro: os horários das fichas e dos relatórios ficariam uma hora errados.
     $fuso = ''
-    try { $fuso = (Rodar 'tzutil.exe' @('/g')).Trim() } catch { }
+    try { $fuso = (Rodar 'tzutil.exe' @('/g')).Trim() -replace '_dstoff$', '' } catch { }
     $comVerao = @('E. South America Standard Time', 'Central Brazilian Standard Time')
     if ($comVerao -notcontains $fuso) { Pulado "Fuso '$fuso' não tem o horário de verão antigo do Brasil"; return }
+    $tzi = 'HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation'
+    $sem = Ler-Valor $tzi 'DynamicDaylightTimeDisabled'
+    if ($sem -and [string]$sem.valor -eq '1') { Pulado "Tirar o horário de verão do fuso ($fuso) (já estava assim)"; return }
     if ($Simular) { Feito "Tirar o horário de verão do fuso ($fuso)"; return }
     $nova = $false
     try {
         $nova = Lembrar ([pscustomobject]@{ chave = 'fuso'; tipo = 'fuso'; fuso = $fuso })
         [void](Rodar 'tzutil.exe' @('/s', "${fuso}_dstoff"))
         if ($LASTEXITCODE -ne 0) { throw "tzutil terminou com código $LASTEXITCODE" }
+        $sem = Ler-Valor $tzi 'DynamicDaylightTimeDisabled'
+        if (-not $sem -or [string]$sem.valor -ne '1') { throw 'o Windows não guardou a mudança' }
         Feito "Tirar o horário de verão do fuso ($fuso)"
         Aviso ("Tirei o horário de verão. Agora o tablet marca {0:HH:mm} de {0:dd/MM/yyyy}. Se não for a hora certa, acerte em Configurações > Hora e idioma." -f (Get-Date))
     } catch {
@@ -1009,12 +1021,12 @@ function Desfazer-Tudo {
                     Feito "registro $($item.nome)"
                 }
                 'chave' {
-                    # Só apaga a chave que o script criou se ela ficou vazia.
-                    if (-not $Simular -and (Test-Path $item.caminho)) {
-                        $k = Get-Item $item.caminho
-                        if ($k.ValueCount -eq 0 -and $k.SubKeyCount -eq 0) { Remove-Item -Path $item.caminho -Force }
-                    }
-                    Feito "chave $(Split-Path $item.caminho -Leaf)"
+                    # Só apaga a chave que o script criou (com as de dentro) se não ficou nenhum valor nela.
+                    $leaf = Split-Path $item.caminho -Leaf
+                    if (-not (Test-Path $item.caminho)) { Pulado "chave $leaf (já não existia)"; break }
+                    if (-not (Chave-Vazia $item.caminho)) { Pulado "chave $leaf (ficou com outras coisas dentro: deixei)"; break }
+                    if (-not $Simular) { Remove-Item -Path $item.caminho -Recurse -Force }
+                    Feito "chave $leaf"
                 }
                 'servico' {
                     $caminho = "HKLM:\SYSTEM\CurrentControlSet\Services\$($item.nome)"
