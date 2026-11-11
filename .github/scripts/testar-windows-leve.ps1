@@ -37,6 +37,13 @@ $fusoOriginal = (& tzutil.exe /g)
 & tzutil.exe /s 'E. South America Standard Time'
 
 # ---- foto do que o script mexe
+# Só as pastas de tarefas agendadas que o script cita (outras o Windows liga e desliga sozinho).
+$pastasTarefas = @{}
+foreach ($m in [regex]::Matches($conteudo, '["''](?:\$t)?\\Microsoft\\[^''"]*["'']|"\$t\\[^"]*"')) {
+    $c = $m.Value.Trim('''', '"') -replace '^\$t', '\Microsoft\Windows'
+    $pastasTarefas[$c] = 1
+    $pastasTarefas[$c.Substring(0, $c.LastIndexOf('\'))] = 1
+}
 $servicos = @([regex]::Matches($conteudo, "Servico(?:-Religar)?\s+'([^']+)'") | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
 # Só as chaves que o script mexe ("|r" = com as subchaves): chave inteira do Explorer mudaria sozinha durante o teste.
 $chaves = @(
@@ -68,7 +75,7 @@ function Foto {
     $fila = New-Object System.Collections.Queue; $fila.Enqueue($ag.GetFolder('\'))
     while ($fila.Count) {
         $p = $fila.Dequeue()
-        foreach ($t in $p.GetTasks(1)) { $f["task|$($t.Path)"] = [string]$t.Enabled }
+        if ($pastasTarefas.ContainsKey($p.Path)) { foreach ($t in $p.GetTasks(1)) { $f["task|$($t.Path)"] = [string]$t.Enabled } }
         foreach ($s in $p.GetFolders(0)) { $fila.Enqueue($s) }
     }
     foreach ($item in $chaves) {
@@ -110,7 +117,7 @@ function Estado { return @((Get-Content (Join-Path $pasta 'como-era-antes.json')
 function Shell { return (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name Shell -ErrorAction SilentlyContinue).Shell }
 
 $f0 = Foto
-Write-Host "Foto: $($f0.Count) itens ($($servicos.Count) serviços que o script cita)"
+Write-Host "Foto: $($f0.Count) itens ($($servicos.Count) serviços e $($pastasTarefas.Count) pastas de tarefas que o script cita)"
 
 # ---- 3. simular não muda nada
 if ((Rodar 'Leve' @('-Simular')) -ne 0) { Erro 'a simulação terminou com erro' }
@@ -127,7 +134,12 @@ $f1 = Foto
 if ($f1['reg|HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Search|AllowCortana'] -ne 'DWord=0') { Erro 'a Cortana não foi desligada' }
 if ($f0.ContainsKey('svc|DiagTrack|Start') -and $f1['svc|DiagTrack|Start'] -ne '4') { Erro 'a telemetria (DiagTrack) não foi desligada' }
 if ($f1['svc|SysMain|Start'] -eq '4') { Erro 'o SysMain ficou desligado' }
-if ($f1['sem-verao'] -ne '1') { Erro "o horário de verão não foi tirado (fuso '$($f1['fuso'])', DynamicDaylightTimeDisabled '$($f1['sem-verao'])')" }
+# O Windows do GitHub já tem a regra sem horário de verão (aí o script não mexe); o 1511 do tablet ainda tem.
+$tz = [System.TimeZoneInfo]::FindSystemTimeZoneById('E. South America Standard Time')
+$temVerao = @(0..13 | Where-Object { $tz.IsDaylightSavingTime([DateTime]::UtcNow.AddDays(30 * $_)) }).Count -gt 0
+Write-Host "Este Windows ainda tem horário de verão para Brasília: $temVerao"
+if ($temVerao -and $f1['sem-verao'] -ne '1') { Erro "o horário de verão não foi tirado (fuso '$($f1['fuso'])', DynamicDaylightTimeDisabled '$($f1['sem-verao'])')" }
+if (-not $temVerao -and @($itens | Where-Object { $_.chave -eq 'fuso' }).Count) { Erro 'mexeu no fuso mesmo sem horário de verão' }
 $spooler = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\Spooler').Start
 if ($spooler -eq 4) { Erro 'mexeu na impressora (Spooler)!' }
 if ((Rodar 'Leve') -ne 0) { Erro 'deixar leve (de novo) terminou com erro' }

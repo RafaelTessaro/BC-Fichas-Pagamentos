@@ -714,6 +714,13 @@ function Parte-Inicio {
     }
 }
 
+# $true se, pelas regras deste Windows, o fuso ainda adianta o relógio em algum dia dos próximos 13 meses.
+function Tem-Horario-De-Verao([string]$fuso) {
+    try { $tz = [System.TimeZoneInfo]::FindSystemTimeZoneById($fuso) } catch { return $true }
+    for ($m = 0; $m -le 13; $m++) { if ($tz.IsDaylightSavingTime([DateTime]::UtcNow.AddDays(30 * $m))) { return $true } }
+    return $false
+}
+
 function Parte-Relogio {
     Titulo 'Relógio (horário de verão)'
     # O Brasil acabou com o horário de verão em 2019, mas o Windows 1511 sem internet ainda adianta o relógio
@@ -725,6 +732,8 @@ function Parte-Relogio {
     $tzi = 'HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation'
     $sem = Ler-Valor $tzi 'DynamicDaylightTimeDisabled'
     if ($sem -and [string]$sem.valor -eq '1') { Pulado "Tirar o horário de verão do fuso ($fuso) (já estava assim)"; return }
+    # Windows atualizado depois de 2019 já não adianta o relógio: aí não tem o que tirar.
+    if (-not (Tem-Horario-De-Verao $fuso)) { Pulado "Tirar o horário de verão do fuso ($fuso) (este Windows já tem a regra nova, sem horário de verão)"; return }
     if ($Simular) { Feito "Tirar o horário de verão do fuso ($fuso)"; return }
     $nova = $false
     try {
