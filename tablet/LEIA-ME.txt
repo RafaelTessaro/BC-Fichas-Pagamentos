@@ -48,11 +48,15 @@ COMO USAR
     Reinicie o tablet depois. Se o BC Fichas fechar por erro, ele abre de novo sozinho; se der qualquer
     problema, abre a área de trabalho (o tablet não fica com a tela preta).
     Para manutenção (trocar o Wi-Fi, parear a maquininha, pôr versão nova):
-      - no BC Fichas, Menu > Sair do programa: abre a área de trabalho. O BC Fichas abre mais uma vez
-        sozinho; feche de novo pelo Sair do programa;
-      - sem o BC Fichas: Ctrl+Alt+Del > Gerenciador de Tarefas > Mais detalhes > Arquivo > Executar nova
-        tarefa > explorer.exe (pelo UltraVNC: botão "Enviar Ctrl+Alt+Del"; sem teclado, se o tablet tiver
-        botão do Windows, segure ele e aperte o Liga/Desliga).
+      - no BC Fichas, Menu > Sair do programa: a área de trabalho abre em uns 15 segundos. O BC Fichas
+        abre mais uma vez sozinho; feche de novo pelo Sair do programa;
+      - com o BC Fichas travado: Ctrl+Alt+Del > Gerenciador de Tarefas > Mais detalhes > Arquivo >
+        Executar nova tarefa > digite
+            wscript.exe "C:\ProgramData\BCFichasWindowsLeve\modo-caixa.vbs"
+        (só explorer.exe abriria uma janela de pastas, sem a barra de tarefas). Pelo UltraVNC: botão
+        "Enviar Ctrl+Alt+Del"; sem teclado, se o tablet tiver botão do Windows, segure ele e aperte o
+        Liga/Desliga.
+    Desligar o tablet com o BC Fichas aberto (ou pelo Fechar caixa) não tira o modo caixa.
     Teste a manutenção no tablet principal ANTES de tirar a imagem para os outros.
 
 4-Sair-do-modo-caixa.cmd

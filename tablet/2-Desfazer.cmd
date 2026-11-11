@@ -15,7 +15,9 @@ if "%~1"=="/elevado" (
   pause
   exit /b 1
 )
-powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Start-Process -FilePath '%~f0' -ArgumentList '/elevado' -Verb RunAs -ErrorAction Stop } catch { exit 1 }"
+rem O caminho vai por variavel: pasta com ( ) & ou ' no nome (ex.: "tablet (1)") nao quebra.
+set "BCF_CMD=%~f0"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$q=[char]34; try { Start-Process -FilePath $env:ComSpec -ArgumentList ('/s /c ' + $q + $q + $env:BCF_CMD + $q + ' /elevado' + $q) -Verb RunAs -ErrorAction Stop } catch { exit 1 }"
 if errorlevel 1 (
   echo Para continuar, toque em Sim na pergunta do Windows.
   pause

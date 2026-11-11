@@ -25,6 +25,22 @@ foreach ($c in Get-ChildItem (Join-Path $raiz 'tablet') -Filter *.cmd) {
 $novos = 'Get-ComputerInfo', 'Get-LocalUser', 'Get-LocalGroup', 'New-LocalUser', 'Get-TimeZone', 'Set-TimeZone', '-AllUsers', 'Get-PackageProvider'
 $conteudo = [System.IO.File]::ReadAllText($script)
 foreach ($n in $novos) { if ($conteudo -match [regex]::Escape($n)) { Erro "usa '$n', que não existe no PowerShell 5.0 do Windows 1511" } }
+# Os .cmd pedem administrador com esta linha de comando: tem que funcionar com ( ) & no nome da pasta
+# (ex.: "tablet (1)" de um ZIP baixado duas vezes). Sem o UAC aqui: mesma linha, sem o RunAs.
+$linhaCmd = [regex]::Match([System.IO.File]::ReadAllText((Join-Path $raiz 'tablet\1-Deixar-o-Windows-leve.cmd')), '(?m)^powershell .*-Command "(.*Start-Process.*)"\r?$').Groups[1].Value
+if (-not $linhaCmd) { Erro 'não achei a linha que pede administrador no .cmd' }
+else {
+    $dirTeste = Join-Path $env:RUNNER_TEMP 'tablet (1) & cia'
+    New-Item -ItemType Directory -Path $dirTeste -Force | Out-Null
+    $sonda = Join-Path $dirTeste 'sonda.cmd'
+    [System.IO.File]::WriteAllText($sonda, "@echo off`r`n>`"%~dp0saida.txt`" echo [%~1]`r`n", [System.Text.Encoding]::ASCII)
+    $env:BCF_CMD = $sonda
+    $semUac = $linhaCmd -replace ' -Verb RunAs', ' -Wait -NoNewWindow'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -Command $semUac
+    $saida = Get-Content (Join-Path $dirTeste 'saida.txt') -ErrorAction SilentlyContinue
+    if ($saida -ne '[/elevado]') { Erro "pedir administrador quebra com ( ) & no nome da pasta (saída: '$saida')" }
+    Remove-Item $dirTeste -Recurse -Force -ErrorAction SilentlyContinue
+}
 if ($falhas) { exit 1 }
 
 # ---- 2. como num tablet: um "BC Fichas" (o programa grava o HKCU Run sozinho) e o fuso de Brasília
@@ -59,7 +75,8 @@ $chaves = @(
     'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager', 'HKCU:\Software\Microsoft\Windows\CurrentVersion\PushNotifications',
     'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search', 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize',
     'HKCU:\Software\Microsoft\Windows\CurrentVersion\BackgroundAccessApplications|r', 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run',
-    'HKCU:\Software\Microsoft\Windows\DWM', 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
+    'HKCU:\Software\Microsoft\Windows\DWM', 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon',
+    'HKCU:\Software\BCFichasWindowsLeve|r'
 )
 # Valores que o próprio Windows muda sozinho.
 $mudamSozinhos = 'InstalledPackagedAppsRevision', 'GlobalAssocChangedCounter'
@@ -115,6 +132,8 @@ function Rodar([string]$acao, [string[]]$extra) {
 }
 function Estado { return @((Get-Content (Join-Path $pasta 'como-era-antes.json') -Raw | ConvertFrom-Json) | ForEach-Object { $_ }) }
 function Shell { return (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name Shell -ErrorAction SilentlyContinue).Shell }
+function VoltaCaixa { return (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce' -Name BCFichasCaixa -ErrorAction SilentlyContinue).BCFichasCaixa }
+function Guardado { return (Get-ItemProperty 'HKCU:\Software\BCFichasWindowsLeve' -Name ShellCaixa -ErrorAction SilentlyContinue).ShellCaixa }
 
 $f0 = Foto
 Write-Host "Foto: $($f0.Count) itens ($($servicos.Count) serviços e $($pastasTarefas.Count) pastas de tarefas que o script cita)"
@@ -144,6 +163,18 @@ $spooler = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\Spooler').
 if ($spooler -eq 4) { Erro 'mexeu na impressora (Spooler)!' }
 if ((Rodar 'Leve') -ne 0) { Erro 'deixar leve (de novo) terminou com erro' }
 if ((Get-Content (Join-Path $pasta 'como-era-antes.json') -Raw) -ne $estado1) { Erro 'rodar de novo mudou o "como era antes"' }
+$arqEstado = Join-Path $pasta 'como-era-antes.json'
+if (-not (Test-Path "$arqEstado.bak")) { Erro 'não fez a cópia .bak do arquivo de desfazer' }
+else {
+    $copia = [System.IO.File]::ReadAllBytes($arqEstado)
+    $copiaBak = [System.IO.File]::ReadAllBytes("$arqEstado.bak")
+    [System.IO.File]::WriteAllBytes($arqEstado, (New-Object byte[] $copia.Length))
+    if ((Rodar 'Leve' @('-Simular')) -ne 0) { Erro 'com o arquivo de desfazer estragado, não usou a cópia .bak' }
+    Remove-Item "$arqEstado.bak" -Force
+    if ((Rodar 'Leve' @('-Simular')) -eq 0) { Erro 'com o arquivo de desfazer estragado e sem cópia, seguiu em frente' }
+    [System.IO.File]::WriteAllBytes($arqEstado, $copia)
+    [System.IO.File]::WriteAllBytes("$arqEstado.bak", $copiaBak)
+}
 
 # ---- 5. modo caixa: entra, o arquivo roda (e cai na área de trabalho, nunca em tela preta), sai
 $vbs = Join-Path $pasta 'modo-caixa.vbs'
@@ -161,13 +192,27 @@ $null = $p.Handle  # sem isto o PowerShell perde o código de saída
 if (-not $p.WaitForExit(90000)) { Erro 'o modo-caixa.vbs não terminou'; $p.Kill() }
 elseif ($p.ExitCode -ne 0) { Erro "o modo-caixa.vbs terminou com erro ($($p.ExitCode))" }
 if ((Shell) -ne $sh) { Erro "o modo-caixa.vbs não devolveu o Shell (ficou '$(Shell)')" }
+if (VoltaCaixa) { Erro 'o modo-caixa.vbs deixou o RunOnce BCFichasCaixa' }
+if (Test-Path 'HKCU:\Software\BCFichasWindowsLeve') { Erro 'o modo-caixa.vbs deixou a chave BCFichasWindowsLeve' }
 # Sem o programa (versão nova em outra pasta): também tem que terminar e abrir a área de trabalho.
 $p = Start-Process -FilePath 'cscript.exe' -ArgumentList '//NoLogo', "`"$vbs`"", '"C:\NaoExiste\BCFichas.exe"' -PassThru -NoNewWindow
 $null = $p.Handle  # sem isto o PowerShell perde o código de saída
 if (-not $p.WaitForExit(90000)) { Erro 'o modo-caixa.vbs sem o programa não terminou'; $p.Kill() }
+$p = Start-Process -FilePath 'cscript.exe' -ArgumentList '//NoLogo', "`"$vbs`"", '"C:\NaoExiste\BCFichas.exe"' -PassThru -NoNewWindow
+$limite = (Get-Date).AddSeconds(60)
+while ((Shell) -ne 'explorer.exe' -and (Get-Date) -lt $limite -and -not $p.HasExited) { Start-Sleep -Milliseconds 200 }
+if ((Shell) -ne 'explorer.exe') { Erro "o modo-caixa.vbs não trocou o Shell para a área de trabalho ('$(Shell)')" }
+else {
+    Stop-Process -Id $p.Id -Force   # como o Windows desligando no meio
+    if ((Shell) -ne $sh -and ((Guardado) -ne $sh -or -not (VoltaCaixa))) { Erro "desligando no meio, não deixou como voltar (guardado '$(Guardado)', RunOnce '$(VoltaCaixa)')" }
+    & cscript.exe //NoLogo //B $vbs /voltar
+    if ((Shell) -ne $sh) { Erro "o /voltar não devolveu o modo caixa (Shell = '$(Shell)')" }
+    if (Test-Path 'HKCU:\Software\BCFichasWindowsLeve') { Erro 'o /voltar deixou a chave BCFichasWindowsLeve' }
+}
 Get-Process explorer -ErrorAction SilentlyContinue | Where-Object { $explorerAntes -notcontains $_.Id } | Stop-Process -Force -ErrorAction SilentlyContinue
 if ((Rodar 'SairDoCaixa') -ne 0) { Erro 'sair do modo caixa terminou com erro' }
 if (Shell) { Erro "sair do modo caixa não tirou o Shell ('$(Shell)')" }
+if (VoltaCaixa) { Erro 'sair do modo caixa não tirou o RunOnce BCFichasCaixa' }
 if ((Rodar 'Caixa') -ne 0) { Erro 'modo caixa (de novo) terminou com erro' }
 
 # ---- 6. desfazer volta tudo (o modo caixa junto)
@@ -175,6 +220,8 @@ if ((Rodar 'Desfazer') -ne 0) { Erro 'desfazer terminou com erro' }
 $dif = Comparar $f0 (Foto) 'depois de desfazer'
 Write-Host "`nDiferenças depois de desfazer: $dif"
 if (Test-Path (Join-Path $pasta 'como-era-antes.json')) { Erro 'o desfazer não arquivou o como-era-antes.json' }
+if (Test-Path (Join-Path $pasta 'como-era-antes.json.bak')) { Erro 'o desfazer deixou a cópia .bak' }
+if (VoltaCaixa) { Erro 'o desfazer deixou o RunOnce BCFichasCaixa' }
 
 # ---- 7. versão Rede: o modo caixa acha o BCFichasRede.exe
 Remove-ItemProperty -Path $run -Name 'BCFichas' -Force

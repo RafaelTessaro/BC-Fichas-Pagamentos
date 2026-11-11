@@ -107,9 +107,16 @@ function Carregar-Estado {
     $script:Estado = New-Object System.Collections.ArrayList
     $script:Chaves = @{}
     if (-not (Test-Path $ArquivoEstado)) { return }
-    $texto = Get-Content -Path $ArquivoEstado -Raw -Encoding UTF8
-    if ([string]::IsNullOrWhiteSpace($texto)) { return }
-    $dados = ConvertFrom-Json -InputObject $texto
+    # Se o tablet desligou no meio de uma gravação, o arquivo pode ficar vazio ou com zeros: aí vale a cópia .bak.
+    $dados = $null
+    $ok = $false
+    foreach ($arq in @($ArquivoEstado, "$ArquivoEstado.bak")) {
+        if (-not (Test-Path $arq)) { continue }
+        $texto = Get-Content -Path $arq -Raw -Encoding UTF8
+        if ([string]::IsNullOrWhiteSpace(($texto -replace "`0", ''))) { continue }
+        try { $dados = ConvertFrom-Json -InputObject $texto; $ok = $true; break } catch { }
+    }
+    if (-not $ok) { throw "O arquivo $ArquivoEstado está estragado (o tablet desligou no meio?). Não dá para saber como era antes; não mudei nada." }
     foreach ($item in @(Achatar $dados)) {
         if ($null -eq $item -or -not ($item.PSObject.Properties.Name -contains 'chave')) { continue }
         $k = [string]$item.chave
@@ -124,8 +131,16 @@ function Guardar-Estado {
     if (-not (Test-Path $Pasta)) { New-Item -ItemType Directory -Path $Pasta -Force | Out-Null }
     $json = ConvertTo-Json -InputObject @($script:Estado.ToArray()) -Depth 6
     $temp = "$ArquivoEstado.novo"
-    [System.IO.File]::WriteAllText($temp, $json, (New-Object System.Text.UTF8Encoding($true)))
-    Move-Item -Path $temp -Destination $ArquivoEstado -Force
+    # Grava de verdade no disco antes de trocar (se faltar energia, fica o arquivo antigo ou a cópia .bak).
+    $codificacao = New-Object System.Text.UTF8Encoding($true)
+    $bom = $codificacao.GetPreamble()
+    $bytes = $codificacao.GetBytes($json)
+    $fs = New-Object System.IO.FileStream($temp, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+    try { $fs.Write($bom, 0, $bom.Length); $fs.Write($bytes, 0, $bytes.Length); $fs.Flush($true) } finally { $fs.Dispose() }
+    if (Test-Path $ArquivoEstado) {
+        try { [System.IO.File]::Replace($temp, $ArquivoEstado, "$ArquivoEstado.bak") }
+        catch { Move-Item -Path $temp -Destination $ArquivoEstado -Force }
+    } else { [System.IO.File]::Move($temp, $ArquivoEstado) }
 }
 
 # Guarda o "antes" de uma coisa. Devolve $true se guardou agora (e $false se já estava guardado).
@@ -336,15 +351,18 @@ function Energia-Gravar([string]$grupo, [string]$config, $ac, $dc) {
     [void](Rodar 'powercfg.exe' @('/setactive', 'SCHEME_CURRENT'))
 }
 
-function Energia([string]$grupo, [string]$config, [int]$valor, [string]$porque) {
+# -SoBateria: muda só "na bateria" e deixa "na tomada" como estava.
+function Energia([string]$grupo, [string]$config, [int]$valor, [string]$porque, [switch]$SoBateria) {
     $antes = Energia-Ler $grupo $config
     if (-not $antes) { Pulado "$porque (este Windows não tem essa opção)"; return }
-    if ($antes[0] -eq $valor -and $antes[1] -eq $valor) { Pulado "$porque (já estava assim)"; return }
+    $naTomada = $valor
+    if ($SoBateria) { $naTomada = $antes[0] }
+    if ($antes[0] -eq $naTomada -and $antes[1] -eq $valor) { Pulado "$porque (já estava assim)"; return }
     if ($Simular) { Feito $porque; return }
     $chave = "energia|$grupo|$config"
     try {
         [void](Lembrar ([pscustomobject]@{ chave = $chave; tipo = 'energia'; grupo = $grupo; config = $config; ac = $antes[0]; dc = $antes[1] }))
-        Energia-Gravar $grupo $config $valor $valor
+        Energia-Gravar $grupo $config $naTomada $valor
         Feito $porque
     } catch { Falhou "$porque : $($_.Exception.Message)" }
 }
@@ -771,7 +789,7 @@ function Parte-Disco([bool]$tirarHibernacao) {
         return
     }
     # Sem hibernação, com a bateria no fim o tablet desliga (e não tenta hibernar).
-    Energia 'SUB_BATTERY' 'BATACTIONCRIT' 3 'Bateria no fim: desligar o tablet'
+    Energia 'SUB_BATTERY' 'BATACTIONCRIT' 3 'Bateria no fim: desligar o tablet (na tomada continua como estava)' -SoBateria
 }
 
 function Conferir-Memoria {
@@ -850,19 +868,31 @@ $ScriptCaixa = @'
 ' Se o programa fechar por erro, abre de novo. Se fechar pelo "Sair do programa", ou se der qualquer problema,
 ' abre a area de trabalho (nunca fica tela preta). Manutencao sem fechar: crie manutencao.txt na pasta do programa.
 Option Explicit
-Dim sh, fso, exe, nomeExe, pasta, rc, t0, falhas, teste, i, erro
+Dim sh, fso, exe, nomeExe, pasta, rc, t0, falhas, teste, voltar, i, erro
 Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 Const CHAVE_SHELL = "HKCU\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\Shell"
+Const CHAVE_GUARDADO = "HKCU\Software\BCFichasWindowsLeve\ShellCaixa"
+Const CHAVE_PASTA = "HKCU\Software\BCFichasWindowsLeve\"
+Const CHAVE_RUNONCE = "HKCU\Software\Microsoft\Windows\CurrentVersion\RunOnce\BCFichasCaixa"
 exe = ""
 teste = False
+voltar = False
 For i = 0 To WScript.Arguments.Count - 1
   If LCase(WScript.Arguments(i)) = "/teste" Then
     teste = True
+  ElseIf LCase(WScript.Arguments(i)) = "/voltar" Then
+    voltar = True
   Else
     exe = WScript.Arguments(i)
   End If
 Next
+
+' O tablet desligou no meio da troca para a area de trabalho: volta o modo caixa para o proximo inicio.
+If voltar Then
+  VoltarCaixa
+  WScript.Quit
+End If
 
 If teste Then
   If exe <> "" Then
@@ -892,7 +922,11 @@ Do
     Err.Clear
     On Error GoTo 0
     If erro <> 0 Then Exit Do
-    If rc = 0 Then Exit Do
+    If rc = 0 Then
+      ' "Sair do programa" ou o Windows desligando: espera, para o desligamento acabar antes de mexer no Shell.
+      WScript.Sleep 15000
+      Exit Do
+    End If
     If Abs(Timer - t0) < 30 Then falhas = falhas + 1 Else falhas = 0
     If falhas >= 5 Then Exit Do
     WScript.Sleep 3000
@@ -918,6 +952,12 @@ Sub AreaDeTrabalho()
   On Error Resume Next
   atual = sh.RegRead(CHAVE_SHELL)
   Err.Clear
+  If atual <> "" And LCase(atual) <> "explorer.exe" Then
+    ' Se o tablet desligar nestes segundos, o explorer do proximo inicio roda o /voltar e o modo caixa continua.
+    sh.RegWrite CHAVE_GUARDADO, atual, "REG_SZ"
+    sh.RegWrite CHAVE_RUNONCE, """" & sh.ExpandEnvironmentStrings("%SystemRoot%") & "\System32\wscript.exe"" //B //NoLogo """ & WScript.ScriptFullName & """ /voltar", "REG_SZ"
+  End If
+  Err.Clear
   sh.RegWrite CHAVE_SHELL, "explorer.exe", "REG_SZ"
   sh.Run "explorer.exe", 1, False
   For n = 1 To 30
@@ -926,6 +966,21 @@ Sub AreaDeTrabalho()
   Next
   WScript.Sleep 10000
   If atual <> "" Then sh.RegWrite CHAVE_SHELL, atual, "REG_SZ"
+  sh.RegDelete CHAVE_RUNONCE
+  sh.RegDelete CHAVE_GUARDADO
+  sh.RegDelete CHAVE_PASTA
+  Err.Clear
+End Sub
+
+Sub VoltarCaixa()
+  Dim guardado
+  On Error Resume Next
+  guardado = sh.RegRead(CHAVE_GUARDADO)
+  If Err.Number = 0 And guardado <> "" Then sh.RegWrite CHAVE_SHELL, guardado, "REG_SZ"
+  Err.Clear
+  sh.RegDelete CHAVE_GUARDADO
+  sh.RegDelete CHAVE_PASTA
+  Err.Clear
 End Sub
 '@
 
@@ -981,15 +1036,25 @@ function Entrar-No-Caixa {
     }
     Escrever ''
     Escrever 'Pronto. Reinicie o tablet: ele vai abrir só o BC Fichas.' 'Green'
-    Escrever 'Para manutenção: no BC Fichas, Menu > Sair do programa abre a área de trabalho (o BC Fichas abre mais uma vez: feche de novo).'
-    Escrever 'Sem o BC Fichas: Ctrl+Alt+Del > Gerenciador de Tarefas > Arquivo > Executar nova tarefa > explorer.exe.'
+    Escrever 'Para manutenção: no BC Fichas, Menu > Sair do programa. A área de trabalho abre em uns 15 segundos (o BC Fichas abre mais uma vez: feche de novo).'
+    Escrever "Com o BC Fichas travado: Ctrl+Alt+Del > Gerenciador de Tarefas > Mais detalhes > Arquivo > Executar nova tarefa > wscript.exe `"$ArquivoCaixa`" (só explorer.exe abriria uma janela de pastas, sem a barra de tarefas)."
     Escrever 'Para voltar ao normal: 4-Sair-do-modo-caixa.cmd e reinicie.'
+}
+
+# Tira o "volta o modo caixa" que o modo-caixa.vbs deixa enquanto abre a área de trabalho.
+function Limpar-Volta-Caixa {
+    try {
+        $r = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce'
+        if (Ler-Valor $r 'BCFichasCaixa') { Remove-ItemProperty -Path $r -Name 'BCFichasCaixa' -Force }
+        if (Test-Path 'HKCU:\Software\BCFichasWindowsLeve') { Remove-Item -Path 'HKCU:\Software\BCFichasWindowsLeve' -Recurse -Force }
+    } catch { Aviso "Não consegui limpar o retorno do modo caixa: $($_.Exception.Message)" }
 }
 
 function Sair-Do-Caixa {
     Escrever 'BC Fichas - sair do modo caixa' 'White'
     if (-not (Usuario-Certo)) { Falhou 'Parei sem mudar nada: rode entrando no Windows com o usuário do caixa.'; return }
-    Carregar-Estado
+    # Mesmo com o arquivo do desfazer estragado, ainda dá para sair do modo caixa.
+    try { Carregar-Estado } catch { Aviso $_.Exception.Message }
     $chave = "reg|$ChaveShell|Shell"
     $item = @($script:Estado.ToArray() | Where-Object { [string]$_.chave -eq $chave }) | Select-Object -First 1
     Titulo 'Voltando a área de trabalho normal'
@@ -1000,6 +1065,7 @@ function Sair-Do-Caixa {
         if ($item -and $item.existia) { Gravar-Valor $ChaveShell 'Shell' $item.valor $item.tipoValor }
         elseif ($atual) { Remove-ItemProperty -Path $ChaveShell -Name 'Shell' -Force }
         if ($item) { Esquecer $chave }
+        Limpar-Volta-Caixa
         Feito 'Voltar a área de trabalho'
         Escrever 'Reinicie o tablet para a área de trabalho voltar.' 'Green'
     } catch { Falhou "Voltar a área de trabalho: $($_.Exception.Message)" }
@@ -1080,9 +1146,11 @@ function Desfazer-Tudo {
             }
         } catch { Falhou "$($item.chave): $($_.Exception.Message)" }
     }
+    if (-not $Simular) { Limpar-Volta-Caixa }
     if (-not $Simular -and $script:Falhas -eq 0) {
         $guardado = Join-Path $Pasta ("desfeito-{0:yyyyMMdd-HHmmss}.json" -f (Get-Date))
         Move-Item -Path $ArquivoEstado -Destination $guardado -Force
+        if (Test-Path "$ArquivoEstado.bak") { Remove-Item -Path "$ArquivoEstado.bak" -Force }
         Escrever "O que foi desfeito ficou guardado em $guardado" 'DarkGray'
     }
     if ($naoVolta.Count -gt 0) { Aviso "$($naoVolta.Count) aplicativo(s) desinstalado(s) não voltam sem internet." }
@@ -1120,6 +1188,8 @@ try {
         'Caixa' { Entrar-No-Caixa }
         'SairDoCaixa' { Sair-Do-Caixa }
     }
+} catch {
+    Falhou $_.Exception.Message
 } finally {
     $trava.ReleaseMutex()
 }
