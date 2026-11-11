@@ -29,7 +29,9 @@ if ($falhas) { exit 1 }
 # ---- 2. um "BC Fichas" de mentira, como no tablet (o programa grava o HKCU Run sozinho)
 New-Item -ItemType Directory -Path 'C:\BCFichas' -Force | Out-Null
 Copy-Item "$env:SystemRoot\System32\whoami.exe" 'C:\BCFichas\BCFichas.exe' -Force
-New-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'BCFichas' -Value '"C:\BCFichas\BCFichas.exe"' -PropertyType String -Force | Out-Null
+$run = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+if (-not (Test-Path $run)) { New-Item -Path $run | Out-Null }
+New-ItemProperty -Path $run -Name 'BCFichas' -Value '"C:\BCFichas\BCFichas.exe"' -PropertyType String -Force | Out-Null
 
 # ---- foto do que o script mexe
 # Só as chaves que o script mexe ("|r" = com as subchaves): chave inteira do Explorer mudaria sozinha durante o teste.
