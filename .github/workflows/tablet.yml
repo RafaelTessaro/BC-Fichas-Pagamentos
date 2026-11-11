@@ -1,0 +1,32 @@
+name: Windows leve (tablet)
+
+on:
+  push:
+    paths:
+      - 'tablet/**'
+      - '.github/scripts/testar-windows-leve.ps1'
+      - '.github/workflows/tablet.yml'
+  pull_request:
+    paths:
+      - 'tablet/**'
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Testar (simular, deixar leve, modo caixa e desfazer)
+        shell: powershell
+        run: .\.github\scripts\testar-windows-leve.ps1
+
+      - name: Registro do que o script fez
+        if: always()
+        shell: powershell
+        run: Get-Content "$env:RUNNER_TEMP\windows-leve\registro.txt" -ErrorAction SilentlyContinue
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BCFichas-Windows-leve
+          path: tablet

@@ -1,0 +1,74 @@
+﻿BC FICHAS - WINDOWS LEVE PARA O TABLET DO CAIXA
+================================================
+
+Para o tablet de 1 GB com Windows 10 (versão 1511). Deixa o Windows gastando menos memória, processador e
+disco, sem mexer no que o BC Fichas precisa (impressora, porta COM, Bluetooth, Wi-Fi, VNC, tela de toque).
+Tudo o que dá para voltar fica guardado: o 2-Desfazer.cmd volta como era.
+
+
+ANTES DE COMEÇAR
+----------------
+1. Faça isto no tablet principal (o que vira a imagem para os outros).
+2. Entre no Windows com o usuário do caixa (o que entra sozinho), e ele tem que ser administrador.
+3. O BC Fichas já tem que estar instalado e ter sido aberto pelo menos uma vez.
+4. Se puder, tenha uma imagem do tablet antes (é a cópia de segurança mais garantida).
+
+
+COMO USAR
+---------
+1b-So-ver-o-que-faria.cmd
+    Mostra tudo o que seria mudado, sem mudar nada. Bom para conferir antes.
+
+1-Deixar-o-Windows-leve.cmd
+    Faz as mudanças. Pede permissão de administrador (clique em Sim) e faz 4 perguntas:
+      - Tirar o "Pesquisar" (Cortana) de vez?          recomendado: Sim
+      - Desinstalar os aplicativos do Windows?         recomendado: Sim (jogos, Xbox, notícias...)
+      - Desligar o Windows Defender (antivírus)?       recomendado: Sim (o tablet não tem internet)
+      - Desligar a hibernação?                         recomendado: Sim (libera uns 700 MB do disco)
+    É só apertar Enter para a resposta recomendada. No fim, REINICIE o tablet.
+
+2-Desfazer.cmd
+    Volta tudo o que foi mudado ao que era antes (serviços, tarefas, registro, Pesquisar, hibernação,
+    horário de verão). Só os aplicativos desinstalados não voltam sem internet.
+
+3-Modo-caixa.cmd  (opcional, economiza mais memória)
+    O Windows passa a abrir SÓ o BC Fichas, sem área de trabalho, barra de tarefas e menu Iniciar.
+    Reinicie o tablet depois. Se o BC Fichas fechar por erro, ele abre de novo sozinho.
+    Para manutenção:
+      - no BC Fichas, Menu > Sair do programa: abre a área de trabalho;
+      - ou Ctrl+Alt+Del > Gerenciador de Tarefas > Arquivo > Executar nova tarefa > explorer.exe
+        (pelo UltraVNC: botão "Enviar Ctrl+Alt+Del").
+
+4-Sair-do-modo-caixa.cmd
+    Volta a área de trabalho normal (reinicie depois).
+
+
+O QUE É MUDADO
+--------------
+- Desliga: telemetria, Windows Update (sem internet ele só fica tentando), indexação de arquivos,
+  Xbox, mapas, localização, grupo doméstico, fax, sincronização de e-mail, diagnósticos e outras tarefas
+  agendadas que o caixa nunca usa.
+- Defender (se você escolher), SmartScreen, Cortana e o "Pesquisar".
+- OneDrive (desinstala) e os aplicativos que vêm com o Windows (se você escolher).
+- Dicas, sugestões, propagandas, notificações por cima do caixa, tela de bloqueio, aplicativos em
+  segundo plano, animações, sombras e transparência.
+- Horário de verão: o Brasil acabou com ele em 2019, mas o Windows 1511 sem internet ainda adianta o
+  relógio em outubro. O script tira (confira se a hora ficou certa).
+- O BC Fichas abre logo ao ligar (sem a espera de 10 segundos do Windows).
+- Hibernação (se você escolher): apaga o hiberfil.sys e, com a bateria no fim, o tablet desliga.
+
+O QUE NÃO É MEXIDO, DE PROPÓSITO
+--------------------------------
+Impressora (Spooler), portas COM e USB, Bluetooth, Wi-Fi e rede, firewall, UltraVNC, teclado da tela,
+notificações do sistema, relógio, fontes, arquivo de paginação e o SysMain (no Windows 1511 ele também
+faz a compressão da memória, que ajuda muito com 1 GB). A liberação do BC Fichas continua valendo.
+
+
+DEPOIS
+------
+- Reinicie e confira a memória: Gerenciador de Tarefas > Desempenho > Memória.
+- O que foi feito fica anotado em C:\ProgramData\BCFichasWindowsLeve\registro.txt
+- O que precisa para desfazer fica em C:\ProgramData\BCFichasWindowsLeve\como-era-antes.json
+  (não apague esta pasta se quiser poder desfazer; ela vai junto na imagem do tablet).
+
+Suporte BC Fichas: (19) 99821-6489
